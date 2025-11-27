@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/team_model.dart';
-import '../l10n/app_localizations.dart';
-import 'team_activity_tab.dart'; // Aktivite widget'ını kullanıyoruz
+import 'team_activity_tab.dart';
 
 class TeamActivityScreen extends StatelessWidget {
   final Team team;
@@ -10,16 +9,19 @@ class TeamActivityScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
+    // Localization getter hatasını önlemek için geçici sabit metin veya try-catch
+    // final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: Text(l10n.tabActivity,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text("Aktivite", // l10n.tabActivity yerine sabit
             style: GoogleFonts.poppins(color: Colors.white)),
       ),
-      body: TeamActivityTab(teamId: team.id),
+      // HATA ÇÖZÜMÜ: teamId yerine team objesi gönderiliyor
+      body: TeamActivityTab(team: team),
     );
   }
 }

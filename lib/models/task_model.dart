@@ -19,10 +19,10 @@ class Task {
   final int postponeCount;
   final String repeatRule;
 
-  // YENİ EKLENENLER:
-  final String? groupId; // Ekip ID'si
-  final String? assignedTo; // Görevi yapacak kişinin ID'si
-  final String? createdBy; // Görevi oluşturan kişinin ID'si
+  final String? groupId;
+  final List<String> assignedTo; // DEĞİŞTİ: Artık Liste
+  final String? createdBy;
+  final String status;
 
   Task({
     this.id,
@@ -43,8 +43,9 @@ class Task {
     this.postponeCount = 0,
     this.repeatRule = 'none',
     this.groupId,
-    this.assignedTo,
+    this.assignedTo = const [], // Varsayılan boş liste
     this.createdBy,
+    this.status = 'todo',
   });
 
   Task copyWith({
@@ -66,8 +67,9 @@ class Task {
     int? postponeCount,
     String? repeatRule,
     String? groupId,
-    String? assignedTo,
+    List<String>? assignedTo, // DEĞİŞTİ
     String? createdBy,
+    String? status,
   }) {
     return Task(
       id: id ?? this.id,
@@ -90,6 +92,7 @@ class Task {
       groupId: groupId ?? this.groupId,
       assignedTo: assignedTo ?? this.assignedTo,
       createdBy: createdBy ?? this.createdBy,
+      status: status ?? this.status,
     );
   }
 
@@ -113,13 +116,23 @@ class Task {
       'postponeCount': postponeCount,
       'repeatRule': repeatRule,
       'groupId': groupId,
-      'assignedTo': assignedTo,
+      'assignedTo': assignedTo, // Liste olarak kaydet
       'createdBy': createdBy,
+      'status': status,
     };
   }
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // Eski verilerle uyumluluk için kontrol (String gelirse listeye çevir)
+    List<String> assignedList = [];
+    if (data['assignedTo'] is String) {
+      assignedList = [data['assignedTo']];
+    } else if (data['assignedTo'] is List) {
+      assignedList = List<String>.from(data['assignedTo']);
+    }
+
     return Task(
       id: doc.id,
       userId: data['userId'] ?? '',
@@ -141,8 +154,9 @@ class Task {
       postponeCount: data['postponeCount'] ?? 0,
       repeatRule: data['repeatRule'] ?? 'none',
       groupId: data['groupId'],
-      assignedTo: data['assignedTo'],
+      assignedTo: assignedList,
       createdBy: data['createdBy'],
+      status: data['status'] ?? 'todo',
     );
   }
 }

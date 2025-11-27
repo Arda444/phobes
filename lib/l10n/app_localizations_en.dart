@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Modern Calendar';
+  String get appTitle => 'Phobes';
 
   @override
   String get login => 'Login';
@@ -767,4 +767,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get assignedToMe => 'Assigned to me';
+
+  @override
+  String get viewWeekly => 'Weekly';
+
+  @override
+  String get viewMonthly => 'Monthly';
+
+  @override
+  String get viewDaily => 'Daily';
+
+  @override
+  String get addSmart => 'Smart Add (Nova)';
+
+  @override
+  String get addManual => 'Manual Add';
+
+  @override
+  String get novaAssistant => 'Nova Assistant';
+
+  @override
+  String get novaPrompt => 'Type or speak, I will create for you.';
+
+  @override
+  String get novaInputHint => 'Type here...';
+
+  @override
+  String get novaUnderstandError => 'Nova didn\'t understand that.';
+
+  @override
+  String get micPermissionError => 'Microphone permission denied.';
+
+  @override
+  String get poweredBy => 'Powered by';
+
+  @override
+  String get techlunaSoftware => 'Techluna Software';
+
+  @override
+  String get tabKanban => 'Kanban';
+
+  @override
+  String get tabResources => 'Resources';
+
+  @override
+  String get statusTodo => 'To Do';
+
+  @override
+  String get statusInProgress => 'In Progress';
+
+  @override
+  String get statusDone => 'Done';
+
+  @override
+  String get addLink => 'Add Link';
+
+  @override
+  String get announcements => 'Announcements';
+
+  @override
+  String get pinnedMessage => 'Pinned Message';
+
+  @override
+  String get mvpTitle => 'Star of the Week';
+
+  @override
+  String get workloadTitle => 'Workload Distribution';
+
+  @override
+  String get linkUrl => 'Link (https://...)';
+
+  @override
+  String get linkTitle => 'Title';
+
+  @override
+  String get openLink => 'Open Link';
+
+  @override
+  String get noResources => 'No resources added yet.';
+
+  @override
+  String get moveNext => 'Move Next';
+
+  @override
+  String get movePrev => 'Move Back';
 }

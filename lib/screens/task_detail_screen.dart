@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore eklendi
 import '../models/task_model.dart';
 import '../services/firebase_service.dart';
 import '../services/nova_service.dart';
@@ -64,7 +65,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: Colors.grey.shade900,
+          backgroundColor: const Color(0xFF1E1E1E),
           title: const Row(children: [
             Icon(Icons.auto_awesome, color: Colors.tealAccent),
             SizedBox(width: 10),
@@ -97,11 +98,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
               onPressed: () async {
-                // Dialogu kapatmak için ctx kullanıyoruz (context güvenli)
-                Navigator.pop(ctx);
-
-                // Ana ekrana bildirim için referans al
-                final messenger = ScaffoldMessenger.of(context);
+                Navigator.pop(ctx); // Dialogu kapat
 
                 final newDesc =
                     "${_task.description}\n\n--- Nova Adımları ---\n${subtasks.map((e) => "[ ] $e").join("\n")}";
@@ -111,7 +108,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
                 if (mounted) {
                   setState(() => _task = updatedTask);
-                  messenger
+                  ScaffoldMessenger.of(context)
                       .showSnackBar(const SnackBar(content: Text("Eklendi!")));
                 }
               },
@@ -132,52 +129,48 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   // AKILLI ZAMANLAMA
   Future<void> _smartReschedule() async {
-    // Referansları al
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-
-    navigator.pop(); // Menüyü kapat
-    messenger.showSnackBar(
+    Navigator.pop(context); // Menüyü kapat
+    ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Nova boşluk arıyor... 🕵️")));
 
     final allTasks = await _firebaseService.getAllUserTasksStream().first;
     final bestTime = await _novaService.findBestSlot(_task, allTasks);
 
-    if (mounted) {
-      if (bestTime != null) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: Colors.grey.shade900,
-            title: const Text("Zaman Bulundu!",
-                style: TextStyle(color: Colors.white)),
-            content: Text(
-                "${DateFormat('d MMMM HH:mm', 'tr').format(bestTime)} uygun mu?",
-                style: const TextStyle(color: Colors.white70)),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Hayır")),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-                onPressed: () async {
-                  await _firebaseService.updateTask(_task.copyWith(
-                      startTime: bestTime,
-                      endTime: bestTime.add(const Duration(hours: 1))));
-                  Navigator.pop(ctx); // Dialogu kapat
-                  if (mounted) {
-                    setState(() => _task = _task.copyWith(startTime: bestTime));
-                  }
-                },
-                child: const Text("Onayla"),
-              )
-            ],
-          ),
-        );
-      } else {
-        messenger.showSnackBar(
-            const SnackBar(content: Text("Uygun boşluk bulamadım :(")));
-      }
+    if (!mounted) return; // HATA ÇÖZÜMÜ: Context kontrolü
+
+    if (bestTime != null) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF1E1E1E),
+          title: const Text("Zaman Bulundu!",
+              style: TextStyle(color: Colors.white)),
+          content: Text(
+              "${DateFormat('d MMMM HH:mm', 'tr').format(bestTime)} uygun mu?",
+              style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Hayır")),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+              onPressed: () async {
+                await _firebaseService.updateTask(_task.copyWith(
+                    startTime: bestTime,
+                    endTime: bestTime.add(const Duration(hours: 1))));
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) {
+                  setState(() => _task = _task.copyWith(startTime: bestTime));
+                }
+              },
+              child: const Text("Onayla"),
+            )
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Uygun boşluk bulamadım :(")));
     }
   }
 
@@ -218,10 +211,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       leading: const Icon(Icons.update, color: Colors.white70),
       title: Text(label, style: GoogleFonts.poppins(color: Colors.white)),
       onTap: () async {
-        // HATA ÇÖZÜMÜ: Referansları işlemden önce al
-        final navigator = Navigator.of(context);
-        final messenger = ScaffoldMessenger.of(context);
-
         final newTask = _task.copyWith(
           startTime: _task.startTime.add(duration),
           endTime: _task.endTime.add(duration),
@@ -231,21 +220,24 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
         if (mounted) {
           setState(() => _task = newTask);
-          navigator.pop(); // Menüyü kapat (Referansla)
-          messenger.showSnackBar(SnackBar(
-              content: Text("$label ertelendi!"))); // Snackbar (Referansla)
+          Navigator.pop(context); // Menüyü kapat
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("$label ertelendi!")));
         }
       },
     );
   }
 
   Future<void> _deleteTask() async {
-    // Referansı al
+    // HATA ÇÖZÜMÜ: Context'i await sonrasında güvenli kullanmak için.
+    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
 
     if (_task.id != null) await _firebaseService.deleteTask(_task.id!);
 
-    if (mounted) navigator.pop(); // Referansla çıkış yap
+    // İşlem bitince ekranı kapat
+    navigator.pop();
+    messenger.showSnackBar(const SnackBar(content: Text("Görev silindi")));
   }
 
   @override
@@ -282,7 +274,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   MaterialPageRoute(
                       builder: (_) => TaskAddEditScreen(
                           selectedDate: _task.startTime, task: _task)));
-              if (context.mounted) Navigator.pop(context);
+              if (mounted) Navigator.pop(context);
             },
           ),
           IconButton(
@@ -303,10 +295,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       fontWeight: FontWeight.bold,
                       color: Colors.white)),
               const SizedBox(height: 20),
+
+              // ZAMAN BİLGİSİ
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
+                    color: const Color(0xFF1E1E1E),
                     borderRadius: BorderRadius.circular(16)),
                 child: Row(
                   children: [
@@ -343,6 +337,58 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // YENİ: ATANAN KİŞİLER (Multi-Assign)
+              if (_task.assignedTo.isNotEmpty) ...[
+                Text("Atanan Kişiler",
+                    style: GoogleFonts.poppins(
+                        color: Colors.grey, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E1E),
+                      borderRadius: BorderRadius.circular(16)),
+                  child: Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: _task.assignedTo.map((userId) {
+                      return FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(userId)
+                            .get(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Chip(label: Text("..."));
+                          }
+                          final data =
+                              snapshot.data!.data() as Map<String, dynamic>?;
+                          final name = data?['name'] ?? 'Bilinmeyen';
+                          final photoUrl = data?['photoUrl'];
+
+                          return Chip(
+                            avatar: CircleAvatar(
+                              backgroundImage: photoUrl != null
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                              child: photoUrl == null
+                                  ? Text(name[0].toUpperCase())
+                                  : null,
+                            ),
+                            label: Text(name),
+                            backgroundColor: Colors.black45,
+                            labelStyle: const TextStyle(color: Colors.white),
+                          );
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
               if (_task.url.isNotEmpty) ...[
                 GestureDetector(
                   onTap: () => _launchURL(_task.url),
@@ -371,6 +417,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
+
               if (_task.description.isNotEmpty) ...[
                 Text("Açıklama",
                     style: GoogleFonts.poppins(
@@ -380,7 +427,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                      color: Colors.grey.shade900.withValues(alpha: 0.5),
+                      color: const Color(0xFF1E1E1E),
                       borderRadius: BorderRadius.circular(12)),
                   child: Text(_task.description,
                       style: GoogleFonts.poppins(
@@ -388,6 +435,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 ),
                 const SizedBox(height: 20),
               ],
+
               if (_task.tags.isNotEmpty) ...[
                 Wrap(
                   spacing: 8,

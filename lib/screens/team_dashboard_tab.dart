@@ -1,119 +1,177 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:math';
 import '../models/task_model.dart';
-import '../l10n/app_localizations.dart';
+import '../models/team_model.dart';
+import '../services/firebase_service.dart';
 
 class TeamDashboardTab extends StatelessWidget {
-  final List<Task> tasks;
-  const TeamDashboardTab({super.key, required this.tasks});
+  final Team team;
+  const TeamDashboardTab({super.key, required this.team});
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final total = tasks.length;
-    final completed = tasks.where((t) => t.isCompleted).length;
-    final progress = total == 0 ? 0.0 : completed / total;
+    final service = FirebaseService();
 
-    // Liderlik tablosu için hesaplama
-    Map<String, int> leaderboard = {};
-    for (var t in tasks.where((t) => t.isCompleted)) {
-      // assignedTo ID'sini kullanıyoruz.
-      final userId = t.assignedTo ?? "Ortak";
-      leaderboard[userId] = (leaderboard[userId] ?? 0) + 1;
-    }
-    var sortedLeaderboard = leaderboard.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    return StreamBuilder<List<Task>>(
+        stream: service.getTeamTasksStream(team.id),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // PROJE İLERLEMESİ
-          Text(l10n.projectProgress,
-              style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18)),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-                color: Colors.grey.shade900,
-                borderRadius: BorderRadius.circular(16)),
+          final tasks = snapshot.data!;
+          final total = tasks.length;
+          final completed = tasks.where((t) => t.isCompleted).length;
+          final progress = total == 0 ? 0.0 : completed / total;
+
+          // İstatistik Değişkenleri
+          Map<String, int> mvpScores = {};
+          Map<String, int> workloadScores = {};
+
+          // YENİ MANTIK: Çoklu Atama Desteği
+          for (var t in tasks) {
+            // Eğer kimse atanmamışsa "Ortak" say
+            if (t.assignedTo.isEmpty) {
+              if (t.isCompleted) {
+                mvpScores["Ortak"] = (mvpScores["Ortak"] ?? 0) + 1;
+              } else {
+                workloadScores["Ortak"] = (workloadScores["Ortak"] ?? 0) + 1;
+              }
+            } else {
+              // Atanan herkesi döngüye al
+              for (var userId in t.assignedTo) {
+                if (t.isCompleted) {
+                  mvpScores[userId] = (mvpScores[userId] ?? 0) + 1;
+                } else {
+                  workloadScores[userId] = (workloadScores[userId] ?? 0) + 1;
+                }
+              }
+            }
+          }
+
+          String mvpName = "Henüz Yok";
+          int mvpCount = 0;
+          if (mvpScores.isNotEmpty) {
+            final entry =
+                mvpScores.entries.reduce((a, b) => a.value > b.value ? a : b);
+            // Not: Burada User ID görünüyor. İsim çekmek için extra işlem gerekir
+            // Şimdilik ID'nin ilk 5 hanesini gösteriyoruz.
+            mvpName = entry.key == "Ortak"
+                ? "Ortak"
+                : "Üye (${entry.key.substring(0, 3)}..)";
+            mvpCount = entry.value;
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("${(progress * 100).toInt()}%",
-                        style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold)),
-                    Text("$completed / $total ${l10n.completedTasks}",
-                        style: GoogleFonts.poppins(color: Colors.grey)),
-                  ],
+                // 1. HAFTANIN MVP'Sİ KARTI
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFFFA000)]),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.amber.withValues(alpha: 0.3),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5))
+                      ]),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                            color: Colors.white, shape: BoxShape.circle),
+                        child: const Icon(Icons.emoji_events,
+                            color: Colors.orange, size: 30),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Haftanın Yıldızı",
+                              style: GoogleFonts.poppins(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.bold)),
+                          Text("$mvpName ($mvpCount)",
+                              style: GoogleFonts.poppins(
+                                  color: Colors.black,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900)),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
+
+                const SizedBox(height: 24),
+
+                // 2. İŞ YÜKÜ GRAFİĞİ (Pie Chart)
+                Text("İş Yükü Dağılımı",
+                    style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 200,
+                  child: workloadScores.isEmpty
+                      ? const Center(
+                          child: Text("Veri yok",
+                              style: TextStyle(color: Colors.grey)))
+                      : PieChart(
+                          PieChartData(
+                            sections: workloadScores.entries.map((e) {
+                              final color = Colors.primaries[
+                                  e.key.hashCode % Colors.primaries.length];
+                              final label = e.key == "Ortak"
+                                  ? "Ortak"
+                                  : e.key.substring(0, min(3, e.key.length));
+                              return PieChartSectionData(
+                                  color: color,
+                                  value: e.value.toDouble(),
+                                  title: label,
+                                  radius: 50,
+                                  titleStyle: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white));
+                            }).toList(),
+                            centerSpaceRadius: 40,
+                            sectionsSpace: 2,
+                          ),
+                        ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 3. Proje İlerlemesi
+                Text("Proje İlerlemesi",
+                    style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
                 const SizedBox(height: 10),
                 LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: Colors.white10,
-                  color: Colors.blue,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                    value: progress,
+                    backgroundColor: Colors.white10,
+                    color: Colors.teal,
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4)),
+                const SizedBox(height: 8),
+                Align(
+                    alignment: Alignment.centerRight,
+                    child: Text("%${(progress * 100).toInt()} Tamamlandı",
+                        style: const TextStyle(color: Colors.grey))),
               ],
             ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // LİDERLİK TABLOSU
-          Text("Liderlik Tablosu",
-              style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18)),
-          const SizedBox(height: 10),
-          if (sortedLeaderboard.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child:
-                  Text(l10n.noData, style: const TextStyle(color: Colors.grey)),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: sortedLeaderboard.length,
-              itemBuilder: (context, index) {
-                final entry = sortedLeaderboard[index];
-                return Card(
-                  color: Colors.grey.shade900,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: index == 0
-                          ? Colors.amber
-                          : (index == 1 ? Colors.grey : Colors.brown),
-                      child: Text("${index + 1}",
-                          style: const TextStyle(color: Colors.white)),
-                    ),
-                    title: Text(
-                        entry.key == "Ortak"
-                            ? "Ortak Görevler"
-                            : "Üye (ID: ...${entry.key.substring(0, 4)})",
-                        style: GoogleFonts.poppins(color: Colors.white)),
-                    trailing: Text("${entry.value} Görev",
-                        style: GoogleFonts.poppins(
-                            color: Colors.green, fontWeight: FontWeight.bold)),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
+          );
+        });
   }
 }

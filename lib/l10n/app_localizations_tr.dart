@@ -9,7 +9,7 @@ class AppLocalizationsTr extends AppLocalizations {
   AppLocalizationsTr([String locale = 'tr']) : super(locale);
 
   @override
-  String get appTitle => 'Modern Planlayıcı';
+  String get appTitle => 'Phobes';
 
   @override
   String get login => 'Giriş Yap';
@@ -774,4 +774,88 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get assignedToMe => 'Bana Atandı';
+
+  @override
+  String get viewWeekly => 'Haftalık';
+
+  @override
+  String get viewMonthly => 'Aylık';
+
+  @override
+  String get viewDaily => 'Günlük';
+
+  @override
+  String get addSmart => 'Akıllı Ekle (Nova)';
+
+  @override
+  String get addManual => 'Manuel Ekle';
+
+  @override
+  String get novaAssistant => 'Nova Asistan';
+
+  @override
+  String get novaPrompt => 'Yaz veya konuş, senin için göreve çevireyim.';
+
+  @override
+  String get novaInputHint => 'Buraya yaz...';
+
+  @override
+  String get novaUnderstandError => 'Nova anlayamadı.';
+
+  @override
+  String get micPermissionError => 'Mikrofon izni yok.';
+
+  @override
+  String get poweredBy => 'Powered by';
+
+  @override
+  String get techlunaSoftware => 'Techluna Software';
+
+  @override
+  String get tabKanban => 'İş Panosu';
+
+  @override
+  String get tabResources => 'Kaynaklar';
+
+  @override
+  String get statusTodo => 'Yapılacak';
+
+  @override
+  String get statusInProgress => 'Sürüyor';
+
+  @override
+  String get statusDone => 'Bitti';
+
+  @override
+  String get addLink => 'Link Ekle';
+
+  @override
+  String get announcements => 'Duyurular';
+
+  @override
+  String get pinnedMessage => 'Sabit Mesaj';
+
+  @override
+  String get mvpTitle => 'Haftanın Yıldızı';
+
+  @override
+  String get workloadTitle => 'İş Yükü Dağılımı';
+
+  @override
+  String get linkUrl => 'Link (https://...)';
+
+  @override
+  String get linkTitle => 'Başlık';
+
+  @override
+  String get openLink => 'Linki Aç';
+
+  @override
+  String get noResources => 'Henüz kaynak eklenmedi.';
+
+  @override
+  String get moveNext => 'İlerlet';
+
+  @override
+  String get movePrev => 'Geri Al';
 }

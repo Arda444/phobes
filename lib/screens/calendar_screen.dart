@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt; // EKLENDİ
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:table_calendar/table_calendar.dart';
 import '../l10n/app_localizations.dart';
 import '../models/task_model.dart';
 import '../models/note_model.dart';
@@ -11,6 +12,9 @@ import '../services/nova_service.dart';
 import 'task_add_edit_screen.dart';
 import 'note_add_edit_screen.dart';
 import 'task_detail_screen.dart';
+
+// Görünüm Modları
+enum CalendarViewMode { weekly, monthly, daily }
 
 enum CalendarFilter { all, personal, team }
 
@@ -23,47 +27,29 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen>
     with TickerProviderStateMixin {
-  late final AnimationController _fabController;
-  late final Animation<double> _fabAnimation;
-  late final AnimationController _slideController;
-  late Animation<Offset> _slideAnimation;
-
+  // Takvim Durumları
+  CalendarViewMode _viewMode = CalendarViewMode.weekly;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  final CalendarFormat _calendarFormat = CalendarFormat.month;
 
   final FirebaseService _firebaseService = FirebaseService();
   late Stream<List<Note>> _notesStream;
 
   CalendarFilter _currentFilter = CalendarFilter.all;
   String? _weeklyNote;
-  int _direction = 0;
+
+  // Günlük görünümde genişleyen kart takibi
+  int? _expandedDailyTaskIndex;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
     _notesStream = _firebaseService.getNotesStream();
-
-    _fabController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _fabAnimation =
-        CurvedAnimation(parent: _fabController, curve: Curves.easeOutBack);
-    _fabController.forward();
-
-    _slideController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
-    _slideAnimation = Tween<Offset>(begin: Offset.zero, end: Offset.zero)
-        .animate(CurvedAnimation(
-            parent: _slideController, curve: Curves.easeInOutCubic));
   }
 
-  @override
-  void dispose() {
-    _fabController.dispose();
-    _slideController.dispose();
-    super.dispose();
-  }
-
+  // --- Veri İşleme ---
   Map<DateTime, List<Task>> _processTasksForCalendar(List<Task> tasks) {
     final map = <DateTime, List<Task>>{};
     final DateTime endDate = DateTime.now().add(const Duration(days: 365));
@@ -84,6 +70,7 @@ class _CalendarScreenState extends State<CalendarScreen>
         continue;
       }
 
+      // Tekrarlayan görev mantığı
       DateTime nextDate = t.startTime;
       while (nextDate.isBefore(endDate)) {
         final dateOnly = DateUtils.dateOnly(nextDate);
@@ -129,38 +116,781 @@ class _CalendarScreenState extends State<CalendarScreen>
     return map;
   }
 
+  // --- Navigasyon ---
   void _goToToday() {
     setState(() {
       _focusedDay = DateTime.now();
       _selectedDay = DateTime.now();
-      _direction = 0;
     });
-    _startSlideAnimation();
   }
 
-  void _goToPreviousWeek() {
-    setState(() {
-      _focusedDay = _focusedDay.subtract(const Duration(days: 7));
-      _direction = -1;
-    });
-    _startSlideAnimation();
+  List<DateTime> _getWeekDays(DateTime focused) {
+    DateTime startOfWeek =
+        focused.subtract(Duration(days: focused.weekday - 1));
+    return List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
   }
 
-  void _goToNextWeek() {
-    setState(() {
-      _focusedDay = _focusedDay.add(const Duration(days: 7));
-      _direction = 1;
-    });
-    _startSlideAnimation();
+  // --- UI Widgetları ---
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    _weeklyNote ??= l10n.writeYourNotes;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      appBar: _buildAppBar(l10n),
+      body: StreamBuilder<List<Task>>(
+        stream: _firebaseService.getAllUserTasksStream(),
+        builder: (context, taskSnapshot) {
+          return StreamBuilder<List<Note>>(
+            stream: _notesStream,
+            builder: (context, noteSnapshot) {
+              if (taskSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                    child: CircularProgressIndicator(color: Colors.purple));
+              }
+
+              final tasks = taskSnapshot.data ?? [];
+              final notes = noteSnapshot.data ?? [];
+              final eventsMap = _processTasksForCalendar(tasks);
+              final notesMap = _processNotesForCalendar(notes);
+
+              return Column(
+                children: [
+                  // Sadece Tarih Navigasyonu (Butonlar AppBar'a taşındı)
+                  _buildDateNavigator(l10n),
+
+                  // Ana İçerik
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: _buildBodyContent(l10n, eventsMap, notesMap),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
   }
 
-  void _startSlideAnimation() {
-    _slideController.reset();
-    _slideAnimation = Tween<Offset>(
-            begin: Offset(_direction.toDouble(), 0.0), end: Offset.zero)
-        .animate(CurvedAnimation(
-            parent: _slideController, curve: Curves.easeInOutCubic));
-    _slideController.forward();
+  PreferredSizeWidget _buildAppBar(AppLocalizations l10n) {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.appTitle,
+              style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  color: Colors.white)),
+          Text(
+            _currentFilter == CalendarFilter.all
+                ? l10n.filterAll
+                : (_currentFilter == CalendarFilter.personal
+                    ? l10n.filterPersonal
+                    : l10n.filterTeam),
+            style: GoogleFonts.poppins(
+                fontSize: 10, color: Colors.tealAccent, letterSpacing: 1),
+          ),
+        ],
+      ),
+      actions: [
+        _buildViewModeButton(l10n),
+        _buildFilterMenu(l10n),
+        IconButton(
+          icon: const Icon(Icons.description_rounded, color: Colors.white),
+          tooltip: l10n.allNotes,
+          onPressed: _showAllNotes,
+        ),
+        _buildAddMenu(l10n),
+        IconButton(
+          icon: const Icon(Icons.today_rounded, color: Colors.white),
+          onPressed: _goToToday,
+          tooltip: l10n.today,
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildViewModeButton(AppLocalizations l10n) {
+    IconData icon;
+    switch (_viewMode) {
+      case CalendarViewMode.weekly:
+        icon = Icons.view_week_rounded;
+        break;
+      case CalendarViewMode.monthly:
+        icon = Icons.calendar_view_month_rounded;
+        break;
+      case CalendarViewMode.daily:
+        icon = Icons.view_day_rounded;
+        break;
+    }
+
+    return PopupMenuButton<CalendarViewMode>(
+      icon: Icon(icon, color: Colors.white),
+      tooltip: l10n.viewWeekly,
+      color: Colors.grey.shade900,
+      onSelected: (mode) => setState(() => _viewMode = mode),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: CalendarViewMode.weekly,
+          child: Row(children: [
+            const Icon(Icons.view_week_rounded, color: Colors.purpleAccent),
+            const SizedBox(width: 8),
+            Text(l10n.viewWeekly,
+                style: GoogleFonts.poppins(color: Colors.white))
+          ]),
+        ),
+        PopupMenuItem(
+          value: CalendarViewMode.monthly,
+          child: Row(children: [
+            const Icon(Icons.calendar_view_month_rounded,
+                color: Colors.blueAccent),
+            const SizedBox(width: 8),
+            Text(l10n.viewMonthly,
+                style: GoogleFonts.poppins(color: Colors.white))
+          ]),
+        ),
+        PopupMenuItem(
+          value: CalendarViewMode.daily,
+          child: Row(children: [
+            const Icon(Icons.view_day_rounded, color: Colors.orangeAccent),
+            const SizedBox(width: 8),
+            Text(l10n.viewDaily,
+                style: GoogleFonts.poppins(color: Colors.white))
+          ]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterMenu(AppLocalizations l10n) {
+    return PopupMenuButton<CalendarFilter>(
+      icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
+      tooltip: l10n.filterAll,
+      color: Colors.grey.shade900,
+      onSelected: (result) => setState(() => _currentFilter = result),
+      itemBuilder: (context) => [
+        PopupMenuItem(
+            value: CalendarFilter.all,
+            child: Text(l10n.filterAll,
+                style: const TextStyle(color: Colors.white))),
+        PopupMenuItem(
+            value: CalendarFilter.personal,
+            child: Text(l10n.filterPersonal,
+                style: const TextStyle(color: Colors.white))),
+        PopupMenuItem(
+            value: CalendarFilter.team,
+            child: Text(l10n.filterTeam,
+                style: const TextStyle(color: Colors.white))),
+      ],
+    );
+  }
+
+  Widget _buildAddMenu(AppLocalizations l10n) {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: const BoxDecoration(
+          color: Color(0xFF7B1FA2), // Techluna Moru
+          shape: BoxShape.circle,
+        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 24),
+      ),
+      tooltip: l10n.addEvent,
+      offset: const Offset(0, 40),
+      color: Colors.grey.shade900,
+      onSelected: (value) {
+        if (value == 'ai') {
+          _showNovaWizard();
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TaskAddEditScreen(
+                selectedDate: _selectedDay ?? DateTime.now(),
+              ),
+            ),
+          );
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'ai',
+          child: Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: Colors.tealAccent),
+              const SizedBox(width: 8),
+              Text(l10n.addSmart,
+                  style: GoogleFonts.poppins(color: Colors.white)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'manual',
+          child: Row(
+            children: [
+              const Icon(Icons.edit_calendar, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(l10n.addManual,
+                  style: GoogleFonts.poppins(color: Colors.white)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateNavigator(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                if (_viewMode == CalendarViewMode.weekly) {
+                  _focusedDay = _focusedDay.subtract(const Duration(days: 7));
+                } else if (_viewMode == CalendarViewMode.monthly) {
+                  _focusedDay = DateTime(
+                      _focusedDay.year, _focusedDay.month - 1, _focusedDay.day);
+                } else {
+                  _focusedDay = _focusedDay.subtract(const Duration(days: 1));
+                }
+              });
+            },
+          ),
+          Text(
+            _viewMode == CalendarViewMode.daily
+                ? DateFormat('d MMMM EEEE', l10n.localeName).format(_focusedDay)
+                : DateFormat('MMMM yyyy', l10n.localeName).format(_focusedDay),
+            style: GoogleFonts.poppins(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right_rounded, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                if (_viewMode == CalendarViewMode.weekly) {
+                  _focusedDay = _focusedDay.add(const Duration(days: 7));
+                } else if (_viewMode == CalendarViewMode.monthly) {
+                  _focusedDay = DateTime(
+                      _focusedDay.year, _focusedDay.month + 1, _focusedDay.day);
+                } else {
+                  _focusedDay = _focusedDay.add(const Duration(days: 1));
+                }
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBodyContent(AppLocalizations l10n,
+      Map<DateTime, List<Task>> events, Map<DateTime, List<Note>> notes) {
+    switch (_viewMode) {
+      case CalendarViewMode.weekly:
+        return _buildWeeklyView(l10n, events, notes);
+      case CalendarViewMode.monthly:
+        return _buildMonthlyView(l10n, events, notes);
+      case CalendarViewMode.daily:
+        return _buildDailyView(l10n, events, notes);
+    }
+  }
+
+  Widget _buildWeeklyView(AppLocalizations l10n,
+      Map<DateTime, List<Task>> eventsMap, Map<DateTime, List<Note>> notesMap) {
+    final weekDays = _getWeekDays(_focusedDay);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+      child: Column(
+        children: [
+          Expanded(
+              flex: 1,
+              child: _buildRow(weekDays.sublist(0, 3), eventsMap, notesMap)),
+          Expanded(
+              flex: 1,
+              child: _buildRow(weekDays.sublist(3, 6), eventsMap, notesMap)),
+          Expanded(
+              flex: 1,
+              child: _buildThirdRow(weekDays[6], l10n, eventsMap, notesMap)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRow(List<DateTime> days, Map<DateTime, List<Task>> eventsMap,
+      Map<DateTime, List<Note>> notesMap) {
+    return Row(
+        children:
+            days.map((day) => _buildDayBox(day, eventsMap, notesMap)).toList());
+  }
+
+  Widget _buildThirdRow(DateTime sunday, AppLocalizations l10n,
+      Map<DateTime, List<Task>> eventsMap, Map<DateTime, List<Note>> notesMap) {
+    return Row(children: [
+      _buildDayBox(sunday, eventsMap, notesMap),
+      Expanded(flex: 2, child: _buildWeeklyNoteBox(l10n)),
+    ]);
+  }
+
+  Widget _buildMonthlyView(AppLocalizations l10n,
+      Map<DateTime, List<Task>> eventsMap, Map<DateTime, List<Note>> notesMap) {
+    return TableCalendar(
+      locale: l10n.localeName,
+      firstDay: DateTime(2020),
+      lastDay: DateTime(2030),
+      focusedDay: _focusedDay,
+      calendarFormat: _calendarFormat,
+      startingDayOfWeek: StartingDayOfWeek.monday,
+      headerVisible: false,
+      shouldFillViewport: true,
+      daysOfWeekStyle: DaysOfWeekStyle(
+        weekdayStyle: GoogleFonts.poppins(color: Colors.white70),
+        weekendStyle:
+            GoogleFonts.poppins(color: Colors.redAccent.withValues(alpha: 0.7)),
+      ),
+      calendarStyle: const CalendarStyle(
+        outsideDaysVisible: false,
+      ),
+      onPageChanged: (focusedDay) {
+        setState(() => _focusedDay = focusedDay);
+      },
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedDay = focusedDay;
+        });
+        _showDayMenu(selectedDay);
+      },
+      calendarBuilders: CalendarBuilders(
+        defaultBuilder: (context, day, focusedDay) => _buildMonthlyCell(
+            day, eventsMap[DateUtils.dateOnly(day)] ?? [], false),
+        todayBuilder: (context, day, focusedDay) => _buildMonthlyCell(
+            day, eventsMap[DateUtils.dateOnly(day)] ?? [], true),
+        selectedBuilder: (context, day, focusedDay) => Container(
+          margin: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+              color: Colors.purple.shade700,
+              borderRadius: BorderRadius.circular(8)),
+          child: _buildMonthlyCellContent(
+              day, eventsMap[DateUtils.dateOnly(day)] ?? [], true, true),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthlyCell(DateTime day, List<Task> dailyEvents, bool isToday) {
+    return Container(
+      margin: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: isToday ? Colors.orange.shade800 : const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: _buildMonthlyCellContent(day, dailyEvents, isToday, false),
+    );
+  }
+
+  Widget _buildMonthlyCellContent(
+      DateTime day, List<Task> dailyEvents, bool isToday, bool isSelected) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 6, top: 4),
+          child: Text(
+            '${day.day}',
+            style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.white,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal),
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: dailyEvents.length,
+              itemBuilder: (context, index) {
+                final task = dailyEvents[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 2),
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Color(task.color),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDailyView(AppLocalizations l10n,
+      Map<DateTime, List<Task>> eventsMap, Map<DateTime, List<Note>> notesMap) {
+    final dateKey = DateUtils.dateOnly(_focusedDay);
+    final dailyTasks = eventsMap[dateKey] ?? [];
+    dailyTasks.sort((a, b) => a.startTime.compareTo(b.startTime));
+
+    if (dailyTasks.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.event_busy, size: 60, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(l10n.noEvents, style: GoogleFonts.poppins(color: Colors.grey)),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B1FA2)),
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) =>
+                          TaskAddEditScreen(selectedDate: _focusedDay))),
+              child: Text(l10n.newTask,
+                  style: const TextStyle(color: Colors.white)),
+            )
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: dailyTasks.length,
+      itemBuilder: (context, i) {
+        final task = dailyTasks[i];
+        final bool isExpanded = _expandedDailyTaskIndex == i;
+
+        return FadeInUp(
+          delay: Duration(milliseconds: i * 50),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1E1E1E), Color(0xFF121212)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: isExpanded
+                      ? Colors.purpleAccent
+                      : Color(task.color).withValues(alpha: 0.5)),
+            ),
+            child: Column(
+              children: [
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _expandedDailyTaskIndex = isExpanded ? null : i;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Column(
+                          children: [
+                            Text(DateFormat('HH:mm').format(task.startTime),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
+                            Container(height: 20, width: 1, color: Colors.grey),
+                            Text(DateFormat('HH:mm').format(task.endTime),
+                                style: const TextStyle(
+                                    color: Colors.grey, fontSize: 12)),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(task.title,
+                                  style: GoogleFonts.poppins(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      decoration: task.isCompleted
+                                          ? TextDecoration.lineThrough
+                                          : null)),
+                              if (task.tags.isNotEmpty)
+                                Wrap(
+                                  spacing: 4,
+                                  children: task.tags
+                                      .map((t) => Chip(
+                                            label: Text(t,
+                                                style: const TextStyle(
+                                                    fontSize: 9)),
+                                            padding: EdgeInsets.zero,
+                                            backgroundColor: Colors.black26,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                          ))
+                                      .toList(),
+                                )
+                            ],
+                          ),
+                        ),
+                        Icon(
+                            isExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: Colors.white54),
+                      ],
+                    ),
+                  ),
+                ),
+                if (isExpanded)
+                  Column(
+                    children: [
+                      const Divider(color: Colors.white10, height: 1),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _actionButton(
+                                icon: task.isCompleted
+                                    ? Icons.check_circle
+                                    : Icons.circle_outlined,
+                                color: Colors.green,
+                                label: l10n.complete,
+                                onTap: () => _firebaseService.updateTask(task
+                                    .copyWith(isCompleted: !task.isCompleted))),
+                            _actionButton(
+                                icon: Icons.info_outline,
+                                color: Colors.blueGrey,
+                                label: l10n.sectionDetails,
+                                onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            TaskDetailScreen(task: task)))),
+                            _actionButton(
+                                icon: Icons.edit,
+                                color: Colors.blue,
+                                label: l10n.edit,
+                                onTap: () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => TaskAddEditScreen(
+                                            selectedDate: task.startTime,
+                                            task: task)))),
+                            _actionButton(
+                                icon: Icons.update,
+                                color: Colors.orange,
+                                label: l10n.postpone,
+                                onTap: () => _showPostponeMenu(context, task)),
+                            _actionButton(
+                                icon: Icons.delete,
+                                color: Colors.red,
+                                label: l10n.delete,
+                                onTap: () => _confirmDelete(task)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _actionButton(
+      {required IconData icon,
+      required Color color,
+      required String label,
+      required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        child: Column(children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: color, fontSize: 10))
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildWeeklyNoteBox(AppLocalizations l10n) {
+    return FadeInUp(
+      child: GestureDetector(
+        onTap: _editWeeklyNote,
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: Colors.purple.shade600.withValues(alpha: 0.5)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.purple.withValues(alpha: 0.1), blurRadius: 8)
+              ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(l10n.weeklyNotesTitle,
+                      style: GoogleFonts.poppins(
+                          color: Colors.purple.shade300,
+                          fontWeight: FontWeight.w600)),
+                  const Icon(Icons.edit_note, color: Colors.white54, size: 16)
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                  child: Text(_weeklyNote!,
+                      style: GoogleFonts.poppins(
+                          color: Colors.white70, fontSize: 12),
+                      maxLines: 10)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDayBox(DateTime day, Map<DateTime, List<Task>> eventsMap,
+      Map<DateTime, List<Note>> notesMap) {
+    final l10n = AppLocalizations.of(context)!;
+    final dateKey = DateUtils.dateOnly(day);
+    final events = eventsMap[dateKey] ?? [];
+    final notes = notesMap[dateKey] ?? [];
+    final isToday = DateUtils.isSameDay(day, DateTime.now());
+
+    const int maxItems = 3;
+    final int notesToShow = (maxItems - events.length).clamp(0, maxItems);
+    final int totalItems = events.length + notes.length;
+    final int hiddenCount = totalItems > maxItems ? totalItems - maxItems : 0;
+
+    return Expanded(
+      child: FadeInUp(
+        child: GestureDetector(
+          onTap: () {
+            setState(() => _selectedDay = day);
+            _showDayMenu(day);
+          },
+          child: Container(
+            margin: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                  colors: isToday
+                      ? [const Color(0xFFE65100), const Color(0xFFEF6C00)]
+                      : [const Color(0xFF212121), const Color(0xFF181818)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: isToday ? Colors.orangeAccent : Colors.white10,
+                  width: isToday ? 1.5 : 0.5),
+              boxShadow: isToday
+                  ? [
+                      BoxShadow(
+                          color: Colors.orange.withValues(alpha: 0.3),
+                          blurRadius: 10)
+                    ]
+                  : [],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                        DateFormat('EEE', l10n.localeName)
+                            .format(day)
+                            .toUpperCase(),
+                        style: GoogleFonts.poppins(
+                            fontSize: 10,
+                            color: Colors.white54,
+                            fontWeight: FontWeight.bold))),
+                Text('${day.day}',
+                    style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        ...events.take(maxItems).map((e) => _buildItemChip(
+                            e.title, Color(e.color), e.isCompleted)),
+                        ...notes.take(notesToShow).map((n) => _buildItemChip(
+                            n.title.isEmpty ? l10n.untitledNote : n.title,
+                            Colors.orange.shade700,
+                            false)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (hiddenCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(l10n.hiddenItemsCount(hiddenCount),
+                        style: GoogleFonts.poppins(
+                            fontSize: 8, color: Colors.white70)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemChip(String title, Color color, bool isCompleted) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 1.5, horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+          color: isCompleted
+              ? color.withValues(alpha: 0.2)
+              : color.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(4)),
+      child: Text(title,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.poppins(
+              fontSize: 8,
+              color: isCompleted ? Colors.white38 : Colors.white,
+              decoration: isCompleted
+                  ? TextDecoration.lineThrough
+                  : TextDecoration.none),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis),
+    );
   }
 
   void _editWeeklyNote() {
@@ -170,7 +900,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
+        backgroundColor: const Color(0xFF1E1E1E),
         title: Text(l10n.weeklyNotesTitle,
             style: const TextStyle(color: Colors.white)),
         content: TextField(
@@ -179,27 +909,29 @@ class _CalendarScreenState extends State<CalendarScreen>
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
               hintText: l10n.writeYourNotes,
-              hintStyle: const TextStyle(color: Colors.grey)),
+              hintStyle: const TextStyle(color: Colors.grey),
+              filled: true,
+              fillColor: Colors.black26,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none)),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(l10n.cancel)),
           ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF7B1FA2)),
               onPressed: () {
                 setState(() => _weeklyNote = controller.text);
                 Navigator.pop(context);
               },
-              child: Text(l10n.save))
+              child:
+                  Text(l10n.save, style: const TextStyle(color: Colors.white)))
         ],
       ),
     );
-  }
-
-  List<DateTime> _getWeekDays(DateTime focused) {
-    DateTime startOfWeek =
-        focused.subtract(Duration(days: focused.weekday - 1));
-    return List.generate(7, (i) => startOfWeek.add(Duration(days: i)));
   }
 
   void _showDayMenu(DateTime day) {
@@ -212,8 +944,17 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  // --- NOVA AI SİHİRBAZI (MİKROFON EKLENDİ) ---
+  void _showAllNotes() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _AllNotesSheet(),
+    );
+  }
+
   void _showNovaWizard() {
+    final l10n = AppLocalizations.of(context)!;
     final TextEditingController promptController = TextEditingController();
     bool isLoading = false;
     bool isListening = false;
@@ -252,7 +993,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      "Nova Asistan",
+                      l10n.novaAssistant,
                       style: GoogleFonts.poppins(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -263,7 +1004,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  "Yaz veya konuş, senin için göreve çevireyim.",
+                  l10n.novaPrompt,
                   style:
                       GoogleFonts.poppins(color: Colors.white54, fontSize: 12),
                 ),
@@ -274,7 +1015,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                   maxLines: 3,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: "Buraya yaz...",
+                    hintText: l10n.novaInputHint,
                     hintStyle: GoogleFonts.poppins(color: Colors.white24),
                     filled: true,
                     fillColor: Colors.black38,
@@ -282,7 +1023,6 @@ class _CalendarScreenState extends State<CalendarScreen>
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    // MİKROFON İKONU
                     suffixIcon: IconButton(
                       icon: Icon(
                         isListening ? Icons.mic : Icons.mic_none,
@@ -301,9 +1041,11 @@ class _CalendarScreenState extends State<CalendarScreen>
                               }
                             });
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text("Mikrofon izni yok.")));
+                            if (modalContext.mounted) {
+                              ScaffoldMessenger.of(modalContext).showSnackBar(
+                                  SnackBar(
+                                      content: Text(l10n.micPermissionError)));
+                            }
                           }
                         } else {
                           setModalState(() => isListening = false);
@@ -356,8 +1098,9 @@ class _CalendarScreenState extends State<CalendarScreen>
                               } else {
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text("Nova anlayamadı.")));
+                                      SnackBar(
+                                          content:
+                                              Text(l10n.novaUnderstandError)));
                                 }
                               }
                             } catch (e) {
@@ -376,7 +1119,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                               const Icon(Icons.star_rounded,
                                   color: Colors.white),
                               const SizedBox(width: 8),
-                              Text("Oluştur",
+                              Text(l10n.create,
                                   style: GoogleFonts.poppins(
                                       fontWeight: FontWeight.w600,
                                       color: Colors.white)),
@@ -393,362 +1136,63 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _showPostponeMenu(BuildContext context, Task task) {
     final l10n = AppLocalizations.of(context)!;
-    _weeklyNote ??= l10n.writeYourNotes;
-    final weekDays = _getWeekDays(_focusedDay);
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            FadeInDown(
-              child: Text(
-                  DateFormat('MMMM yyyy', l10n.localeName).format(_focusedDay),
-                  style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 20,
-                      color: Colors.white)),
-            ),
-            Text(
-                _currentFilter == CalendarFilter.all
-                    ? l10n.filterAll
-                    : (_currentFilter == CalendarFilter.personal
-                        ? l10n.filterPersonal
-                        : l10n.filterTeam),
-                style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
-        actions: [
-          PopupMenuButton<CalendarFilter>(
-            icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
-            color: Colors.grey.shade900,
-            onSelected: (CalendarFilter result) {
-              setState(() {
-                _currentFilter = result;
-              });
-            },
-            itemBuilder: (BuildContext context) =>
-                <PopupMenuEntry<CalendarFilter>>[
-              PopupMenuItem<CalendarFilter>(
-                value: CalendarFilter.all,
-                child: Text(l10n.filterAll,
-                    style: TextStyle(
-                        color: _currentFilter == CalendarFilter.all
-                            ? Colors.blue
-                            : Colors.white)),
-              ),
-              PopupMenuItem<CalendarFilter>(
-                value: CalendarFilter.personal,
-                child: Text(l10n.filterPersonal,
-                    style: TextStyle(
-                        color: _currentFilter == CalendarFilter.personal
-                            ? Colors.blue
-                            : Colors.white)),
-              ),
-              PopupMenuItem<CalendarFilter>(
-                value: CalendarFilter.team,
-                child: Text(l10n.filterTeam,
-                    style: TextStyle(
-                        color: _currentFilter == CalendarFilter.team
-                            ? Colors.blue
-                            : Colors.white)),
-              ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.article_rounded, color: Colors.white),
-            onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => _AllNotesSheet()),
-          ),
-          IconButton(
-              icon: const Icon(Icons.today_rounded, color: Colors.white),
-              onPressed: _goToToday),
-        ],
-      ),
-      body: StreamBuilder<List<Task>>(
-        stream: _firebaseService.getAllUserTasksStream(),
-        builder: (context, taskSnapshot) {
-          return StreamBuilder<List<Note>>(
-            stream: _notesStream,
-            builder: (context, noteSnapshot) {
-              if (taskSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                    child: CircularProgressIndicator(color: Colors.purple));
-              }
-
-              final tasks = taskSnapshot.data ?? [];
-              final notes = noteSnapshot.data ?? [];
-
-              final eventsMap = _processTasksForCalendar(tasks);
-              final notesMap = _processNotesForCalendar(notes);
-
-              return Column(
-                children: [
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(children: [
-                      _navButton(Icons.chevron_left_rounded, _goToPreviousWeek),
-                      const SizedBox(width: 12),
-                      Expanded(
-                          child: Text(
-                              '${DateFormat('d MMM', l10n.localeName).format(weekDays[0])} - ${DateFormat('d MMM yyyy', l10n.localeName).format(weekDays[6])}',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.poppins(
-                                  fontSize: 14, color: Colors.white70))),
-                      const SizedBox(width: 12),
-                      _navButton(Icons.chevron_right_rounded, _goToNextWeek),
-                    ]),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onHorizontalDragEnd: (details) {
-                        if (details.primaryVelocity! > 500) {
-                          _goToPreviousWeek();
-                        } else if (details.primaryVelocity! < -500) {
-                          _goToNextWeek();
-                        }
-                      },
-                      child: SlideTransition(
-                        position: _slideAnimation,
-                        child: SizedBox(
-                          width: screenWidth,
-                          child: Column(
-                            children: [
-                              Expanded(
-                                  flex: 1,
-                                  child: _buildRow(weekDays.sublist(0, 3),
-                                      eventsMap, notesMap)),
-                              Expanded(
-                                  flex: 1,
-                                  child: _buildRow(weekDays.sublist(3, 6),
-                                      eventsMap, notesMap)),
-                              Expanded(
-                                  flex: 1,
-                                  child: _buildThirdRow(
-                                      weekDays[6], l10n, eventsMap, notesMap)),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      builder: (ctx) => Wrap(
         children: [
-          FadeInUp(
-            delay: const Duration(milliseconds: 200),
-            child: FloatingActionButton.small(
-              heroTag: 'fab_nova',
-              backgroundColor: Colors.teal,
-              onPressed: _showNovaWizard,
-              tooltip: 'Nova AI ile Oluştur',
-              child: const Icon(Icons.auto_fix_high, color: Colors.white),
-            ),
-          ),
-          const SizedBox(height: 12),
-          ElasticIn(
-            child: ScaleTransition(
-              scale: _fabAnimation,
-              child: FloatingActionButton(
-                heroTag: 'fab_calendar',
-                backgroundColor: Colors.purple.shade600,
-                elevation: 12,
-                onPressed: () async {
-                  _fabController.reverse();
-                  await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => TaskAddEditScreen(
-                              selectedDate: _selectedDay ?? DateTime.now())));
-                  _fabController.forward();
-                },
-                child: const Icon(Icons.add_rounded, size: 30),
-              ),
-            ),
-          ),
+          _buildPostponeItem(
+              ctx, task, l10n.postpone15Min, const Duration(minutes: 15)),
+          _buildPostponeItem(
+              ctx, task, l10n.postpone1Hour, const Duration(hours: 1)),
+          _buildPostponeItem(
+              ctx, task, l10n.postponeTomorrow, const Duration(days: 1)),
         ],
       ),
     );
   }
 
-  Widget _navButton(IconData icon, VoidCallback onPressed) {
-    return ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade800,
-            padding: const EdgeInsets.all(12),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16))),
-        child: Icon(icon, size: 28));
-  }
-
-  Widget _buildRow(List<DateTime> days, Map<DateTime, List<Task>> eventsMap,
-      Map<DateTime, List<Note>> notesMap) {
-    return Row(
-        children:
-            days.map((day) => _buildDayBox(day, eventsMap, notesMap)).toList());
-  }
-
-  Widget _buildThirdRow(DateTime sunday, AppLocalizations l10n,
-      Map<DateTime, List<Task>> eventsMap, Map<DateTime, List<Note>> notesMap) {
-    return Row(children: [
-      _buildDayBox(sunday, eventsMap, notesMap),
-      Expanded(flex: 2, child: _buildWeeklyNoteBox(l10n)),
-    ]);
-  }
-
-  Widget _buildWeeklyNoteBox(AppLocalizations l10n) {
-    return FadeInUp(
-      child: GestureDetector(
-        onTap: _editWeeklyNote,
-        child: Container(
-          margin: const EdgeInsets.all(4),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.purple.shade600)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l10n.weeklyNotesTitle,
-                  style: GoogleFonts.poppins(
-                      color: Colors.purple.shade300,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Expanded(
-                  child: Text(_weeklyNote!,
-                      style: GoogleFonts.poppins(
-                          color: Colors.white70, fontSize: 12),
-                      maxLines: 10)),
-            ],
-          ),
-        ),
-      ),
+  Widget _buildPostponeItem(
+      BuildContext ctx, Task task, String label, Duration duration) {
+    return ListTile(
+      leading: const Icon(Icons.update, color: Colors.white70),
+      title: Text(label, style: GoogleFonts.poppins(color: Colors.white)),
+      onTap: () async {
+        final navigator = Navigator.of(ctx);
+        await _firebaseService.updateTask(task.copyWith(
+          startTime: task.startTime.add(duration),
+          endTime: task.endTime.add(duration),
+          postponeCount: task.postponeCount + 1,
+        ));
+        if (navigator.mounted) navigator.pop();
+      },
     );
   }
 
-  Widget _buildDayBox(DateTime day, Map<DateTime, List<Task>> eventsMap,
-      Map<DateTime, List<Note>> notesMap) {
+  void _confirmDelete(Task task) {
     final l10n = AppLocalizations.of(context)!;
-    final dateKey = DateUtils.dateOnly(day);
-
-    final events = eventsMap[dateKey] ?? [];
-    final notes = notesMap[dateKey] ?? [];
-
-    final isToday = DateUtils.isSameDay(day, DateTime.now());
-    final isSelected = DateUtils.isSameDay(day, _selectedDay);
-
-    const int maxItems = 3;
-    final int notesToShow = (maxItems - events.length).clamp(0, maxItems);
-    final int totalItems = events.length + notes.length;
-    final int hiddenCount = totalItems > maxItems ? totalItems - maxItems : 0;
-
-    return Expanded(
-      child: FadeInUp(
-        child: GestureDetector(
-          onTap: () {
-            setState(() => _selectedDay = day);
-            _showDayMenu(day);
-          },
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  colors: isToday
-                      ? [Colors.orange.shade700, Colors.orange.shade900]
-                      : isSelected
-                          ? [Colors.purple.shade600, Colors.purple.shade800]
-                          : [Colors.grey.shade900, Colors.grey.shade800],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade700, width: 0.5),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                        DateFormat('EEE', l10n.localeName)
-                            .format(day)
-                            .toUpperCase(),
-                        style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600))),
-                Text('${day.day}',
-                    style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ...events.take(maxItems).map((e) => _buildItemChip(
-                          e.title, Color(e.color), e.isCompleted)),
-                      ...notes.take(notesToShow).map((n) => _buildItemChip(
-                          n.title.isEmpty ? l10n.untitledNote : n.title,
-                          Colors.orange.shade700,
-                          false)),
-                    ],
-                  ),
-                ),
-                if (hiddenCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(l10n.hiddenItemsCount(hiddenCount),
-                        style: GoogleFonts.poppins(
-                            fontSize: 9, color: Colors.white70)),
-                  ),
-                if (hiddenCount == 0) const SizedBox(height: 4),
-              ],
-            ),
-          ),
-        ),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(l10n.delete, style: const TextStyle(color: Colors.white)),
+        content: Text(l10n.deleteNoteWarning,
+            style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () {
+              _firebaseService.deleteTask(task.id!);
+              Navigator.pop(ctx);
+            },
+            child: Text(l10n.delete),
+          )
+        ],
       ),
-    );
-  }
-
-  Widget _buildItemChip(String title, Color color, bool isCompleted) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 1, horizontal: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-          color: isCompleted
-              ? color.withValues(alpha: 0.4)
-              : color.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(4)),
-      child: Text(title,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.poppins(
-              fontSize: 9,
-              color: isCompleted ? Colors.white54 : Colors.white,
-              decoration: isCompleted
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -766,15 +1210,18 @@ class _EventListSheetState extends State<_EventListSheet> {
   int? _expandedTaskIndex;
 
   void _showPostponeMenu(BuildContext context, Task task) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       builder: (ctx) => Wrap(
         children: [
           _buildPostponeItem(
-              ctx, task, "15 Dakika", const Duration(minutes: 15)),
-          _buildPostponeItem(ctx, task, "1 Saat", const Duration(hours: 1)),
-          _buildPostponeItem(ctx, task, "Yarına", const Duration(days: 1)),
+              ctx, task, l10n.postpone15Min, const Duration(minutes: 15)),
+          _buildPostponeItem(
+              ctx, task, l10n.postpone1Hour, const Duration(hours: 1)),
+          _buildPostponeItem(
+              ctx, task, l10n.postponeTomorrow, const Duration(days: 1)),
         ],
       ),
     );
@@ -786,34 +1233,36 @@ class _EventListSheetState extends State<_EventListSheet> {
       leading: const Icon(Icons.update, color: Colors.white70),
       title: Text(label, style: GoogleFonts.poppins(color: Colors.white)),
       onTap: () async {
+        final navigator = Navigator.of(ctx);
         await _firebaseService.updateTask(task.copyWith(
           startTime: task.startTime.add(duration),
           endTime: task.endTime.add(duration),
           postponeCount: task.postponeCount + 1,
         ));
-        if (ctx.mounted) Navigator.pop(ctx);
+        if (navigator.mounted) navigator.pop();
       },
     );
   }
 
   void _confirmDelete(Task task) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
-        title: const Text("Sil", style: TextStyle(color: Colors.white)),
-        content: const Text("Emin misiniz?",
-            style: TextStyle(color: Colors.white70)),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(l10n.delete, style: const TextStyle(color: Colors.white)),
+        content: Text(l10n.deleteNoteWarning,
+            style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text("İptal")),
+              onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () {
               _firebaseService.deleteTask(task.id!);
               Navigator.pop(ctx);
             },
-            child: const Text("Sil"),
+            child: Text(l10n.delete),
           )
         ],
       ),
@@ -851,7 +1300,7 @@ class _EventListSheetState extends State<_EventListSheet> {
                 child: _buildQuickActionBtn(
                     icon: Icons.event,
                     label: l10n.addEvent,
-                    color: Colors.blue.shade700,
+                    color: const Color(0xFF7B1FA2),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -874,20 +1323,6 @@ class _EventListSheetState extends State<_EventListSheet> {
                               builder: (_) =>
                                   NoteAddEditScreen(selectedDate: widget.day)));
                     })),
-            const SizedBox(width: 12),
-            Expanded(
-                child: _buildQuickActionBtn(
-                    icon: Icons.description,
-                    label: l10n.allNotes,
-                    color: Colors.purple.shade700,
-                    onTap: () {
-                      Navigator.pop(context);
-                      showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => _AllNotesSheet());
-                    })),
           ],
         ),
         const SizedBox(height: 20),
@@ -899,7 +1334,6 @@ class _EventListSheetState extends State<_EventListSheet> {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   }
-
                   final tasks = snapshot.data ?? [];
                   final dailyTasks = tasks.where((t) {
                     bool isSameDay = false;
@@ -916,7 +1350,6 @@ class _EventListSheetState extends State<_EventListSheet> {
                     }
 
                     if (!isSameDay) return false;
-
                     if (widget.currentFilter == CalendarFilter.personal &&
                         t.groupId != null) {
                       return false;
@@ -925,7 +1358,6 @@ class _EventListSheetState extends State<_EventListSheet> {
                         t.groupId == null) {
                       return false;
                     }
-
                     return true;
                   }).toList();
 
@@ -937,8 +1369,7 @@ class _EventListSheetState extends State<_EventListSheet> {
                   }
 
                   return ListView.builder(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     itemCount: dailyTasks.length,
                     itemBuilder: (context, i) {
                       final e = dailyTasks[i];
@@ -953,9 +1384,7 @@ class _EventListSheetState extends State<_EventListSheet> {
                               color: Colors.grey.shade900,
                               borderRadius: BorderRadius.circular(16),
                               border: isExpanded
-                                  ? Border.all(
-                                      color:
-                                          Colors.purple.withValues(alpha: 0.5))
+                                  ? Border.all(color: const Color(0xFF7B1FA2))
                                   : Border.all(color: Colors.white10)),
                           child: Column(
                             children: [
@@ -1020,20 +1449,20 @@ class _EventListSheetState extends State<_EventListSheet> {
                                               MainAxisAlignment.spaceEvenly,
                                           children: [
                                             _actionButton(
-                                              icon: e.isCompleted
-                                                  ? Icons.check_circle
-                                                  : Icons.check_circle_outline,
-                                              color: Colors.green,
-                                              label: "Tamamla",
-                                              onTap: () => _firebaseService
-                                                  .updateTask(e.copyWith(
-                                                      isCompleted:
-                                                          !e.isCompleted)),
-                                            ),
+                                                icon: e.isCompleted
+                                                    ? Icons.check_circle
+                                                    : Icons
+                                                        .check_circle_outline,
+                                                color: Colors.green,
+                                                label: l10n.complete,
+                                                onTap: () => _firebaseService
+                                                    .updateTask(e.copyWith(
+                                                        isCompleted:
+                                                            !e.isCompleted))),
                                             _actionButton(
                                                 icon: Icons.info_outline,
                                                 color: Colors.blueGrey,
-                                                label: "Detay",
+                                                label: l10n.sectionDetails,
                                                 onTap: () => Navigator.push(
                                                     context,
                                                     MaterialPageRoute(
@@ -1043,7 +1472,7 @@ class _EventListSheetState extends State<_EventListSheet> {
                                             _actionButton(
                                                 icon: Icons.edit,
                                                 color: Colors.blue,
-                                                label: "Düzenle",
+                                                label: l10n.edit,
                                                 onTap: () {
                                                   Navigator.pop(context);
                                                   Navigator.push(
@@ -1058,13 +1487,13 @@ class _EventListSheetState extends State<_EventListSheet> {
                                             _actionButton(
                                                 icon: Icons.update,
                                                 color: Colors.orange,
-                                                label: "Ertele",
+                                                label: l10n.postpone,
                                                 onTap: () => _showPostponeMenu(
                                                     context, e)),
                                             _actionButton(
                                                 icon: Icons.delete,
                                                 color: Colors.red,
-                                                label: "Sil",
+                                                label: l10n.delete,
                                                 onTap: () => _confirmDelete(e)),
                                           ]),
                                     ],
@@ -1103,9 +1532,7 @@ class _EventListSheetState extends State<_EventListSheet> {
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis)
+                textAlign: TextAlign.center)
           ],
         ),
       ),
@@ -1133,12 +1560,13 @@ class _EventListSheetState extends State<_EventListSheet> {
 }
 
 class _AllNotesSheet extends StatelessWidget {
-  final FirebaseService _firebaseService = FirebaseService();
-  _AllNotesSheet();
+  const _AllNotesSheet();
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final FirebaseService firebaseService = FirebaseService();
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
@@ -1150,15 +1578,21 @@ class _AllNotesSheet extends StatelessWidget {
             style: GoogleFonts.poppins(fontSize: 18, color: Colors.white)),
         Expanded(
             child: StreamBuilder<List<Note>>(
-                stream: _firebaseService.getNotesStream(),
+                stream: firebaseService.getNotesStream(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(child: CircularProgressIndicator());
                   }
+                  final notes = snapshot.data!;
+                  if (notes.isEmpty) {
+                    return Center(
+                        child: Text(l10n.noNotesAtAll,
+                            style: const TextStyle(color: Colors.grey)));
+                  }
                   return ListView.builder(
-                      itemCount: snapshot.data!.length,
+                      itemCount: notes.length,
                       itemBuilder: (context, i) {
-                        final note = snapshot.data![i];
+                        final note = notes[i];
                         return ListTile(
                             leading: const Icon(Icons.description,
                                 color: Colors.blueGrey),

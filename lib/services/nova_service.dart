@@ -6,7 +6,7 @@ import '../models/task_model.dart';
 
 class NovaService {
   // ⚠️ API KEY'İNİ BURAYA YAPISTIR
-  static const String _apiKey = 'AIzaSyBNUTyP_r6_P8Lpm71s2KbokyWjlkoQGRA';
+  static const String _apiKey = '';
 
   // Model: gemini-2.0-flash
   static const String _baseUrl =

@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../models/team_model.dart';
-import '../models/task_model.dart';
-import '../services/firebase_service.dart';
-import 'task_add_edit_screen.dart';
-import 'task_detail_screen.dart'; // Hata burada veriyordu, importu kontrol ettik.
-import '../l10n/app_localizations.dart';
+import 'team_kanban_tab.dart';
 import 'team_dashboard_tab.dart';
+import 'team_resources_tab.dart';
 import 'team_activity_tab.dart';
 
 class TeamDetailScreen extends StatefulWidget {
   final Team team;
-  final int initialIndex; // 0: Görevler, 1: Pano, 2: Aktivite
+  final int initialIndex;
 
   const TeamDetailScreen(
       {super.key, required this.team, this.initialIndex = 0});
@@ -22,119 +18,91 @@ class TeamDetailScreen extends StatefulWidget {
 }
 
 class _TeamDetailScreenState extends State<TeamDetailScreen> {
-  final FirebaseService _service = FirebaseService();
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    String title = "";
-    Widget content = const SizedBox();
-    bool showAddButton = false;
+    // Sekmeler Listesi
+    final List<Widget> tabs = [
+      TeamKanbanTab(team: widget.team), // 0
+      TeamDashboardTab(team: widget.team), // 1
+      TeamResourcesTab(team: widget.team), // 2
+      TeamActivityTab(team: widget.team), // 3
+    ];
 
-    // Hangi sayfayı göstereceğimize karar ver (Sekmesiz)
-    switch (widget.initialIndex) {
-      case 1:
-        title = l10n.tabDashboard; // Pano
-        content = _buildDashboardView();
-        break;
-      case 2:
-        title = l10n.tabActivity; // Aktivite
-        content = TeamActivityTab(teamId: widget.team.id);
-        break;
-      case 0:
-      default:
-        title = l10n.tabTasks; // Görevler
-        content = _buildTasksView(l10n);
-        showAddButton = true;
-        break;
-    }
+    // Başlıklar
+    final List<String> titles = ["İş Panosu", "Pano", "Kaynaklar", "Aktivite"];
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text(title, style: GoogleFonts.poppins(color: Colors.white)),
-        actions: showAddButton
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => TaskAddEditScreen(
-                              selectedDate: DateTime.now(),
-                              groupId: widget.team.id))),
-                )
-              ]
-            : null,
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: Column(
+          children: [
+            Text(widget.team.name,
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 16)),
+            Text(titles[_currentIndex],
+                style: GoogleFonts.poppins(
+                    fontSize: 12, color: Colors.tealAccent)),
+          ],
+        ),
+        actions: const [
+          // Ayarlar butonu KALDIRILDI
+        ],
       ),
-      body: content,
-    );
-  }
-
-  // GÖREVLER LİSTESİ
-  Widget _buildTasksView(AppLocalizations l10n) {
-    return StreamBuilder<List<Task>>(
-      stream: _service.getTeamTasksStream(widget.team.id),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final tasks = snapshot.data ?? [];
-
-        if (tasks.isEmpty) {
-          return Center(
-              child: Text(l10n.noEvents,
-                  style: GoogleFonts.poppins(color: Colors.grey)));
-        }
-
-        return ListView.builder(
-          itemCount: tasks.length,
-          padding: const EdgeInsets.all(16),
-          itemBuilder: (ctx, index) {
-            final task = tasks[index];
-            return Card(
-              color: Colors.grey.shade900,
-              child: ListTile(
-                leading: Icon(
-                    task.isCompleted
-                        ? Icons.check_circle
-                        : Icons.circle_outlined,
-                    color: Color(task.color)),
-                title: Text(task.title,
-                    style: GoogleFonts.poppins(
-                        color: Colors.white,
-                        decoration: task.isCompleted
-                            ? TextDecoration.lineThrough
-                            : null)),
-                subtitle: Text(
-                    task.assignedTo != null
-                        ? "Atanan: ..."
-                        : DateFormat('d MMM HH:mm').format(task.startTime),
-                    style: const TextStyle(color: Colors.grey)),
-                onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => TaskDetailScreen(task: task))),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  // PANO GÖRÜNÜMÜ
-  Widget _buildDashboardView() {
-    return StreamBuilder<List<Task>>(
-      stream: _service.getTeamTasksStream(widget.team.id),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final tasks = snapshot.data ?? [];
-        return TeamDashboardTab(tasks: tasks);
-      },
+      body: IndexedStack(
+        index: _currentIndex,
+        children: tabs,
+      ),
+      bottomNavigationBar: NavigationBarTheme(
+        data: NavigationBarThemeData(
+          labelTextStyle: WidgetStateProperty.all(
+              GoogleFonts.poppins(fontSize: 11, color: Colors.white70)),
+          indicatorColor: const Color(0xFF7B1FA2),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: Colors.white);
+            }
+            return const IconThemeData(color: Colors.grey);
+          }),
+        ),
+        child: NavigationBar(
+          height: 65,
+          backgroundColor: const Color(0xFF151515),
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+          destinations: const [
+            NavigationDestination(
+                icon: Icon(Icons.view_kanban_outlined),
+                selectedIcon: Icon(Icons.view_kanban),
+                label: "İşler"),
+            NavigationDestination(
+                icon: Icon(Icons.bar_chart_rounded),
+                selectedIcon: Icon(Icons.dashboard),
+                label: "Pano"),
+            NavigationDestination(
+                icon: Icon(Icons.folder_open_rounded),
+                selectedIcon: Icon(Icons.folder),
+                label: "Kaynak"),
+            NavigationDestination(
+                icon: Icon(Icons.history_rounded),
+                selectedIcon: Icon(Icons.history),
+                label: "Aktivite"),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -77,9 +77,9 @@ class _AccountScreenState extends State<AccountScreen> {
 
                   return GestureDetector(
                     onTap: () async {
-                      // HATA ÇÖZÜMÜ: Referansları işlemden önce alıyoruz
-                      final messenger = ScaffoldMessenger.of(this.context);
+                      // Referansları al
                       final navigator = Navigator.of(ctx);
+                      final messenger = ScaffoldMessenger.of(this.context);
 
                       navigator.pop(); // Menüyü kapat
 
@@ -123,7 +123,7 @@ class _AccountScreenState extends State<AccountScreen> {
     await showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
+        backgroundColor: const Color(0xFF1E1E1E),
         title: const Text("Bilgileri Düzenle",
             style: TextStyle(color: Colors.white)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -137,9 +137,9 @@ class _AccountScreenState extends State<AccountScreen> {
             child: const Text("İptal"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7B1FA2)),
             onPressed: () async {
-              // Referansı al
               final navigator = Navigator.of(dialogContext);
               await _firebaseService.updateUserName(
                   nameCtrl.text.trim(), surnameCtrl.text.trim());
@@ -152,13 +152,13 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  // 2. ŞİFRE DEĞİŞTİRME (HATA BURADAYDI)
+  // 2. ŞİFRE DEĞİŞTİRME
   Future<void> _changePasswordDialog() async {
     final passCtrl = TextEditingController();
     await showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
+        backgroundColor: const Color(0xFF1E1E1E),
         title:
             const Text("Şifre Değiştir", style: TextStyle(color: Colors.white)),
         content:
@@ -169,9 +169,9 @@ class _AccountScreenState extends State<AccountScreen> {
             child: const Text("İptal"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7B1FA2)),
             onPressed: () async {
-              // HATA ÇÖZÜMÜ: Referansları önceden al
               final messenger = ScaffoldMessenger.of(context);
               final navigator = Navigator.of(dialogContext);
 
@@ -192,13 +192,13 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  // 3. E-POSTA DEĞİŞTİRME (HATA BURADAYDI)
+  // 3. E-POSTA DEĞİŞTİRME
   Future<void> _changeEmailDialog(String current) async {
     final emailCtrl = TextEditingController(text: current);
     await showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
+        backgroundColor: const Color(0xFF1E1E1E),
         title: const Text("E-posta Değiştir",
             style: TextStyle(color: Colors.white)),
         content: _buildDialogTextField(emailCtrl, "Yeni E-posta"),
@@ -207,9 +207,9 @@ class _AccountScreenState extends State<AccountScreen> {
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text("İptal")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7B1FA2)),
             onPressed: () async {
-              // HATA ÇÖZÜMÜ: Referansları önceden al
               final messenger = ScaffoldMessenger.of(context);
               final navigator = Navigator.of(dialogContext);
 
@@ -242,7 +242,6 @@ class _AccountScreenState extends State<AccountScreen> {
       );
 
   Future<void> _signOut() async {
-    // Referansı al
     final navigator = Navigator.of(context);
     await _auth.signOut();
     navigator.pushNamedAndRemoveUntil('/login', (route) => false);
@@ -252,7 +251,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
+        backgroundColor: const Color(0xFF1E1E1E),
         title: const Text("Hesabı Sil",
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         content: const Text(
@@ -272,6 +271,7 @@ class _AccountScreenState extends State<AccountScreen> {
     );
 
     if (confirm == true) {
+      if (!mounted) return; // HATA ÇÖZÜMÜ
       final messenger = ScaffoldMessenger.of(context);
       final navigator = Navigator.of(context);
 
@@ -293,7 +293,7 @@ class _AccountScreenState extends State<AccountScreen> {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
+        backgroundColor: const Color(0xFF1E1E1E),
         title: Text(l10n.clearAllDataTitle,
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold, color: Colors.white)),
@@ -313,10 +313,14 @@ class _AccountScreenState extends State<AccountScreen> {
     );
 
     if (confirm == true) {
+      if (!mounted) return; // HATA ÇÖZÜMÜ
       final messenger = ScaffoldMessenger.of(context);
       messenger
           .showSnackBar(const SnackBar(content: Text("Veriler siliniyor...")));
+
       await _firebaseService.deleteAllData();
+
+      if (!mounted) return; // HATA ÇÖZÜMÜ
       messenger.showSnackBar(SnackBar(content: Text(l10n.allDataDeleted)));
     }
   }
@@ -392,7 +396,7 @@ class _AccountScreenState extends State<AccountScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 40,
-                                backgroundColor: Colors.purple.shade500,
+                                backgroundColor: const Color(0xFF7B1FA2),
                                 child: photoUrl != null
                                     ? ClipOval(
                                         child: CachedNetworkImage(
@@ -541,6 +545,31 @@ class _AccountScreenState extends State<AccountScreen> {
                       onTap: _showDeleteAccountDialog),
                   _buildSectionTitle(l10n.languageSettings),
                   _buildLanguageSelector(context, l10n),
+
+                  // TECHLUNA SOFTWARE İMZASI
+                  const SizedBox(height: 40),
+                  Column(
+                    children: [
+                      Text("Phobes v1.0.0",
+                          style: GoogleFonts.jetBrainsMono(
+                              color: Colors.white24, fontSize: 10)),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.code,
+                              size: 12, color: Colors.purple),
+                          const SizedBox(width: 4),
+                          Text("Powered by Techluna Software",
+                              style: GoogleFonts.poppins(
+                                  color: Colors.purple.shade300,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
                 ],
               );
             },
@@ -565,7 +594,7 @@ class _AccountScreenState extends State<AccountScreen> {
           required Color color,
           required VoidCallback onTap}) =>
       Card(
-          color: Colors.grey.shade900,
+          color: const Color(0xFF1E1E1E),
           margin: const EdgeInsets.only(bottom: 12),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -587,9 +616,10 @@ class _AccountScreenState extends State<AccountScreen> {
               onTap: onTap));
 
   Widget _buildLanguageSelector(BuildContext context, AppLocalizations l10n) {
+    // HATA ÇÖZÜMÜ: Artık getter olduğu için bu çalışır.
     final currentLocale = MyApp.of(context)?.locale ?? const Locale('tr');
     return Card(
-        color: Colors.grey.shade900,
+        color: const Color(0xFF1E1E1E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
             padding:

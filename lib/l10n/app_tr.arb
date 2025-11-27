@@ -1,7 +1,6 @@
 {
   "@@locale": "tr",
-  "appTitle": "Modern Planlayıcı",
-  
+  "appTitle": "Phobes",
   "login": "Giriş Yap",
   "register": "Kayıt Ol",
   "email": "E-posta",
@@ -13,12 +12,10 @@
   "surname": "Soyad",
   "birthDateSelect": "Doğum Tarihi Seçin",
   "continueWithGoogle": "Google ile Devam Et",
-  
   "navCalendar": "Takvim",
   "navTeams": "Ekipler",
   "navStatistics": "İstatistik",
   "navAccount": "Hesabım",
-  
   "today": "Bugün",
   "events": "Etkinlikler",
   "noEvents": "Etkinlik yok",
@@ -32,7 +29,6 @@
   "update": "Güncelle",
   "create": "Oluştur",
   "join": "Katıl",
-  
   "newTask": "Yeni Görev",
   "editTask": "Görevi Düzenle",
   "title": "Başlık",
@@ -46,16 +42,13 @@
   "selectColor": "Renk Seç",
   "requiredField": "Bu alan zorunludur",
   "repeat": "Tekrar",
-  
   "sectionTiming": "Zamanlama",
   "sectionDetails": "Detaylar",
   "sectionSettings": "Ayarlar",
-  
   "priority": "Öncelik",
   "priorityLow": "Düşük",
   "priorityMedium": "Orta",
   "priorityHigh": "Yüksek",
-  
   "reminder": "Hatırlatıcı",
   "reminderNone": "Hatırlatıcı Yok",
   "reminderAtTime": "Etkinlik zamanında",
@@ -63,12 +56,10 @@
   "reminder30Min": "30 dakika önce",
   "reminder1Hour": "1 saat önce",
   "reminder1Day": "1 gün önce",
-  
   "repeatNone": "Tekrar Yok",
   "repeatDaily": "Günlük",
   "repeatWeekly": "Haftalık",
   "repeatMonthly": "Aylık",
-  
   "notes": "Notlar",
   "dailyNotes": "Günlük Notlar",
   "allNotes": "Tüm Notlar",
@@ -82,7 +73,6 @@
   "noNotesAtAll": "Henüz not eklenmemiş",
   "deleteNoteTitle": "Notu Sil",
   "deleteNoteWarning": "Bu notu silmek istediğinize emin misiniz?",
-  
   "statistics": "İstatistikler",
   "statsGuide": "İstatistik Rehberi",
   "statsGuideSubtitle": "Bu veriler ne işe yarar?",
@@ -95,7 +85,6 @@
   "mostProductiveTime": "En Verimli Vakit",
   "mostProductiveTimeDesc": "Hangi saatlerde daha çok iş bitirdiğiniz.",
   "focusTime": "Odak Süresi",
-  
   "activityHeatmapTitle": "Aktivite Isı Haritası",
   "dailyActivityTitle": "Günlük Aktivite",
   "weeklyTrendTitle": "Haftalık Trend",
@@ -121,7 +110,6 @@
   "noData": "Veri Yok",
   "perfectDaysTitle": "Mükemmel Günler",
   "perfectDaysDesc": "%100 tamamlanmış, ertelemesiz günler",
-  
   "accountAndSettings": "Hesap ve Ayarlar",
   "totalNotes": "Toplam Not",
   "dailyStreak": "Günlük Seri",
@@ -142,12 +130,10 @@
   "simulationError": "Simülasyon hatası: {error}",
   "simulationGeneratedTask": "Simülasyon Verisi",
   "dataLoadError": "Veri yüklenemedi",
-  
   "loading": "Yükleniyor...",
   "fetchingData": "Veriler sunucudan alınıyor...",
   "analyzingData": "Analiz ediliyor ({count} kayıt)...",
   "generatingCharts": "Grafikler oluşturuluyor...",
-  
   "languageSettings": "Dil Ayarları",
   "language": "Dil",
   "about": "Hakkında",
@@ -167,7 +153,6 @@
   "newPassword": "Yeni Şifre",
   "emailVerificationSent": "Onay postası gönderildi",
   "signOut": "Çıkış Yap",
-  
   "daysAgo30": "30g önce",
   "daysAgo15": "15g önce",
   "weeksAgo3": "3h önce",
@@ -179,11 +164,9 @@
   "taskDistribution": "Görev Dağılımı",
   "prioritySubtitle": "Düşük - Orta - Yüksek",
   "hourlyActivitySubtitle": "Günün Hangi Saatleri?",
-  
   "week3Ago": "3H Önce",
   "week2Ago": "2H Önce",
   "lastWeek": "Geçen H",
-  
   "dayMon": "Pzt",
   "dayTue": "Sal",
   "dayWed": "Çar",
@@ -191,7 +174,6 @@
   "dayFri": "Cum",
   "daySat": "Cmt",
   "daySun": "Paz",
-  
   "dayMonday": "Pazartesi",
   "dayTuesday": "Salı",
   "dayWednesday": "Çarşamba",
@@ -199,7 +181,6 @@
   "dayFriday": "Cuma",
   "daySaturday": "Cumartesi",
   "daySunday": "Pazar",
-
   "adviceWelcome": "Hoşgeldin! İlk görevini ekleyerek başla.",
   "adviceStreak": "Harika gidiyorsun! {count} günlük seridesin.",
   "adviceStartStreak": "İstikrar önemlidir. Her gün bir görev tamamlamaya çalış.",
@@ -212,13 +193,11 @@
   "advicePostponedTag": "Sıklıkla '{tag}' etiketli görevleri erteliyorsun.",
   "zombieTaskTitle": "Zombi Görev Uyarısı",
   "zombieTaskAdvice": "'{title}' görevi {days} gündür bekliyor. Bölmeyi dener misin?",
-  
   "addEvent": "Etkinlik Ekle",
   "addNote": "Not Ekle",
   "viewAllEvents": "Tümünü Gör",
   "postponeAllDay": "Tümünü Ertele",
   "hiddenItemsCount": "+{count} tane daha",
-  
   "postponeAllDayWarning": "Bugünkü tüm görevler ertelensin mi?",
   "postpone15Min": "15 Dakika",
   "postpone1Hour": "1 Saat",
@@ -232,7 +211,6 @@
   "postponeRepeatingTaskTitle": "Tekrarlı Görev: {title}",
   "postponedMessage": "{label} ertelendi!",
   "linkError": "Link açılamadı",
-
   "createTeam": "Ekip Oluştur",
   "joinTeam": "Ekibe Katıl",
   "teamName": "Ekip Adı",
@@ -264,5 +242,33 @@
   "filterAll": "Tüm Etkinlikler",
   "filterPersonal": "Sadece Kişisel",
   "filterTeam": "Sadece Ekip",
-  "assignedToMe": "Bana Atandı"
+  "assignedToMe": "Bana Atandı",
+  "viewWeekly": "Haftalık",
+  "viewMonthly": "Aylık",
+  "viewDaily": "Günlük",
+  "addSmart": "Akıllı Ekle (Nova)",
+  "addManual": "Manuel Ekle",
+  "novaAssistant": "Nova Asistan",
+  "novaPrompt": "Yaz veya konuş, senin için göreve çevireyim.",
+  "novaInputHint": "Buraya yaz...",
+  "novaUnderstandError": "Nova anlayamadı.",
+  "micPermissionError": "Mikrofon izni yok.",
+  "poweredBy": "Powered by",
+  "techlunaSoftware": "Techluna Software",
+  "tabKanban": "İş Panosu",
+"tabResources": "Kaynaklar",
+"statusTodo": "Yapılacak",
+"statusInProgress": "Sürüyor",
+"statusDone": "Bitti",
+"addLink": "Link Ekle",
+"announcements": "Duyurular",
+"pinnedMessage": "Sabit Mesaj",
+"mvpTitle": "Haftanın Yıldızı",
+"workloadTitle": "İş Yükü Dağılımı",
+"linkUrl": "Link (https://...)",
+"linkTitle": "Başlık",
+"openLink": "Linki Aç",
+"noResources": "Henüz kaynak eklenmedi.",
+"moveNext": "İlerlet",
+"movePrev": "Geri Al"
 }

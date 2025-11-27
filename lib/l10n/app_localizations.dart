@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// App title
   ///
   /// In en, this message translates to:
-  /// **'Modern Calendar'**
+  /// **'Phobes'**
   String get appTitle;
 
   /// Button label
@@ -1555,6 +1555,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assigned to me'**
   String get assignedToMe;
+
+  /// Calendar View
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get viewWeekly;
+
+  /// Calendar View
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get viewMonthly;
+
+  /// Calendar View
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get viewDaily;
+
+  /// Menu Option
+  ///
+  /// In en, this message translates to:
+  /// **'Smart Add (Nova)'**
+  String get addSmart;
+
+  /// Menu Option
+  ///
+  /// In en, this message translates to:
+  /// **'Manual Add'**
+  String get addManual;
+
+  /// Title
+  ///
+  /// In en, this message translates to:
+  /// **'Nova Assistant'**
+  String get novaAssistant;
+
+  /// Hint
+  ///
+  /// In en, this message translates to:
+  /// **'Type or speak, I will create for you.'**
+  String get novaPrompt;
+
+  /// Hint
+  ///
+  /// In en, this message translates to:
+  /// **'Type here...'**
+  String get novaInputHint;
+
+  /// Error
+  ///
+  /// In en, this message translates to:
+  /// **'Nova didn\'t understand that.'**
+  String get novaUnderstandError;
+
+  /// Error
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission denied.'**
+  String get micPermissionError;
+
+  /// Footer
+  ///
+  /// In en, this message translates to:
+  /// **'Powered by'**
+  String get poweredBy;
+
+  /// Company Name
+  ///
+  /// In en, this message translates to:
+  /// **'Techluna Software'**
+  String get techlunaSoftware;
+
+  /// No description provided for @tabKanban.
+  ///
+  /// In en, this message translates to:
+  /// **'Kanban'**
+  String get tabKanban;
+
+  /// No description provided for @tabResources.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources'**
+  String get tabResources;
+
+  /// No description provided for @statusTodo.
+  ///
+  /// In en, this message translates to:
+  /// **'To Do'**
+  String get statusTodo;
+
+  /// No description provided for @statusInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In Progress'**
+  String get statusInProgress;
+
+  /// No description provided for @statusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get statusDone;
+
+  /// No description provided for @addLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Link'**
+  String get addLink;
+
+  /// No description provided for @announcements.
+  ///
+  /// In en, this message translates to:
+  /// **'Announcements'**
+  String get announcements;
+
+  /// No description provided for @pinnedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned Message'**
+  String get pinnedMessage;
+
+  /// No description provided for @mvpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Star of the Week'**
+  String get mvpTitle;
+
+  /// No description provided for @workloadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Workload Distribution'**
+  String get workloadTitle;
+
+  /// No description provided for @linkUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Link (https://...)'**
+  String get linkUrl;
+
+  /// No description provided for @linkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get linkTitle;
+
+  /// No description provided for @openLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Link'**
+  String get openLink;
+
+  /// No description provided for @noResources.
+  ///
+  /// In en, this message translates to:
+  /// **'No resources added yet.'**
+  String get noResources;
+
+  /// No description provided for @moveNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Next'**
+  String get moveNext;
+
+  /// No description provided for @movePrev.
+  ///
+  /// In en, this message translates to:
+  /// **'Move Back'**
+  String get movePrev;
 }
 
 class _AppLocalizationsDelegate

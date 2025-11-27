@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/team_model.dart';
-import '../models/task_model.dart';
-import '../services/firebase_service.dart';
 import '../l10n/app_localizations.dart';
-import 'team_dashboard_tab.dart'; // Pano widget'ını kullanıyoruz
+import 'team_dashboard_tab.dart'; // Tab widget'ı
 
 class TeamDashboardScreen extends StatelessWidget {
   final Team team;
@@ -13,32 +11,18 @@ class TeamDashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final FirebaseService service = FirebaseService();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Colors.white),
         title: Text(l10n.tabDashboard,
             style: GoogleFonts.poppins(color: Colors.white)),
       ),
-      body: StreamBuilder<List<Task>>(
-        stream: service.getTeamTasksStream(team.id),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final tasks = snapshot.data ?? [];
-          if (tasks.isEmpty) {
-            return Center(
-                child: Text(l10n.noData,
-                    style: const TextStyle(color: Colors.grey)));
-          }
-
-          // Mevcut Dashboard Widget'ını kullanıyoruz
-          return TeamDashboardTab(tasks: tasks);
-        },
-      ),
+      // HATA ÇÖZÜMÜ: Artık 'tasks' değil, 'team' gönderiyoruz.
+      // Veri çekme işlemini TeamDashboardTab kendi içinde yapıyor.
+      body: TeamDashboardTab(team: team),
     );
   }
 }

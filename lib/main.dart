@@ -3,8 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_app_check/firebase_app_check.dart'; // Paketin ekli olduğundan emin ol
-
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
 import 'screens/main_navigation_screen.dart';
@@ -16,12 +15,6 @@ void main() async {
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // --- APP CHECK AKTİVASYONU (UYARILARI SİLMEK İÇİN) ---
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.debug,
-    appleProvider: AppleProvider.appAttest,
   );
 
   await NotificationService().init();
@@ -43,6 +36,9 @@ class MyApp extends StatefulWidget {
 
 class MyAppState extends State<MyApp> {
   Locale _locale = const Locale('tr', '');
+
+  // HATA ÇÖZÜMÜ: Getter eklendi.
+  Locale get locale => _locale;
 
   @override
   void initState() {
@@ -68,33 +64,45 @@ class MyAppState extends State<MyApp> {
     await prefs.setString('language_code', newLocale.languageCode);
   }
 
-  Locale get locale => _locale;
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Phobes',
       debugShowCheckedModeBanner: false,
       locale: _locale,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(
         brightness: Brightness.dark,
         useMaterial3: true,
-        colorScheme: ColorScheme.dark(
-          primary: Colors.blue.shade400,
-          secondary: Colors.purple.shade400,
-          surface: const Color(0xFF0A0A0A),
+        // Techluna Kurumsal Renk Paleti
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF7B1FA2), // Mor
+          secondary: Color(0xFF009688), // Teal
+          surface: Color(0xFF0A0A0A), // Derin Siyah
+          onSurface: Colors.white,
+          error: Color(0xFFCF6679),
         ),
         fontFamily: 'Poppins',
         scaffoldBackgroundColor: const Color(0xFF0A0A0A),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        // Varsayılan kart teması
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+              body: Center(
+                  child: CircularProgressIndicator(color: Colors.purple)),
             );
           }
           if (snapshot.hasData) {

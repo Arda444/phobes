@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter/foundation.dart'; // debugPrint için
+import 'package:flutter/foundation.dart';
 import 'dart:math';
 import '../models/task_model.dart';
 import '../models/note_model.dart';
@@ -97,8 +97,8 @@ class FirebaseService {
       'birthDate': Timestamp.fromDate(birthDate),
       'createdAt': FieldValue.serverTimestamp(),
       'joinedTeams': [],
-      'xp': 0, // Oyunlaştırma
-      'level': 1, // Oyunlaştırma
+      'xp': 0,
+      'level': 1,
       'photoUrl': null,
     }, SetOptions(merge: true));
   }
@@ -117,20 +117,15 @@ class FirebaseService {
     await currentUser?.updateDisplayName("$name $surname");
   }
 
-  // --- AVATAR GÜNCELLEME ---
   Future<void> updateAvatar(String avatarSeed) async {
     if (currentUserId == null) return;
-
-    // DiceBear Adventurer kullanıyoruz
     final String avatarUrl =
         "https://api.dicebear.com/9.x/adventurer/png?seed=$avatarSeed";
 
-    // 1. Veritabanını güncelle
     await _db.collection('users').doc(currentUserId).update({
       'photoUrl': avatarUrl,
     });
 
-    // 2. Auth profilini güncelle
     try {
       await currentUser?.updatePhotoURL(avatarUrl);
     } catch (e) {
@@ -141,6 +136,7 @@ class FirebaseService {
   Future<List<Map<String, dynamic>>> getUsersByIds(List<String> userIds) async {
     if (userIds.isEmpty) return [];
     List<Map<String, dynamic>> users = [];
+    // Firestore 'whereIn' limiti 10 olduğu için parçalıyoruz
     for (var i = 0; i < userIds.length; i += 10) {
       var end = (i + 10 < userIds.length) ? i + 10 : userIds.length;
       var sublist = userIds.sublist(i, end);
@@ -172,7 +168,7 @@ class FirebaseService {
 
         int currentXp = snapshot.data()?['xp'] ?? 0;
         int newXp = currentXp + amount;
-        int newLevel = (newXp / 1000).floor() + 1; // Her 1000 XP'de level atla
+        int newLevel = (newXp / 1000).floor() + 1;
 
         transaction.update(userRef, {'xp': newXp, 'level': newLevel});
       });
@@ -214,9 +210,7 @@ class FirebaseService {
         'lastCompleted': Timestamp.fromDate(now),
         'streak': FieldValue.increment(1)
       });
-      await addXP(20); // Ödül
-    } else {
-      // Geri alma mantığı
+      await addXP(20);
     }
   }
 
@@ -239,20 +233,13 @@ class FirebaseService {
     }
   }
 
+  // İstatistikler için verileri çeker
   Future<List<Task>> getTasksForStats() async {
     if (currentUserId == null) return [];
-    final DateTime startDate =
-        DateTime.now().subtract(const Duration(days: 365));
-    final DateTime endDate = DateTime.now().add(const Duration(days: 30));
-
     try {
       final snapshot = await _db
           .collection('tasks')
           .where('userId', isEqualTo: currentUserId)
-          .where('groupId', isNull: true)
-          .where('startTime',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .where('startTime', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
           .limit(2000)
           .get();
       return snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
@@ -261,28 +248,15 @@ class FirebaseService {
     }
   }
 
-  Stream<List<Task>> getTasksStream() {
-    if (currentUserId == null) return Stream.value([]);
-    return _db
-        .collection('tasks')
-        .where('userId', isEqualTo: currentUserId)
-        .where('groupId', isNull: true)
-        .snapshots()
-        .map((snapshot) {
-      final tasks =
-          snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
-      tasks.sort((a, b) => a.startTime.compareTo(b.startTime));
-      return tasks;
-    });
-  }
-
+  // Tüm kullanıcı görevlerini (Kişisel + Atandığı Ekip Görevleri) getirir
   Stream<List<Task>> getAllUserTasksStream() {
     if (currentUserId == null) return Stream.value([]);
     return _db
         .collection('tasks')
         .where(Filter.or(
           Filter('userId', isEqualTo: currentUserId),
-          Filter('assignedTo', isEqualTo: currentUserId),
+          // DİKKAT: assignedTo artık bir liste olduğu için arrayContains kullanıyoruz
+          Filter('assignedTo', arrayContains: currentUserId),
         ))
         .snapshots()
         .map((snapshot) {
@@ -301,9 +275,17 @@ class FirebaseService {
         if (task.groupId != null) {
           await logTeamActivity(task.groupId!, 'task_completed', task.title);
         }
-        await addXP(50); // Ödül
+        await addXP(50);
       }
     }
+  }
+
+  // KANBAN için Görev Durumu Güncelleme
+  Future<void> updateTaskStatus(String taskId, String status) async {
+    await _db.collection('tasks').doc(taskId).update({
+      'status': status,
+      'isCompleted': status == 'done',
+    });
   }
 
   Future<void> deleteTask(String taskId) async {
@@ -362,6 +344,7 @@ class FirebaseService {
       'adminIds': [currentUserId],
       'joinCode': joinCode,
       'createdAt': FieldValue.serverTimestamp(),
+      'announcement': null, // Duyuru alanı başlangıçta boş
     });
 
     await _db.collection('users').doc(currentUserId).update({
@@ -413,6 +396,45 @@ class FirebaseService {
           snapshot.docs.map((doc) => Task.fromFirestore(doc)).toList();
       tasks.sort((a, b) => a.startTime.compareTo(b.startTime));
       return tasks;
+    });
+  }
+
+  // --- EKİP KAYNAKLARI (LINKS) ---
+  Future<void> addTeamLink(String teamId, String title, String url) async {
+    await _db.collection('teams').doc(teamId).collection('resources').add({
+      'title': title,
+      'url': url,
+      'addedBy': currentUserId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'type': 'link',
+    });
+    await logTeamActivity(teamId, 'added_link', title);
+  }
+
+  Stream<QuerySnapshot> getTeamResources(String teamId) {
+    return _db
+        .collection('teams')
+        .doc(teamId)
+        .collection('resources')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Future<void> deleteTeamResource(String teamId, String resourceId) async {
+    await _db
+        .collection('teams')
+        .doc(teamId)
+        .collection('resources')
+        .doc(resourceId)
+        .delete();
+  }
+
+  // --- DUYURULAR ---
+  Future<void> updateTeamAnnouncement(String teamId, String message) async {
+    await _db.collection('teams').doc(teamId).update({
+      'announcement': message,
+      'announcementBy': currentUser?.displayName,
+      'announcementDate': FieldValue.serverTimestamp(),
     });
   }
 
@@ -500,7 +522,6 @@ class FirebaseService {
   Future<void> deleteAllData() async {
     if (currentUserId == null) return;
 
-    // Düzeltilmiş for döngüleri (Süslü parantez eklendi)
     final tasks = await _db
         .collection('tasks')
         .where('userId', isEqualTo: currentUserId)
@@ -527,6 +548,6 @@ class FirebaseService {
   }
 
   Future<void> generateSimulationData() async {
-    // Test verisi
+    // Simülasyon verisi (Opsiyonel)
   }
 }

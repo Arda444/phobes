@@ -97,8 +97,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: Colors.grey.shade900,
-          // DÜZELTME: Icons.health_style -> Icons.monitor_heart olarak değiştirildi
+          backgroundColor: const Color(0xFF1E1E1E),
           icon: const Icon(Icons.monitor_heart,
               color: Colors.pinkAccent, size: 40),
           title: const Text("Nova Sağlık Raporu",
@@ -126,10 +125,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     try {
       List<Task> tasks;
       try {
+        // Önce istatistik için özel metodu dene
         tasks = await _firebaseService.getTasksForStats();
       } catch (e) {
-        debugPrint("Hata: $e");
-        tasks = await _firebaseService.getTasksStream().first;
+        debugPrint("Hata (Stats): $e");
+        // HATA ÇÖZÜMÜ BURADA:
+        // getTasksStream yerine getAllUserTasksStream kullanıldı.
+        // Bu sayede hem kişisel hem ekip görevleri istatistiğe dahil edilir.
+        tasks = await _firebaseService.getAllUserTasksStream().first;
       }
 
       if (tasks.isEmpty) {
@@ -164,6 +167,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             processedTasks.add(task);
           }
         } else {
+          // Tekrarlayan görevleri sanal olarak oluştur
           DateTime nextDate = task.startTime;
           int safety = 0;
           while (nextDate.isBefore(analysisEndDate)) {
@@ -268,7 +272,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         var sortedTimes = timeOfDayCount.entries.toList()
           ..sort((a, b) => b.value.compareTo(a.value));
         if (sortedTimes.isNotEmpty && sortedTimes.last.value > 0) {
-          mostProductiveTime = sortedTimes.last.key;
+          mostProductiveTime = sortedTimes.first.key;
         }
       }
 
