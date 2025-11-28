@@ -851,4 +851,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get movePrev => 'Move Back';
+
+  @override
+  String get filterMyTasks => 'My Tasks Only';
+
+  @override
+  String get filterAllTeamTasks => 'All Team Tasks';
+
+  @override
+  String get empty => 'Empty';
+
+  @override
+  String get unassigned => 'Unassigned';
+
+  @override
+  String get pending => 'Pending';
+
+  @override
+  String get urgent => 'Urgent';
+
+  @override
+  String get taskStatus => 'Task Status';
+
+  @override
+  String get completed => 'Completed';
+
+  @override
+  String get noCompletedTasksYet => 'No completed tasks yet.';
+
+  @override
+  String get taskCount => 'Task';
+
+  @override
+  String get actMovedToProgress => 'started task';
+
+  @override
+  String get actMovedToTodo => 'moved task back';
+
+  @override
+  String get actFinished => 'finished task';
+
+  @override
+  String get addLinkTitle => 'Add Link';
+
+  @override
+  String get linkTitleHint => 'Title';
+
+  @override
+  String get linkUrlHint => 'Link (https://...)';
+
+  @override
+  String get publish => 'Publish';
+
+  @override
+  String get makeAnnouncement => 'Make Announcement';
+
+  @override
+  String get announcementHint => 'Your message...';
+
+  @override
+  String get noAnnouncements => 'No announcements yet.';
+
+  @override
+  String get resourcesTitle => 'Resources';
+
+  @override
+  String get noResourcesYet => 'No resources added yet.';
+
+  @override
+  String get tabKanbanTitle => 'Kanban';
+
+  @override
+  String get tabDashboardTitle => 'Dashboard';
+
+  @override
+  String get tabResourcesTitle => 'Resources';
+
+  @override
+  String get tabActivityTitle => 'Activity';
 }

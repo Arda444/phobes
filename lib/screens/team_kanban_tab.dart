@@ -7,18 +7,28 @@ import '../models/team_model.dart';
 import '../services/firebase_service.dart';
 import 'task_add_edit_screen.dart';
 import 'task_detail_screen.dart';
+import '../l10n/app_localizations.dart';
 
-class TeamKanbanTab extends StatelessWidget {
+class TeamKanbanTab extends StatefulWidget {
   final Team team;
   const TeamKanbanTab({super.key, required this.team});
 
   @override
+  State<TeamKanbanTab> createState() => _TeamKanbanTabState();
+}
+
+class _TeamKanbanTabState extends State<TeamKanbanTab> {
+  final FirebaseService _service = FirebaseService();
+  bool _showMyTasksOnly = false;
+
+  @override
   Widget build(BuildContext context) {
-    final FirebaseService service = FirebaseService();
+    final l10n = AppLocalizations.of(context)!;
+    // Masaüstü kontrolü (Genişlik > 800px ise Masaüstü modu)
+    final bool isDesktop = MediaQuery.of(context).size.width > 800;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
-      // FAB SADELEŞTİRİLDİ (Sadece + ikonu)
       floatingActionButton: FloatingActionButton(
         heroTag: 'kanban_add_task',
         backgroundColor: const Color(0xFF7B1FA2),
@@ -27,119 +37,227 @@ class TeamKanbanTab extends StatelessWidget {
             context,
             MaterialPageRoute(
                 builder: (_) => TaskAddEditScreen(
-                    selectedDate: DateTime.now(), groupId: team.id))),
+                    selectedDate: DateTime.now(), groupId: widget.team.id))),
       ),
-      body: StreamBuilder<List<Task>>(
-        stream: service.getTeamTasksStream(team.id),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          _buildFilterHeader(l10n),
+          Expanded(
+            child: StreamBuilder<List<Task>>(
+              stream: _service.getTeamTasksStream(widget.team.id),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          final tasks = snapshot.data!;
+                var tasks = snapshot.data!;
 
-          final todoTasks =
-              tasks.where((t) => !t.isCompleted && t.status == 'todo').toList();
-          final progressTasks = tasks
-              .where((t) => !t.isCompleted && t.status == 'in_progress')
-              .toList();
-          final doneTasks =
-              tasks.where((t) => t.isCompleted || t.status == 'done').toList();
+                if (_showMyTasksOnly) {
+                  final currentUserId = _service.currentUserId;
+                  tasks = tasks.where((t) {
+                    return t.assignedTo.contains(currentUserId);
+                  }).toList();
+                }
 
-          return ListView(
-            padding:
-                const EdgeInsets.only(top: 16, bottom: 80, left: 16, right: 16),
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildDragTargetColumn(
-                  context, "Yapılacak", Colors.redAccent, todoTasks, 'todo'),
-              const SizedBox(width: 16),
-              _buildDragTargetColumn(context, "Sürüyor", Colors.orangeAccent,
-                  progressTasks, 'in_progress'),
-              const SizedBox(width: 16),
-              _buildDragTargetColumn(
-                  context, "Bitti", Colors.greenAccent, doneTasks, 'done'),
-            ],
-          );
-        },
+                final todoTasks = tasks
+                    .where((t) => !t.isCompleted && t.status == 'todo')
+                    .toList();
+                final progressTasks = tasks
+                    .where((t) => !t.isCompleted && t.status == 'in_progress')
+                    .toList();
+                final doneTasks = tasks
+                    .where((t) => t.isCompleted || t.status == 'done')
+                    .toList();
+
+                // RESPONSIVE LAYOUT
+                // Masaüstü -> Row (Yan Yana)
+                // Mobil -> Column (Alt Alta)
+                if (isDesktop) {
+                  return Row(
+                    children: [
+                      Expanded(
+                          child: _buildDragTargetSection(
+                              title: l10n.statusTodo,
+                              color: Colors.redAccent,
+                              tasks: todoTasks,
+                              statusId: 'todo',
+                              icon: Icons.assignment_outlined,
+                              l10n: l10n)),
+                      Expanded(
+                          child: _buildDragTargetSection(
+                              title: l10n.statusInProgress,
+                              color: Colors.orangeAccent,
+                              tasks: progressTasks,
+                              statusId: 'in_progress',
+                              icon: Icons.pending_actions_outlined,
+                              l10n: l10n)),
+                      Expanded(
+                          child: _buildDragTargetSection(
+                              title: l10n.statusDone,
+                              color: Colors.greenAccent,
+                              tasks: doneTasks,
+                              statusId: 'done',
+                              icon: Icons.check_circle_outline,
+                              l10n: l10n)),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      Expanded(
+                          child: _buildDragTargetSection(
+                              title: l10n.statusTodo,
+                              color: Colors.redAccent,
+                              tasks: todoTasks,
+                              statusId: 'todo',
+                              icon: Icons.assignment_outlined,
+                              l10n: l10n)),
+                      Expanded(
+                          child: _buildDragTargetSection(
+                              title: l10n.statusInProgress,
+                              color: Colors.orangeAccent,
+                              tasks: progressTasks,
+                              statusId: 'in_progress',
+                              icon: Icons.pending_actions_outlined,
+                              l10n: l10n)),
+                      Expanded(
+                          child: _buildDragTargetSection(
+                              title: l10n.statusDone,
+                              color: Colors.greenAccent,
+                              tasks: doneTasks,
+                              statusId: 'done',
+                              icon: Icons.check_circle_outline,
+                              l10n: l10n)),
+                    ],
+                  );
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDragTargetColumn(BuildContext context, String title, Color color,
-      List<Task> tasks, String statusId) {
-    final width = MediaQuery.of(context).size.width * 0.85;
-    final service = FirebaseService();
+  Widget _buildFilterHeader(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: const Color(0xFF151515),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _showMyTasksOnly ? l10n.filterMyTasks : l10n.filterAllTeamTasks,
+                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 13),
+              ),
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                  value: _showMyTasksOnly,
+                  activeTrackColor: Colors.purpleAccent,
+                  inactiveThumbColor: Colors.grey,
+                  activeThumbColor: Colors.white,
+                  onChanged: (val) => setState(() => _showMyTasksOnly = val),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
+  Widget _buildDragTargetSection({
+    required String title,
+    required Color color,
+    required List<Task> tasks,
+    required String statusId,
+    required IconData icon,
+    required AppLocalizations l10n,
+  }) {
     return DragTarget<Task>(
-      // Sürüklenen veri geldiğinde kabul et
       onWillAcceptWithDetails: (details) => true,
-
-      // HATA ÇÖZÜMÜ BURADA: onAcceptWithDetails kullanıyoruz
       onAcceptWithDetails: (details) {
-        // details.data bize asıl Task objesini verir
         final task = details.data;
-        service.updateTaskStatus(task.id!, statusId);
+        if (task.status != statusId ||
+            (statusId == 'done' && !task.isCompleted)) {
+          _service.updateTaskStatus(task.id!, statusId);
+          String actionCode = 'status_change';
+          if (statusId == 'in_progress') {
+            actionCode = 'moved_to_progress';
+          } else if (statusId == 'done') {
+            actionCode = 'task_completed';
+          } else if (statusId == 'todo') {
+            actionCode = 'moved_to_todo';
+          }
+          _service.logTeamActivity(widget.team.id, actionCode, task.title);
+        }
       },
       builder: (context, candidateData, rejectedData) {
+        final isHovered = candidateData.isNotEmpty;
         return Container(
-          width: width,
+          margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFF161616),
-            borderRadius: BorderRadius.circular(20),
+            color: isHovered
+                ? color.withValues(alpha: 0.1)
+                : const Color(0xFF1E1E1E),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-                color: candidateData.isNotEmpty
-                    ? color
-                    : Colors.white10, // Sürüklerken parlar
-                width: candidateData.isNotEmpty ? 2 : 1),
+              color: isHovered ? color : Colors.white10,
+              width: isHovered ? 2 : 1,
+            ),
           ),
           child: Column(
             children: [
-              // Başlık Alanı
               Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(20)),
+                      const BorderRadius.vertical(top: Radius.circular(15)),
                 ),
                 child: Row(
                   children: [
-                    Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                            color: color, shape: BoxShape.circle)),
-                    const SizedBox(width: 10),
+                    Icon(icon, size: 16, color: color),
+                    const SizedBox(width: 8),
                     Text(title,
                         style: GoogleFonts.poppins(
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            fontSize: 16)),
+                            color: color,
+                            fontSize: 14)),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                          color: Colors.black45,
+                          color: Colors.black26,
                           borderRadius: BorderRadius.circular(8)),
                       child: Text("${tasks.length}",
                           style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
+                              color: Colors.white, fontSize: 11)),
                     )
                   ],
                 ),
               ),
-
-              // Kart Listesi
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: tasks.length,
-                  itemBuilder: (ctx, i) =>
-                      _buildDraggableCard(context, tasks[i], color),
-                ),
+                child: tasks.isEmpty
+                    ? Center(
+                        child: Text(
+                          l10n.empty,
+                          style: GoogleFonts.poppins(
+                              color: Colors.white24, fontSize: 12),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(8),
+                        itemCount: tasks.length,
+                        itemBuilder: (ctx, i) =>
+                            _buildDraggableCard(context, tasks[i], color),
+                      ),
               ),
             ],
           ),
@@ -150,24 +268,35 @@ class TeamKanbanTab extends StatelessWidget {
 
   Widget _buildDraggableCard(
       BuildContext context, Task task, Color accentColor) {
+    // Mobilde tam genişlik, masaüstünde biraz daha dar olabilir ama Column içinde olduğu için
+    // parent genişliğini alacaktır. Bu yüzden width ayarı çok kritik değil.
     return LongPressDraggable<Task>(
       data: task,
       feedback: Transform.rotate(
         angle: 0.05,
         child: SizedBox(
-          width: 280, // Sürüklenirken görünen genişlik
+          width: 300,
           child: Opacity(
             opacity: 0.9,
             child: Card(
-              // Sürüklenirken daha basit bir görünüm
-              color: const Color(0xFF252525),
+              color: const Color(0xFF2C2C2C),
+              elevation: 10,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(12)),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Text(task.title,
-                    style: const TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.drag_indicator, color: Colors.white54),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(task.title,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -196,65 +325,40 @@ class _TaskCard extends StatelessWidget {
             MaterialPageRoute(builder: (_) => TaskDetailScreen(task: task)));
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-          boxShadow: const [
-            BoxShadow(
-                color: Colors.black54, blurRadius: 4, offset: Offset(0, 2))
-          ],
+          color: const Color(0xFF2C2C2C),
+          borderRadius: BorderRadius.circular(12),
+          border: Border(left: BorderSide(color: accentColor, width: 4)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ETIKETLER
-            if (task.tags.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Wrap(
-                  spacing: 4,
-                  children: task.tags
-                      .take(2)
-                      .map((t) => Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: accentColor.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4)),
-                            child: Text(t,
-                                style: TextStyle(
-                                    color: accentColor,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold)),
-                          ))
-                      .toList(),
-                ),
-              ),
-
-            Text(task.title,
-                style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15)),
-
-            const SizedBox(height: 12),
-
-            // ALT BİLGİLER: AVATAR STACK
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // AVATAR STACK (Birden fazla kişi)
+                Expanded(
+                  child: Text(task.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14)),
+                ),
+                if (task.priority == 2)
+                  const Icon(Icons.priority_high,
+                      color: Colors.redAccent, size: 14)
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 _AvatarStack(userIds: task.assignedTo),
-
-                Row(children: [
-                  const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(DateFormat('dd MMM').format(task.startTime),
-                      style: const TextStyle(fontSize: 12, color: Colors.grey))
-                ]),
+                Text(DateFormat('d MMM').format(task.startTime),
+                    style: const TextStyle(fontSize: 10, color: Colors.grey)),
               ],
             )
           ],
@@ -264,33 +368,32 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
-// Birden fazla kişiyi gösteren Avatar Stack
 class _AvatarStack extends StatelessWidget {
   final List<String> userIds;
   const _AvatarStack({required this.userIds});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (userIds.isEmpty) {
-      return const Text("Atanmadı",
-          style: TextStyle(color: Colors.grey, fontSize: 12));
+      return Text(l10n.unassigned,
+          style: const TextStyle(color: Colors.grey, fontSize: 10));
     }
 
     return SizedBox(
-      height: 24,
-      width: 20.0 * userIds.length + 10,
+      height: 20,
+      width: 15.0 * userIds.length + 10,
       child: Stack(
         children: userIds.asMap().entries.map((entry) {
           final index = entry.key;
           final uid = entry.value;
 
           return Positioned(
-            left: index * 15.0,
+            left: index * 12.0,
             child: FutureBuilder<DocumentSnapshot>(
               future:
                   FirebaseFirestore.instance.collection('users').doc(uid).get(),
               builder: (context, snapshot) {
-                // Basit bir placeholder veya gerçek resim
                 String letter = "?";
                 String? photoUrl;
                 if (snapshot.hasData && snapshot.data!.exists) {
@@ -299,7 +402,7 @@ class _AvatarStack extends StatelessWidget {
                   photoUrl = data['photoUrl'];
                 }
                 return CircleAvatar(
-                  radius: 12,
+                  radius: 10,
                   backgroundColor:
                       Colors.primaries[index % Colors.primaries.length],
                   backgroundImage:
@@ -307,7 +410,7 @@ class _AvatarStack extends StatelessWidget {
                   child: photoUrl == null
                       ? Text(letter,
                           style: const TextStyle(
-                              fontSize: 10,
+                              fontSize: 9,
                               color: Colors.white,
                               fontWeight: FontWeight.bold))
                       : null,
@@ -318,12 +421,5 @@ class _AvatarStack extends StatelessWidget {
         }).toList(),
       ),
     );
-  }
-}
-
-// Model Yaması
-extension TaskStatus on Task {
-  String? get status {
-    return null;
   }
 }

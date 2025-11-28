@@ -40,22 +40,13 @@ class _TeamScreenState extends State<TeamScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (controller.text.trim().isEmpty) {
-                return;
-              }
-
+              if (controller.text.trim().isEmpty) return;
               try {
                 final String code =
                     await _service.createTeam(controller.text.trim());
-
-                if (!ctx.mounted) {
-                  return;
-                }
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
-
-                if (!mounted) {
-                  return;
-                }
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l10n.teamCreated(code)),
                     backgroundColor: Colors.green));
@@ -96,22 +87,13 @@ class _TeamScreenState extends State<TeamScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (controller.text.trim().isEmpty) {
-                return;
-              }
-
+              if (controller.text.trim().isEmpty) return;
               try {
                 final bool success =
                     await _service.joinTeam(controller.text.trim());
-
-                if (!ctx.mounted) {
-                  return;
-                }
+                if (!ctx.mounted) return;
                 Navigator.pop(ctx);
-
-                if (!mounted) {
-                  return;
-                }
+                if (!mounted) return;
 
                 if (success) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -139,6 +121,9 @@ class _TeamScreenState extends State<TeamScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    // Responsive: Genişliğe göre kolon sayısı belirle
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width > 1100 ? 3 : (width > 700 ? 2 : 1);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -154,7 +139,6 @@ class _TeamScreenState extends State<TeamScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
             return Center(
                 child: Text("Hata: ${snapshot.error}",
@@ -186,51 +170,91 @@ class _TeamScreenState extends State<TeamScreen> {
             );
           }
 
-          return ListView.builder(
-            itemCount: teams.length,
-            padding: const EdgeInsets.all(16),
-            itemBuilder: (context, index) {
-              final team = teams[index];
-              return Card(
-                color: Colors.grey.shade900,
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                      backgroundColor: Colors.purple,
-                      child: Text(
-                          team.name.isNotEmpty
-                              ? team.name[0].toUpperCase()
-                              : "?",
-                          style: const TextStyle(color: Colors.white))),
-                  title: Text(team.name,
-                      style: GoogleFonts.poppins(
-                          color: Colors.white, fontWeight: FontWeight.bold)),
-                  subtitle: Text(
-                      "${team.memberIds.length} ${l10n.members} • ${team.joinCode}",
-                      style: GoogleFonts.poppins(color: Colors.grey)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.copy, color: Colors.white54),
-                    tooltip: l10n.copyCode,
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: team.joinCode));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text("${l10n.joinCode} kopyalandı!")));
-                    },
-                  ),
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => TeamAddEditScreen(team: team)));
-                  },
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 3.5, // Kartların yatay/dikey oranı
                 ),
-              );
-            },
+                itemCount: teams.length,
+                itemBuilder: (context, index) {
+                  final team = teams[index];
+                  return Card(
+                    color: Colors.grey.shade900,
+                    margin: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.05))),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => TeamAddEditScreen(team: team)));
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                                backgroundColor: Colors.purple,
+                                child: Text(
+                                    team.name.isNotEmpty
+                                        ? team.name[0].toUpperCase()
+                                        : "?",
+                                    style:
+                                        const TextStyle(color: Colors.white))),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(team.name,
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16)),
+                                  Text(
+                                      "${team.memberIds.length} ${l10n.members}",
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.grey, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.copy, color: Colors.white54),
+                              tooltip: l10n.copyCode,
+                              onPressed: () {
+                                Clipboard.setData(
+                                    ClipboardData(text: team.joinCode));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            "${l10n.joinCode} kopyalandı!")));
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        heroTag: 'team_create_btn', // <--- DÜZELTME BURADA
+        heroTag: 'team_create_btn',
         backgroundColor: Colors.purple,
         onPressed: _showCreateTeamDialog,
         child: const Icon(Icons.add, color: Colors.white),

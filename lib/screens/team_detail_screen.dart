@@ -5,6 +5,7 @@ import 'team_kanban_tab.dart';
 import 'team_dashboard_tab.dart';
 import 'team_resources_tab.dart';
 import 'team_activity_tab.dart';
+import '../l10n/app_localizations.dart'; // EKLENDİ
 
 class TeamDetailScreen extends StatefulWidget {
   final Team team;
@@ -28,16 +29,22 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Sekmeler Listesi
+    final l10n = AppLocalizations.of(context)!; // EKLENDİ
+
     final List<Widget> tabs = [
-      TeamKanbanTab(team: widget.team), // 0
-      TeamDashboardTab(team: widget.team), // 1
-      TeamResourcesTab(team: widget.team), // 2
-      TeamActivityTab(team: widget.team), // 3
+      TeamKanbanTab(team: widget.team),
+      TeamDashboardTab(team: widget.team),
+      TeamResourcesTab(team: widget.team),
+      TeamActivityTab(team: widget.team),
     ];
 
-    // Başlıklar
-    final List<String> titles = ["İş Panosu", "Pano", "Kaynaklar", "Aktivite"];
+    // DİL DESTEKLİ BAŞLIKLAR
+    final List<String> titles = [
+      l10n.tabKanbanTitle,
+      l10n.tabDashboardTitle,
+      l10n.tabResourcesTitle,
+      l10n.tabActivityTitle
+    ];
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -58,9 +65,6 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                     fontSize: 12, color: Colors.tealAccent)),
           ],
         ),
-        actions: const [
-          // Ayarlar butonu KALDIRILDI
-        ],
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -83,23 +87,23 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           backgroundColor: const Color(0xFF151515),
           selectedIndex: _currentIndex,
           onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-          destinations: const [
+          destinations: [
             NavigationDestination(
-                icon: Icon(Icons.view_kanban_outlined),
-                selectedIcon: Icon(Icons.view_kanban),
-                label: "İşler"),
+                icon: const Icon(Icons.view_kanban_outlined),
+                selectedIcon: const Icon(Icons.view_kanban),
+                label: l10n.tabKanbanTitle), // DİL DESTEĞİ
             NavigationDestination(
-                icon: Icon(Icons.bar_chart_rounded),
-                selectedIcon: Icon(Icons.dashboard),
-                label: "Pano"),
+                icon: const Icon(Icons.bar_chart_rounded),
+                selectedIcon: const Icon(Icons.dashboard),
+                label: l10n.tabDashboardTitle), // DİL DESTEĞİ
             NavigationDestination(
-                icon: Icon(Icons.folder_open_rounded),
-                selectedIcon: Icon(Icons.folder),
-                label: "Kaynak"),
+                icon: const Icon(Icons.folder_open_rounded),
+                selectedIcon: const Icon(Icons.folder),
+                label: l10n.tabResourcesTitle), // DİL DESTEĞİ
             NavigationDestination(
-                icon: Icon(Icons.history_rounded),
-                selectedIcon: Icon(Icons.history),
-                label: "Aktivite"),
+                icon: const Icon(Icons.history_rounded),
+                selectedIcon: const Icon(Icons.history),
+                label: l10n.tabActivityTitle), // DİL DESTEĞİ
           ],
         ),
       ),

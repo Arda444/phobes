@@ -4,19 +4,20 @@ import 'package:intl/intl.dart';
 import '../services/firebase_service.dart';
 import '../models/activity_log_model.dart';
 import '../models/team_model.dart';
+import '../l10n/app_localizations.dart';
 
 class TeamActivityTab extends StatelessWidget {
-  final Team team; // Artık ID değil, obje alıyor
+  final Team team;
   const TeamActivityTab({super.key, required this.team});
 
   @override
   Widget build(BuildContext context) {
     final FirebaseService service = FirebaseService();
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       body: StreamBuilder<List<ActivityLog>>(
-        // team.id üzerinden sorgu yapılıyor
         stream: service.getTeamActivityLogs(team.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -25,25 +26,30 @@ class TeamActivityTab extends StatelessWidget {
           final logs = snapshot.data ?? [];
 
           if (logs.isEmpty) {
-            return const Center(
-                child: Text("Henüz bir hareket yok.",
-                    style: TextStyle(color: Colors.grey)));
+            return Center(
+                child: Text(l10n.noData,
+                    style: const TextStyle(color: Colors.grey)));
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: logs.length,
-            itemBuilder: (context, index) {
-              final log = logs[index];
-              return _buildActivityItem(log);
-            },
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: logs.length,
+                itemBuilder: (context, index) {
+                  final log = logs[index];
+                  return _buildActivityItem(log, l10n);
+                },
+              ),
+            ),
           );
         },
       ),
     );
   }
 
-  Widget _buildActivityItem(ActivityLog log) {
+  Widget _buildActivityItem(ActivityLog log, AppLocalizations l10n) {
     IconData icon;
     Color color;
     String actionText;
@@ -52,27 +58,37 @@ class TeamActivityTab extends StatelessWidget {
       case 'task_created':
         icon = Icons.add_circle_outline;
         color = Colors.blue;
-        actionText = "görev oluşturdu";
+        actionText = l10n.actTaskCreated;
         break;
       case 'task_completed':
         icon = Icons.check_circle_outline;
         color = Colors.green;
-        actionText = "tamamladı";
+        actionText = l10n.actFinished;
+        break;
+      case 'moved_to_progress':
+        icon = Icons.run_circle_outlined;
+        color = Colors.orangeAccent;
+        actionText = l10n.actMovedToProgress;
+        break;
+      case 'moved_to_todo':
+        icon = Icons.replay_rounded;
+        color = Colors.grey;
+        actionText = l10n.actMovedToTodo;
         break;
       case 'member_joined':
         icon = Icons.person_add_alt;
         color = Colors.purple;
-        actionText = "ekibe katıldı";
+        actionText = l10n.actMemberJoined;
         break;
       case 'added_link':
         icon = Icons.link;
-        color = Colors.orange;
-        actionText = "kaynak ekledi";
+        color = Colors.teal;
+        actionText = l10n.actTaskCreated;
         break;
       default:
         icon = Icons.info_outline;
         color = Colors.grey;
-        actionText = "işlem yaptı";
+        actionText = "...";
     }
 
     return Padding(
@@ -109,7 +125,7 @@ class TeamActivityTab extends StatelessWidget {
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Colors.white)),
-                      TextSpan(text: " $actionText "),
+                      TextSpan(text: " $actionText: "),
                       TextSpan(
                           text: log.details,
                           style: TextStyle(

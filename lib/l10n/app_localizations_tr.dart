@@ -858,4 +858,82 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get movePrev => 'Geri Al';
+
+  @override
+  String get filterMyTasks => 'Sadece Benim Görevlerim';
+
+  @override
+  String get filterAllTeamTasks => 'Tüm Ekip Görevleri';
+
+  @override
+  String get empty => 'Boş';
+
+  @override
+  String get unassigned => 'Atanmadı';
+
+  @override
+  String get pending => 'Bekleyen';
+
+  @override
+  String get urgent => 'Acil';
+
+  @override
+  String get taskStatus => 'Görev Durumu';
+
+  @override
+  String get completed => 'Tamamlandı';
+
+  @override
+  String get noCompletedTasksYet => 'Henüz tamamlanan görev yok.';
+
+  @override
+  String get taskCount => 'Görev';
+
+  @override
+  String get actMovedToProgress => 'göreve başladı';
+
+  @override
+  String get actMovedToTodo => 'görevi başa aldı';
+
+  @override
+  String get actFinished => 'görevi bitirdi';
+
+  @override
+  String get addLinkTitle => 'Link Ekle';
+
+  @override
+  String get linkTitleHint => 'Başlık';
+
+  @override
+  String get linkUrlHint => 'Link (https://...)';
+
+  @override
+  String get publish => 'Yayınla';
+
+  @override
+  String get makeAnnouncement => 'Duyuru Yap';
+
+  @override
+  String get announcementHint => 'Mesajınız...';
+
+  @override
+  String get noAnnouncements => 'Henüz duyuru yok.';
+
+  @override
+  String get resourcesTitle => 'Kaynaklar';
+
+  @override
+  String get noResourcesYet => 'Henüz kaynak eklenmedi.';
+
+  @override
+  String get tabKanbanTitle => 'İş Panosu';
+
+  @override
+  String get tabDashboardTitle => 'Pano';
+
+  @override
+  String get tabResourcesTitle => 'Kaynaklar';
+
+  @override
+  String get tabActivityTitle => 'Aktivite';
 }

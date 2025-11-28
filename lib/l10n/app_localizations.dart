@@ -1723,6 +1723,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Move Back'**
   String get movePrev;
+
+  /// No description provided for @filterMyTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'My Tasks Only'**
+  String get filterMyTasks;
+
+  /// No description provided for @filterAllTeamTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'All Team Tasks'**
+  String get filterAllTeamTasks;
+
+  /// No description provided for @empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty'**
+  String get empty;
+
+  /// No description provided for @unassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unassigned'**
+  String get unassigned;
+
+  /// No description provided for @pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// No description provided for @urgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgent'**
+  String get urgent;
+
+  /// No description provided for @taskStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Task Status'**
+  String get taskStatus;
+
+  /// No description provided for @completed.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completed;
+
+  /// No description provided for @noCompletedTasksYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed tasks yet.'**
+  String get noCompletedTasksYet;
+
+  /// No description provided for @taskCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get taskCount;
+
+  /// No description provided for @actMovedToProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'started task'**
+  String get actMovedToProgress;
+
+  /// No description provided for @actMovedToTodo.
+  ///
+  /// In en, this message translates to:
+  /// **'moved task back'**
+  String get actMovedToTodo;
+
+  /// No description provided for @actFinished.
+  ///
+  /// In en, this message translates to:
+  /// **'finished task'**
+  String get actFinished;
+
+  /// No description provided for @addLinkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Link'**
+  String get addLinkTitle;
+
+  /// No description provided for @linkTitleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get linkTitleHint;
+
+  /// No description provided for @linkUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Link (https://...)'**
+  String get linkUrlHint;
+
+  /// No description provided for @publish.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish'**
+  String get publish;
+
+  /// No description provided for @makeAnnouncement.
+  ///
+  /// In en, this message translates to:
+  /// **'Make Announcement'**
+  String get makeAnnouncement;
+
+  /// No description provided for @announcementHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your message...'**
+  String get announcementHint;
+
+  /// No description provided for @noAnnouncements.
+  ///
+  /// In en, this message translates to:
+  /// **'No announcements yet.'**
+  String get noAnnouncements;
+
+  /// No description provided for @resourcesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources'**
+  String get resourcesTitle;
+
+  /// No description provided for @noResourcesYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No resources added yet.'**
+  String get noResourcesYet;
+
+  /// No description provided for @tabKanbanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kanban'**
+  String get tabKanbanTitle;
+
+  /// No description provided for @tabDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Dashboard'**
+  String get tabDashboardTitle;
+
+  /// No description provided for @tabResourcesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resources'**
+  String get tabResourcesTitle;
+
+  /// No description provided for @tabActivityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get tabActivityTitle;
 }
 
 class _AppLocalizationsDelegate
