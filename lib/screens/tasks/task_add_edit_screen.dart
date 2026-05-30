@@ -827,7 +827,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
   Widget _buildReminderSelector(AppLocalizations l10n) {
     final cs = Theme.of(context).colorScheme;
     return DropdownButtonFormField<int>(
-      initialValue: _reminderMinutes,
+      value: _reminderMinutes,
       dropdownColor: cs.surfaceContainerHigh,
       icon: Icon(Icons.keyboard_arrow_down_rounded,
           color: cs.onSurface.withValues(alpha: 0.4),),
