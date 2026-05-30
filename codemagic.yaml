@@ -41,19 +41,44 @@ workflows:
       - name: Build unsigned IPA
         script: |
           set -e
-          if ! flutter build ios --release --no-codesign; then
-            echo "Release build failed, retrying with debug configuration..."
-            flutter build ios --debug --no-codesign
-          fi
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=-
+
+          echo "Building debug IPA for sideloading (no Apple Developer account)..."
+          set +e
+          flutter build ios --debug --no-codesign
+          BUILD_STATUS=$?
+          set -e
+
           APP_PATH="build/ios/iphoneos/Runner.app"
-          if [ ! -d "$APP_PATH" ]; then
-            APP_PATH="$(find build -name 'Runner.app' -type d | head -1)"
+          if [ $BUILD_STATUS -ne 0 ] || [ ! -d "$APP_PATH" ]; then
+            echo "Flutter debug build failed or app missing; trying xcodebuild directly..."
+            flutter build ios --config-only --debug --no-codesign
+            cd ios
+            xcodebuild \
+              -workspace Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Debug \
+              -destination 'generic/platform=iOS' \
+              -derivedDataPath "$CM_BUILD_DIR/build/ios_derived" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY=- \
+              DEVELOPMENT_TEAM= \
+              PROVISIONING_PROFILE_SPECIFIER= \
+              build
+            cd "$CM_BUILD_DIR"
+            APP_PATH="$(find build/ios_derived -path '*/Build/Products/Debug-iphoneos/Runner.app' -type d | head -1)"
           fi
+
           if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "Runner.app not found after iOS build"
-            find build -maxdepth 4 -type d 2>/dev/null || true
+            find build -maxdepth 6 -type d 2>/dev/null || true
             exit 1
           fi
+
+          echo "Packaging $APP_PATH"
           mkdir -p build/ios/ipa/Payload
           cp -R "$APP_PATH" build/ios/ipa/Payload/Runner.app
           cd build/ios/ipa
