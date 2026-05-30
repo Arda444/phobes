@@ -58,12 +58,17 @@ class Task {
   final DateTime? completionTime;
   final int postponeCount;
   final String repeatRule;
+  /// Shared ID for all tasks in the same recurring series (null = not recurring).
+  final String? recurrenceGroupId;
 
   final String? groupId;
+  /// Parent team when [groupId] is a project id or team id.
+  final String? teamId;
   final List<String> assignedTo;
   final String? createdBy;
   final String status;
   final List<SubTask> subtasks;
+  final List<String> linkedNoteIds;
 
   Task({
     this.id,
@@ -83,11 +88,14 @@ class Task {
     this.completionTime,
     this.postponeCount = 0,
     this.repeatRule = 'none',
+    this.recurrenceGroupId,
     this.groupId,
+    this.teamId,
     this.assignedTo = const [],
     this.createdBy,
     this.status = 'todo',
     this.subtasks = const [],
+    this.linkedNoteIds = const [],
   });
 
   Task copyWith({
@@ -108,11 +116,16 @@ class Task {
     DateTime? completionTime,
     int? postponeCount,
     String? repeatRule,
+    String? recurrenceGroupId,
+    bool clearRecurrenceGroupId = false,
     String? groupId,
+    String? teamId,
+    bool clearTeamId = false,
     List<String>? assignedTo,
     String? createdBy,
     String? status,
     List<SubTask>? subtasks,
+    List<String>? linkedNoteIds,
   }) {
     return Task(
       id: id ?? this.id,
@@ -132,11 +145,16 @@ class Task {
       completionTime: completionTime ?? this.completionTime,
       postponeCount: postponeCount ?? this.postponeCount,
       repeatRule: repeatRule ?? this.repeatRule,
+      recurrenceGroupId: clearRecurrenceGroupId
+          ? null
+          : (recurrenceGroupId ?? this.recurrenceGroupId),
       groupId: groupId ?? this.groupId,
+      teamId: clearTeamId ? null : (teamId ?? this.teamId),
       assignedTo: assignedTo ?? this.assignedTo,
       createdBy: createdBy ?? this.createdBy,
       status: status ?? this.status,
       subtasks: subtasks ?? this.subtasks,
+      linkedNoteIds: linkedNoteIds ?? this.linkedNoteIds,
     );
   }
 
@@ -159,31 +177,38 @@ class Task {
           completionTime != null ? Timestamp.fromDate(completionTime!) : null,
       'postponeCount': postponeCount,
       'repeatRule': repeatRule,
+      if (recurrenceGroupId != null) 'recurrenceGroupId': recurrenceGroupId,
       'groupId': groupId,
+      if (teamId != null) 'teamId': teamId,
       'assignedTo': assignedTo,
       'createdBy': createdBy,
       'status': status,
       'subtasks': subtasks.map((st) => st.toMap()).toList(),
+      'linkedNoteIds': linkedNoteIds,
     };
   }
 
-  factory Task.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory Task.fromFirestore(DocumentSnapshot doc) =>
+      Task.fromDocData(doc.id, doc.data());
+
+  /// Parses Firestore document fields without requiring a [DocumentSnapshot].
+  factory Task.fromDocData(String id, Object? raw) {
+    final data = raw is Map<String, dynamic> ? raw : <String, dynamic>{};
 
     List<String> assignedList = [];
     if (data['assignedTo'] is String) {
-      assignedList = [data['assignedTo']];
+      assignedList = [data['assignedTo'] as String];
     } else if (data['assignedTo'] is List) {
-      assignedList = List<String>.from(data['assignedTo']);
+      assignedList = (data['assignedTo'] as List).whereType<String>().toList();
     }
 
     return Task(
-      id: doc.id,
+      id: id,
       userId: data['userId'] ?? '',
       title: data['title'] ?? '',
       description: data['description'] ?? '',
-      startTime: (data['startTime'] as Timestamp).toDate(),
-      endTime: (data['endTime'] as Timestamp).toDate(),
+      startTime: data['startTime'] is Timestamp ? (data['startTime'] as Timestamp).toDate() : DateTime.now(),
+      endTime: data['endTime'] is Timestamp ? (data['endTime'] as Timestamp).toDate() : DateTime.now(),
       location: data['location'] ?? '',
       url: data['url'] ?? '',
       tags: List<String>.from(data['tags'] ?? []),
@@ -192,19 +217,25 @@ class Task {
       priority: data['priority'] ?? 1,
       reminderMinutes: data['reminderMinutes'] ?? -1,
       isCompleted: data['isCompleted'] ?? false,
-      completionTime: data['completionTime'] != null
+      completionTime: data['completionTime'] is Timestamp
           ? (data['completionTime'] as Timestamp).toDate()
           : null,
       postponeCount: data['postponeCount'] ?? 0,
       repeatRule: data['repeatRule'] ?? 'none',
-      groupId: data['groupId'],
+      recurrenceGroupId: data['recurrenceGroupId'],
+      groupId: data['groupId'] as String?,
+      teamId: data['teamId'] as String?,
       assignedTo: assignedList,
       createdBy: data['createdBy'],
       status: data['status'] ?? 'todo',
-      subtasks: data['subtasks'] != null
+      subtasks: data['subtasks'] is List
           ? (data['subtasks'] as List)
-              .map((map) => SubTask.fromMap(map as Map<String, dynamic>))
+              .whereType<Map>()
+              .map((map) => SubTask.fromMap(Map<String, dynamic>.from(map)))
               .toList()
+          : [],
+      linkedNoteIds: data['linkedNoteIds'] != null
+          ? List<String>.from(data['linkedNoteIds'])
           : [],
     );
   }

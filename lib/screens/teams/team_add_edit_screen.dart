@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -22,13 +22,15 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
   bool _isAdmin = false;
   bool _isLoading = false;
 
-  String _displayTeamName = "";
+  String _displayTeamName = '';
+  int _selectedColor = 0xFF6366F1;
   List<Map<String, dynamic>> _membersData = [];
 
   @override
   void initState() {
     super.initState();
     _displayTeamName = widget.team.name;
+    _selectedColor = widget.team.color;
     final String? userId = _service.currentUserId;
     if (userId != null) {
       _isOwner = userId == widget.team.ownerId;
@@ -40,51 +42,112 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
   Future<void> _loadMembers() async {
     if (widget.team.memberIds.isEmpty) return;
     try {
-      final members = await _service.getUsersByIds(widget.team.memberIds);
+      final members = await _service.getUsersByIds(
+        widget.team.memberIds,
+        teamId: widget.team.id,
+      );
       if (mounted) setState(() => _membersData = members);
     } catch (e) {
-      debugPrint("Üye hatası: $e");
+      debugPrint('Üye hatası: $e');
     }
   }
 
-  void _showEditNameDialog() {
+  void _showEditInfoDialog() {
     final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController(text: _displayTeamName);
+    int tempColor = _selectedColor;
+    final colors = [
+      0xFF6366F1,
+      0xFF3B82F6,
+      0xFF10B981,
+      0xFFF59E0B,
+      0xFFEF4444,
+      0xFF8B5CF6,
+      0xFFEC4899,
+      0xFF06B6D4,
+    ];
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
-        title: Text(l10n.editInfo, style: const TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: l10n.teamName,
-            hintStyle: const TextStyle(color: Colors.grey),
-            enabledBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.purple)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: Colors.grey.shade900,
+          title:
+              Text(l10n.editInfo, style: const TextStyle(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: l10n.teamName,
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  enabledBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.purple),),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(l10n.teamColorLabel,
+                  style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,),),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 40,
+                width: 300,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: colors.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (ctx, index) {
+                    final c = colors[index];
+                    final isSelected = tempColor == c;
+                    return GestureDetector(
+                      onTap: () => setDialogState(() => tempColor = c),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Color(c),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: isSelected ? Colors.white : Colors.transparent,
+                              width: 2,),
+                        ),
+                        child: isSelected
+                            ? const Icon(Icons.check, size: 16, color: Colors.white)
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel),),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
+              onPressed: () async {
+                if (controller.text.trim().isNotEmpty) {
+                  await _updateTeamInfo(controller.text.trim(), tempColor);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                }
+              },
+              child:
+                  Text(l10n.save, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                await _updateTeamName(controller.text.trim());
-                if (ctx.mounted) Navigator.pop(ctx);
-              }
-            },
-            child: Text(l10n.save, style: const TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
-  Future<void> _updateTeamName(String newName) async {
+  Future<void> _updateTeamInfo(String newName, int newColor) async {
     setState(() => _isLoading = true);
     try {
       final updatedTeam = Team(
@@ -94,6 +157,7 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
         memberIds: widget.team.memberIds,
         adminIds: widget.team.adminIds,
         joinCode: widget.team.joinCode,
+        color: newColor,
         createdAt: widget.team.createdAt,
       );
 
@@ -102,21 +166,23 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
       if (mounted) {
         setState(() {
           _displayTeamName = newName;
+          _selectedColor = newColor;
           _isLoading = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context)!.infoUpdated)));
+            SnackBar(content: Text(AppLocalizations.of(context)!.infoUpdated)),);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Hata: $e")));
+            .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorGeneric(e.toString()))));
       }
     }
   }
 
   void _showMemberMenu(Map<String, dynamic> member) {
+    final l10n = AppLocalizations.of(context)!;
     final String mId = member['id'];
     if (mId == widget.team.ownerId) return;
 
@@ -131,9 +197,9 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                     leading: const Icon(Icons.security, color: Colors.blue),
                     title: Text(
                         widget.team.adminIds.contains(mId)
-                            ? "Yöneticiliği Al"
-                            : "Yönetici Yap",
-                        style: const TextStyle(color: Colors.white)),
+                            ? l10n.teamRevokeAdmin
+                            : l10n.teamMakeAdmin,
+                        style: const TextStyle(color: Colors.white),),
                     onTap: () async {
                       Navigator.pop(ctx);
                       setState(() => _isLoading = true);
@@ -146,40 +212,41 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                       if (mounted) {
                         setState(() => _isLoading = false);
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                                 content: Text(
-                                    "Yetki güncellendi (Sayfayı yenileyin)")));
+                                    l10n.teamRoleUpdatedRefresh,),),);
                       }
-                    }),
+                    },),
               ListTile(
                   leading: const Icon(Icons.person_remove, color: Colors.red),
-                  title: const Text("Ekipten Çıkar",
-                      style: TextStyle(color: Colors.white)),
+                  title: Text(l10n.teamRemoveFromTeam,
+                      style: const TextStyle(color: Colors.white),),
                   onTap: () async {
                     Navigator.pop(ctx);
                     await _kickMemberConfirm(
-                        mId, "${member['name']} ${member['surname']}");
-                  })
-            ]));
+                        mId, "${member['name']} ${member['surname']}",);
+                  },),
+            ],),);
   }
 
   Future<void> _kickMemberConfirm(String memberId, String memberName) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.grey.shade900,
-        title: const Text("Üyeyi Çıkar", style: TextStyle(color: Colors.white)),
+        title: Text(l10n.teamRemoveMemberTitle, style: const TextStyle(color: Colors.white)),
         content: Text(
-            "Bu üyeyi ($memberName) ekipten çıkarmak istediğinize emin misiniz?",
-            style: const TextStyle(color: Colors.white70)),
+            l10n.teamRemoveMemberConfirm(memberName),
+            style: const TextStyle(color: Colors.white70),),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text("İptal")),
+              child: Text(AppLocalizations.of(context)!.cancel),),
           ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text("Çıkar")),
+              child: Text(l10n.teamRemoveButton),),
         ],
       ),
     );
@@ -193,7 +260,7 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
           _isLoading = false;
         });
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("Üye çıkarıldı")));
+            .showSnackBar(SnackBar(content: Text(l10n.teamMemberRemoved)));
       }
     }
   }
@@ -204,23 +271,23 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.grey.shade900,
-        title: Text(_isOwner ? l10n.delete : "Ekipten Ayrıl",
-            style: const TextStyle(color: Colors.white)),
+        title: Text(_isOwner ? l10n.delete : l10n.teamLeaveTeam,
+            style: const TextStyle(color: Colors.white),),
         content: Text(
           _isOwner
               ? l10n.clearAllDataWarning
-              : "Bu ekipten ayrılmak istediğine emin misin?",
+              : l10n.teamLeaveConfirm,
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.cancel)),
+              child: Text(l10n.cancel),),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(_isOwner ? l10n.delete : "Ayrıl",
-                style: const TextStyle(color: Colors.white)),
+            child: Text(_isOwner ? l10n.delete : l10n.teamLeaveButton,
+                style: const TextStyle(color: Colors.white),),
           ),
         ],
       ),
@@ -238,7 +305,7 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text("Hata: $e")));
+              .showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorGeneric(e.toString()))));
         }
       } finally {
         if (mounted) setState(() => _isLoading = false);
@@ -259,11 +326,11 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
         trailing: canEdit
             ? PhobesIconButton(
                 icon: Icons.edit,
-                onTap: _showEditNameDialog,
+                onTap: _showEditInfoDialog,
                 backgroundColor: Theme.of(context)
                     .colorScheme
                     .surface
-                    .withValues(alpha: 0.5),
+                    .withOpacity(0.5),
               )
             : null,
       ),
@@ -284,7 +351,7 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                           Theme.of(context)
                               .colorScheme
                               .primary
-                              .withValues(alpha: 0.7),
+                              .withOpacity(0.7),
                         ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
@@ -295,9 +362,9 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                             color: Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withValues(alpha: 0.3),
+                                .withOpacity(0.3),
                             blurRadius: 20,
-                            offset: const Offset(0, 10))
+                            offset: const Offset(0, 10),),
                       ],
                     ),
                     child: Column(
@@ -311,15 +378,15 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                           child: CircleAvatar(
                             radius: 40,
                             backgroundColor:
-                                Colors.white.withValues(alpha: 0.2),
+                                Colors.white.withOpacity(0.2),
                             child: Text(
                               _displayTeamName.isNotEmpty
                                   ? _displayTeamName[0].toUpperCase()
-                                  : "?",
+                                  : '?',
                               style: GoogleFonts.outfit(
                                   fontSize: 32,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white),
+                                  color: Color(_selectedColor),),
                             ),
                           ),
                         ),
@@ -329,23 +396,24 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                           style: GoogleFonts.outfit(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white),
+                              color: Colors.white,),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 12),
                         InkWell(
                           onTap: () {
                             Clipboard.setData(
-                                ClipboardData(text: widget.team.joinCode));
+                                ClipboardData(text: widget.team.joinCode),);
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text("${l10n.joinCode} kopyalandı!")));
+                                content: Text(l10n.teamJoinCodeCopied(
+                                    widget.team.joinCode),),),);
                           },
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                                horizontal: 16, vertical: 8,),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
+                              color: Colors.white.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: Colors.white10),
                             ),
@@ -357,10 +425,10 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                                         color: Colors.white70,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
-                                        letterSpacing: 1.5)),
+                                        letterSpacing: 1.5,),),
                                 const SizedBox(width: 10),
                                 const Icon(Icons.copy_rounded,
-                                    color: Colors.white70, size: 16),
+                                    color: Colors.white70, size: 16,),
                               ],
                             ),
                           ),
@@ -371,36 +439,36 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                   const SizedBox(height: 32),
                   PhobesCard(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
+                        horizontal: 20, vertical: 16,),
                     gradient: LinearGradient(
                       colors: [
                         Theme.of(context)
                             .colorScheme
                             .primary
-                            .withValues(alpha: 0.1),
+                            .withOpacity(0.1),
                         Theme.of(context)
                             .colorScheme
-                            .surfaceContainer
-                            .withValues(alpha: 0.5),
+                            .surfaceVariant
+                            .withOpacity(0.5),
                       ],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "${l10n.members} (${_membersData.length})",
+                          '${l10n.members} (${_membersData.length})',
                           style: GoogleFonts.outfit(
                               color: Theme.of(context).colorScheme.onSurface,
                               fontWeight: FontWeight.bold,
-                              fontSize: 18),
+                              fontSize: 18,),
                         ),
                         const SizedBox(height: 16),
                         if (_membersData.isEmpty)
                           const Padding(
                               padding: EdgeInsets.all(16),
                               child: Center(
-                                  child: Text("...",
-                                      style: TextStyle(color: Colors.grey)))),
+                                  child: Text('...',
+                                      style: TextStyle(color: Colors.grey),),),),
                         ..._membersData.map((m) {
                           final mId = m['id'];
                           final isOwnerMember = mId == widget.team.ownerId;
@@ -413,18 +481,18 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
                               color: isDark
-                                  ? Colors.white.withValues(alpha: 0.03)
-                                  : Colors.black.withValues(alpha: 0.03),
+                                  ? Colors.white.withOpacity(0.03)
+                                  : Colors.black.withOpacity(0.03),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
                                   color: Theme.of(context)
                                       .colorScheme
                                       .outline
-                                      .withValues(alpha: 0.1)),
+                                      .withOpacity(0.1),),
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                                  horizontal: 12, vertical: 4,),
                               leading: CircleAvatar(
                                 radius: 20,
                                 backgroundColor: isOwnerMember
@@ -436,40 +504,44 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                                     ? CachedNetworkImageProvider(photoUrl)
                                     : null,
                                 child: photoUrl == null
-                                    ? Text(m['name']?[0] ?? "?",
+                                    ? Text(m['name']?[0] ?? '?',
                                         style: const TextStyle(
-                                            color: Colors.white, fontSize: 14))
+                                            color: Colors.white, fontSize: 14,),)
                                     : null,
                               ),
                               title: Text(
-                                  "${m['name']} ${m['surname']} ${isMe ? '(Ben)' : ''}",
+                                  isMe
+                                      ? l10n.teamMemberYou(
+                                          '${m['name']} ${m['surname']}'.trim())
+                                      : '${m['name']} ${m['surname']}',
                                   style: GoogleFonts.outfit(
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurface,
                                       fontSize: 14,
-                                      fontWeight: FontWeight.w600)),
+                                      fontWeight: FontWeight.w600,),),
                               subtitle: Text(
                                   isOwnerMember
-                                      ? "Kurucu"
-                                      : (isAdminMember ? "Yönetici" : "Üye"),
+                                      ? l10n.teamRoleFounder
+                                      : (isAdminMember
+                                          ? l10n.teamRoleAdminShort
+                                          : l10n.teamRoleMemberShort),
                                   style: GoogleFonts.outfit(
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurface
-                                          .withValues(alpha: 0.5),
-                                      fontSize: 11)),
+                                          .withOpacity(0.5),
+                                      fontSize: 11,),),
                               trailing: (canEdit && mId != widget.team.ownerId)
                                   ? PhobesIconButton(
                                       icon: Icons.more_horiz_rounded,
                                       iconSize: 16,
-                                      padding: 4,
                                       backgroundColor: Colors.transparent,
                                       color: Theme.of(context)
                                           .colorScheme
                                           .onSurface
-                                          .withValues(alpha: 0.3),
-                                      onTap: () => _showMemberMenu(m))
+                                          .withOpacity(0.3),
+                                      onTap: () => _showMemberMenu(m),)
                                   : null,
                             ),
                           );
@@ -484,25 +556,25 @@ class _TeamAddEditScreenState extends State<TeamAddEditScreen> {
                       onPressed: _leaveOrDeleteTeam,
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.red.withValues(alpha: 0.05),
+                        backgroundColor: Colors.red.withOpacity(0.05),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                             side: BorderSide(
-                                color: Colors.red.withValues(alpha: 0.2))),
+                                color: Colors.red.withOpacity(0.2),),),
                       ),
                       icon: Icon(
                           _isOwner
                               ? Icons.delete_forever_rounded
                               : Icons.exit_to_app_rounded,
                           size: 20,
-                          color: Colors.redAccent),
-                      label: Text(_isOwner ? l10n.delete : "Ekipten Ayrıl",
+                          color: Colors.redAccent,),
+                      label: Text(_isOwner ? l10n.delete : l10n.teamLeaveTeam,
                           style: GoogleFonts.outfit(
                               color: Colors.redAccent,
-                              fontWeight: FontWeight.bold)),
+                              fontWeight: FontWeight.bold,),),
                     ),
                   ),
-                  const SizedBox(height: 100), // Spacing for navbar
+                  const SizedBox(height: 100),
                 ],
               ),
             ),

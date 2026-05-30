@@ -1,15 +1,19 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart';
-import 'package:home_widget/home_widget.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import '../../main.dart' show pendingDeepLinkActions;
+import '../../admin/admin_scaffold.dart';
+import '../../admin/admin_guard.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:phobes/l10n/app_localizations.dart';
 import '../../core/phobes_theme.dart';
+import '../../core/phobes_shell_metrics.dart';
+import '../../core/page_transitions.dart';
 
-import '../../widgets/phobes_widgets.dart';
 import '../calendar/calendar_screen.dart';
 import '../calendar/upcoming_events_screen.dart';
 import '../appointments/appointment_screen.dart';
@@ -20,20 +24,33 @@ import '../medication/medications_screen.dart';
 import '../focus/focus_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../tasks/task_add_edit_screen.dart';
+import '../../widgets/phobes_form_wrapper.dart';
 import '../chat/nova_chat_screen.dart';
 import 'account_screen.dart';
 import 'statistics_screen.dart';
 import '../budget/budget_screen.dart';
+import '../corkboard/corkboard_screen.dart';
+import '../books/books_screen.dart';
 import '../teams/team_detail_screen.dart';
 import '../../models/team_model.dart';
 import '../../services/firebase_service.dart';
-import '../../services/budget_service.dart';
-import '../../services/widget_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/module_settings_service.dart';
+import '../../widgets/phobes_widgets.dart';
+import '../../services/home_widget_updater.dart';
+import '../../services/admin_access_service.dart';
+import '../../widgets/home/premium_nav_bar.dart';
 import '../../widgets/home/responsive_layout_widgets.dart';
+import '../common/announcement_banner.dart';
+import '../common/broadcast_popup.dart';
+import '../../services/push_messaging_service.dart';
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  final Widget? navigationChild;
+  const MainNavigationScreen({super.key, this.child, this.navigationChild});
+
+  // Alias for GoRouter's shell child
+  final Widget? child;
 
   @override
   State<MainNavigationScreen> createState() => MainNavigationScreenState();
@@ -46,15 +63,17 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
   int _selectedSubIndex = -1;
   bool _isMenuOpen = false;
   Team? _selectedTeam;
+  bool _isAdmin = false;
 
   Widget _currentLifeWidget = const NotesScreen();
-  String? _lifeTitle = 'Bütçe Takip';
+  String? _lifeTitle;
   final FirebaseService _firebaseService = FirebaseService();
-  final BudgetService _budgetService = BudgetService();
 
   late List<Widget> _widgetOptions;
   late AnimationController _menuAnimController;
   late Animation<double> _menuAnimation;
+  late final Stream<DocumentSnapshot> _userDataStream;
+  final GlobalKey<ScaffoldState> _shellScaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -64,6 +83,8 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
     ModuleSettingsService.instance.disabledModules
         .addListener(_onSettingsChanged);
     _updateWidgetOptions();
+    _userDataStream =
+        _firebaseService.getUserDataStream().asBroadcastStream();
     _menuAnimController = AnimationController(
       duration: PhobesTheme.animNormal,
       vsync: this,
@@ -73,92 +94,46 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
       curve: PhobesTheme.curveDefault,
     );
 
-    _updateHomeWidget();
+    _checkAdminStatus();
+    HomeWidgetUpdater.instance.updateAll();
+    _flushPendingDeepLinks();
+    if (!kIsWeb) {
+      PushMessagingService.instance.init();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) maybeShowBroadcastPopup(context);
+    });
   }
 
-  Future<void> _updateHomeWidget() async {
-    try {
-      final now = DateTime.now();
-      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-      final tasks =
-          await _firebaseService.getTasksForDateRange(now, endOfDay).first;
-
-      final pendingTasks = tasks.where((t) => t.status != 'completed').length;
-      final message = pendingTasks > 0
-          ? "Bugün için $pendingTasks görev kaldı!"
-          : "Tüm görevler tamamlandı, harika!";
-
-      await HomeWidget.saveWidgetData<String>('widget_message', message);
-      await HomeWidget.updateWidget(
-        name: 'HomeWidgetProvider',
-        iOSName: 'PhobesWidget',
-      );
-
-      // --- Budget Update ---
-      final budgetData = await _budgetService.getSankeyData();
-      final income = budgetData['income'] as double? ?? 0.0;
-      final expense = budgetData['expenseTotal'] as double? ?? 0.0;
-      final balance = budgetData['savings'] as double? ?? 0.0;
-
-      await WidgetService.updateBudgetWidget(
-        income: income,
-        expense: expense,
-        balance: balance,
-      );
-
-      // --- Calendar/Tasks Update ---
-      final calendarItems = <String>[];
-      int remainingTasks = 0;
-      for (final t in tasks) {
-        if (t.status != 'completed') {
-          if (calendarItems.length < 3) {
-            calendarItems.add("• ${t.title}");
-          }
-          remainingTasks++;
-        }
+  void _flushPendingDeepLinks() {
+    if (pendingDeepLinkActions.isEmpty) return;
+    final actions = List<String>.from(pendingDeepLinkActions);
+    pendingDeepLinkActions.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final action in actions) {
+        handleDeepLink(action);
       }
-      if (remainingTasks > 3) {
-        calendarItems[2] = "... ve ${remainingTasks - 2} görev daha";
-      }
+    });
+  }
 
-      await WidgetService.updateCalendarWidget(calendarItems);
+  Future<void> _checkAdminStatus() async {
+    final isAdmin = await AdminAccessService.instance.isCurrentUserAdmin();
+    if (mounted) setState(() => _isAdmin = isAdmin);
+  }
 
-      // --- Medications Update ---
-      final medsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('medications')
-          .get();
-
-      final medItems = <String>[];
-      int remainingMeds = 0;
-
-      final todayStr =
-          "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
-
-      for (var doc in medsSnapshot.docs) {
-        final data = doc.data();
-        final schedule = data['schedule'] as List<dynamic>? ?? [];
-
-        bool hasToday = schedule
-            .any((s) => s['date'] == todayStr && s['status'] != 'taken');
-
-        if (hasToday) {
-          if (medItems.length < 3) {
-            medItems.add("• ${data['name']} (${data['dosage']})");
-          }
-          remainingMeds++;
-        }
-      }
-
-      if (remainingMeds > 3) {
-        medItems[2] = "... ve ${remainingMeds - 2} ilaç daha";
-      }
-
-      await WidgetService.updateMedicationWidget(medItems);
-    } catch (e) {
-      debugPrint("HomeWidget update error: $e");
-    }
+  Future<void> _signOut(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
+    final router = GoRouter.of(context);
+    final confirmed = await PhobesBottomSheet.confirm(
+      context: context,
+      title: l10n!.signOut,
+      message: l10n.signOutConfirmation,
+      confirmText: l10n.signOut,
+      confirmColor: Colors.redAccent,
+    );
+    if (confirmed != true) return;
+    await AuthService().signOut();
+    router.go('/login');
   }
 
   @override
@@ -208,6 +183,9 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
       case 'statistics':
         customScreen = const StatisticsScreen();
         break;
+      case 'books':
+        customScreen = BooksScreen(onClose: () => _onItemTapped(0));
+        break;
       case 'teams':
       default:
         customScreen = TeamScreen(
@@ -230,11 +208,24 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
       _currentLifeWidget,
       const AccountScreen(),
       const NotificationsScreen(),
-      TaskAddEditScreen(
-        selectedDate: DateTime.now(),
-        onClose: () => _onItemTapped(0),
-      ),
     ];
+  }
+
+  String _pathForCustomNavButton() {
+    final key = ModuleSettingsService.instance.customNavButton.value;
+    return switch (key) {
+      'budget' => '/budget',
+      'habit' => '/habit',
+      'notes' => '/notes',
+      'appointments' => '/appointments',
+      'medications' => '/medications',
+      'focus' => '/focus',
+      'upcoming' => '/upcoming',
+      'statistics' => '/statistics',
+      'corkboard' => '/corkboard',
+      'books' => '/books',
+      _ => '/teams',
+    };
   }
 
   void _onItemTapped(int index) {
@@ -253,6 +244,30 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
       return;
     }
 
+    // Map index to GoRouter path
+    String path = '/';
+    switch (index) {
+      case 0:
+        path = '/';
+        break;
+      case 1:
+        path = _pathForCustomNavButton();
+        break;
+      case 2:
+        path = '/chat';
+        break;
+      case 4:
+        path = '/account';
+        break;
+      case 5:
+        path = '/notifications';
+        break;
+    }
+
+    if (context.mounted) {
+      context.go(path);
+    }
+
     setState(() {
       _selectedIndex = index;
       _visualIndex = index;
@@ -266,28 +281,44 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
 
   void handleDeepLink(String action) {
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
 
     switch (action) {
       case 'add_task':
-        _onItemTapped(6); // Görev Ekle Ekranı indexi (_widgetOptions)
+        PhobesFormWrapper.show(
+          context,
+          title: l10n.featAddTask,
+          form: TaskAddEditScreen(selectedDate: DateTime.now()),
+        );
         break;
       case 'add_expense':
         _selectLifeOption(
-            BudgetScreen(onClose: () => _onItemTapped(0)), 'Bütçe Takip');
+          '/budget',
+          l10n.featBudgetManagement,
+          BudgetScreen(onClose: () => _onItemTapped(0)),
+        );
         break;
       case 'add_medication':
         _selectLifeOption(
-            MedicationsScreen(onClose: () => _onItemTapped(0)), 'İlaçlarım');
+          '/medications',
+          l10n.navMedications,
+          MedicationsScreen(onClose: () => _onItemTapped(0)),
+        );
         break;
       case 'add_note':
-        _selectLifeOption(const NotesScreen(), 'Notlarım');
+        _selectLifeOption('/notes', l10n.noteMyNotes, const NotesScreen());
         break;
     }
   }
 
-  void _selectLifeOption(Widget widget, String title) {
+  void _selectLifeOption(String path, String title, [Widget? widget]) {
+    if (context.mounted) {
+      context.go(path);
+    }
     setState(() {
-      _currentLifeWidget = widget;
+      if (widget != null) {
+        _currentLifeWidget = widget;
+      }
       _lifeTitle = title;
       _updateWidgetOptions();
       _visualIndex = 3;
@@ -301,6 +332,10 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
     if (index == 0) {
       _onItemTapped(0);
     } else if (index == 1) {
+      if (context.mounted && kIsWeb) {
+        context.go('/teams');
+        return;
+      }
       setState(() {
         _selectedIndex = 1;
         _visualIndex = 1;
@@ -321,33 +356,40 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
     } else if (index == 2) {
       _onItemTapped(2);
     } else if (index == 3) {
-      _selectLifeOption(const HabitScreen(), l10n.navHabits);
+      _selectLifeOption('/habits', l10n.navHabits, const HabitScreen());
     } else if (index == 4) {
-      _selectLifeOption(const FocusScreen(), l10n.navFocus);
+      _selectLifeOption('/focus', l10n.navFocus, const FocusScreen());
     } else if (index == 5) {
-      _selectLifeOption(const BudgetScreen(), 'Bütçe Takip');
+      _selectLifeOption('/budget', l10n.featBudgetManagement, const BudgetScreen());
     } else if (index == 6) {
-      _selectLifeOption(const AppointmentScreen(), l10n.navAppointments);
+      _selectLifeOption('/appointments', l10n.navAppointments, const AppointmentScreen());
     } else if (index == 7) {
-      _selectLifeOption(const NotesScreen(), 'Notlarım');
+      _selectLifeOption('/notes', l10n.noteMyNotes, const NotesScreen());
     } else if (index == 8) {
-      _selectLifeOption(const MedicationsScreen(), 'İlaçlarım');
+      _selectLifeOption('/medications', l10n.navMedications, const MedicationsScreen());
     } else if (index == 9) {
-      _selectLifeOption(const UpcomingEventsScreen(), 'Yaklaşanlar');
+      _selectLifeOption(
+          '/upcoming', l10n.navUpcomingEvents, const UpcomingEventsScreen(),);
     } else if (index == 10) {
-      _selectLifeOption(const StatisticsScreen(), l10n.navStatistics);
+      _selectLifeOption('/statistics', l10n.navStatistics, const StatisticsScreen());
+    } else if (index == 14) {
+      _selectLifeOption(
+        '/corkboard',
+        l10n.corkboardPersonalTitle,
+        const CorkboardScreen(),
+      );
+    } else if (index == 15) {
+      _selectLifeOption(
+        '/books',
+        l10n.moduleNameBooks,
+        const BooksScreen(),
+      );
     } else if (index == 11) {
       _onItemTapped(4);
     } else if (index == 12) {
       setState(() {
         _selectedIndex = 5;
         _visualIndex = 5;
-        _isMenuOpen = false;
-      });
-    } else if (index == 13) {
-      setState(() {
-        _selectedIndex = 6;
-        _visualIndex = 6;
         _isMenuOpen = false;
       });
     }
@@ -358,23 +400,59 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
   }
 
   int _getSidebarSelectedIndex() {
+    // Route'u kontrol et — GoRouter kullanıldığında en güvenilir yöntem
+    try {
+      if (context.mounted) {
+        final location = GoRouterState.of(context).uri.path;
+        if (location == '/')                    return 0;
+        if (location.startsWith('/teams'))      return 1;
+        if (location == '/chat')                return 2;
+        if (location == '/habits')              return 3;
+        if (location == '/focus')               return 4;
+        if (location == '/budget')              return 5;
+        if (location == '/appointments')        return 6;
+        if (location == '/notes')               return 7;
+        if (location == '/medications')         return 8;
+        if (location == '/upcoming')            return 9;
+        if (location == '/statistics')          return 10;
+        if (location == '/account')             return 11;
+        if (location == '/notifications')       return 12;
+        if (location == '/corkboard')           return 14;
+        if (location == '/books')               return 15;
+      }
+    } catch (_) { /* GoRouterState mevcut değil */ }
+
+    // Mobil: IndexedStack + life widget'a göre
     if (_visualIndex == 0) return 0;
     if (_visualIndex == 1) return 1;
     if (_visualIndex == 2) return 2;
     if (_visualIndex == 4) return 11;
     if (_visualIndex == 5) return 12;
-    if (_visualIndex == 6) return 13;
 
-    if (_currentLifeWidget is HabitScreen) return 3;
-    if (_currentLifeWidget is FocusScreen) return 4;
-    if (_currentLifeWidget is BudgetScreen) return 5;
-    if (_currentLifeWidget is AppointmentScreen) return 6;
-    if (_currentLifeWidget is NotesScreen) return 7;
-    if (_currentLifeWidget is MedicationsScreen) return 8;
+    if (_currentLifeWidget is HabitScreen)         return 3;
+    if (_currentLifeWidget is FocusScreen)         return 4;
+    if (_currentLifeWidget is BudgetScreen)        return 5;
+    if (_currentLifeWidget is AppointmentScreen)   return 6;
+    if (_currentLifeWidget is NotesScreen)         return 7;
+    if (_currentLifeWidget is MedicationsScreen)   return 8;
     if (_currentLifeWidget is UpcomingEventsScreen) return 9;
-    if (_currentLifeWidget is StatisticsScreen) return 10;
+    if (_currentLifeWidget is StatisticsScreen)    return 10;
+    if (_currentLifeWidget is CorkboardScreen)     return 14;
+    if (_currentLifeWidget is BooksScreen)         return 15;
 
-    return 5;
+    return 0;
+  }
+
+  int _getBottomBarIndex() {
+    if (_isMenuOpen) return 3;
+    final sidebarIdx = _getSidebarSelectedIndex();
+    if (sidebarIdx == 0) return 0; // Calendar
+    if (sidebarIdx == 1) return 1; // Teams
+    if (sidebarIdx == 2) return 2; // Nova
+    if (sidebarIdx == 11) return 4; // Account
+    // Diğer tüm modüller (3,4,5,6,7,8,9,10,14,15) 3. index (Bento/Life) altında toplanır
+    if (sidebarIdx >= 3 && sidebarIdx <= 15) return 3;
+    return 0;
   }
 
   @override
@@ -383,696 +461,765 @@ class MainNavigationScreenState extends State<MainNavigationScreen>
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAmoled = PhobesTheme.amoledMode.value;
+    final displayLifeTitle = _selectedIndex == 3 && !_isMenuOpen
+        ? (_lifeTitle ?? l10n.navLife)
+        : l10n.navLife;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 900;
-        final displayLifeTitle = _selectedIndex == 3 && !_isMenuOpen
-            ? (_lifeTitle ?? l10n.navLife)
-            : l10n.navLife;
-
-        return Scaffold(
-          backgroundColor: isAmoled && isDark ? Colors.black : cs.surface,
-          extendBody: true,
-          body: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (isWide)
-                ValueListenableBuilder<List<String>>(
-                  valueListenable:
-                      ModuleSettingsService.instance.disabledModules,
-                  builder: (context, disabledModules, child) {
-                    bool isModuleEnabled(String id) => !disabledModules.contains(id);
-                    final availableSidebarItems = <SidebarItemData>[
-                      SidebarItemData(
-                          icon: Icons.calendar_month_rounded,
-                          label: l10n.navCalendar),
-                      if (isModuleEnabled('teams'))
-                        SidebarItemData(
-                            icon: Icons.groups_2_rounded, label: l10n.navTeams),
-                      SidebarItemData(
-                          icon: Icons.auto_awesome, label: "Nova AI"),
-                      if (isModuleEnabled('habit'))
-                        SidebarItemData(
-                            icon: Icons.spa_rounded, label: l10n.navHabits),
-                      if (isModuleEnabled('focus'))
-                        SidebarItemData(
-                            icon: Icons.timelapse_rounded,
-                            label: l10n.navFocus),
-                      if (isModuleEnabled('budget'))
-                        SidebarItemData(
-                            icon: Icons.account_balance_wallet_rounded,
-                            label: "Bütçe"),
-                      if (isModuleEnabled('appointments'))
-                        SidebarItemData(
-                            icon: Icons.event_available_rounded,
-                            label: l10n.navAppointments),
-                      if (isModuleEnabled('notes'))
-                        SidebarItemData(
-                            icon: Icons.note_alt_rounded, label: "Notlarım"),
-                      if (isModuleEnabled('medications'))
-                        SidebarItemData(
-                            icon: Icons.medication_rounded, label: "İlaçlarım"),
-                      if (isModuleEnabled('upcoming'))
-                        SidebarItemData(
-                            icon: Icons.upcoming_rounded, label: "Yaklaşanlar"),
-                      if (isModuleEnabled('statistics'))
-                        SidebarItemData(
-                            icon: Icons.insights_rounded,
-                            label: l10n.navStatistics),
-                      SidebarItemData(
-                          icon: Icons.person_rounded, label: l10n.navAccount),
-                      SidebarItemData(
-                          icon: Icons.notifications_rounded,
-                          label: 'Bildirimler'),
-                      SidebarItemData(
-                          icon: Icons.add_task_rounded, label: "Görev Ekle"),
-                    ];
-
-                    // Determine original index for callbacks based on labels to avoid complex index mapping
-                    int mapSidebarIndex(int newIndex) {
-                      final label = availableSidebarItems[newIndex].label;
-                      if (label == l10n.navCalendar) return 0;
-                      if (label == l10n.navTeams) return 1;
-                      if (label == "Nova AI") return 2;
-                      if (label == l10n.navHabits) return 3;
-                      if (label == l10n.navFocus) return 4;
-                      if (label == "Bütçe") return 5;
-                      if (label == l10n.navAppointments) return 6;
-                      if (label == "Notlarım") return 7;
-                      if (label == "İlaçlarım") return 8;
-                      if (label == "Yaklaşanlar") return 9;
-                      if (label == l10n.navStatistics) return 10;
-                      if (label == l10n.navAccount) return 11;
-                      if (label == 'Bildirimler') return 12;
-                      if (label == "Görev Ekle") return 13;
-                      return 0;
-                    }
-
-                    int selectedMappedIndex = 0;
-                    for (int i = 0; i < availableSidebarItems.length; i++) {
-                      if (mapSidebarIndex(i) == _getSidebarSelectedIndex()) {
-                        selectedMappedIndex = i;
-                        break;
-                      }
-                    }
-
-                    return NavigationSidebar(
-                      selectedIndex: selectedMappedIndex,
-                      selectedSubIndex: _selectedSubIndex,
-                      onItemSelected: (idx, subIdx) => _onSidebarItemSelected(
-                          mapSidebarIndex(idx), subIdx, l10n),
-                      header: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                gradient: PhobesTheme.primaryGradient,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.blur_on_rounded,
-                                  color: Colors.white),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              "Phobes",
-                              style: GoogleFonts.outfit(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      items: availableSidebarItems,
-                    );
-                  },
-                ),
-              Expanded(
-                child: Stack(
-                  children: [
-                    IndexedStack(
-                      index: (_visualIndex == 1 &&
-                              _selectedSubIndex != -1 &&
-                              _selectedTeam != null)
-                          ? 7
-                          : _visualIndex,
-                      children: [
-                        ..._widgetOptions,
-                        if (_selectedTeam != null)
-                          TeamDetailScreen(
-                            team: _selectedTeam!,
-                            externalIndex: _selectedSubIndex,
-                          )
-                        else
-                          const SizedBox.shrink(),
-                      ],
-                    ),
-                    if (_isMenuOpen && !isWide)
-                      FadeTransition(
-                        opacity: _menuAnimation,
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _isMenuOpen = false;
-                              _menuAnimController.reverse();
-                              _selectedIndex = _visualIndex;
-                            });
-                          },
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                            child: Container(
-                              color: (isAmoled && isDark
-                                      ? Colors.black
-                                      : cs.surface)
-                                  .withValues(alpha: 0.7),
-                              width: double.infinity,
-                              height: double.infinity,
-                            ),
-                          ),
-                        ),
-                      ),
-                    if (_isMenuOpen && !isWide)
-                      Positioned(
-                        bottom: 100,
-                        right: 20,
-                        left: 20,
-                        top: MediaQuery.of(context).padding.top + 80,
-                        child: SingleChildScrollView(
-                          reverse: true,
-                          physics: const BouncingScrollPhysics(),
-                          child: ValueListenableBuilder<List<String>>(
-                            valueListenable:
-                                ModuleSettingsService.instance.disabledModules,
-                            builder: (context, disabledModules, child) {
-                              bool isModuleEnabled(String id) => !disabledModules.contains(id);
-                              return ValueListenableBuilder<String>(
-                                valueListenable: ModuleSettingsService
-                                    .instance.customNavButton,
-                                builder: (context, customNavButton, child) {
-                                  return Align(
-                                    alignment: Alignment.bottomRight,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        if (customNavButton != 'statistics' &&
-                                            isModuleEnabled('statistics'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.insights_rounded,
-                                            label: l10n.navStatistics,
-                                            color: Colors.purple.shade300,
-                                            desc: l10n.descStats,
-                                            onTap: () => _selectLifeOption(
-                                                const StatisticsScreen(),
-                                                l10n.navStatistics),
-                                            delay: 0,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'statistics' &&
-                                            isModuleEnabled('statistics'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'upcoming' &&
-                                            isModuleEnabled('upcoming'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.upcoming_rounded,
-                                            label: 'Yaklaşanlar',
-                                            color: Colors.pink.shade400,
-                                            desc: 'Yaklaşan tüm olaylarınız',
-                                            onTap: () => _selectLifeOption(
-                                                const UpcomingEventsScreen(),
-                                                'Yaklaşanlar'),
-                                            delay: 50,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'upcoming' &&
-                                            isModuleEnabled('upcoming'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'focus' &&
-                                            isModuleEnabled('focus'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.timelapse_rounded,
-                                            label: l10n.navFocus,
-                                            color: Colors.deepOrange.shade400,
-                                            desc: l10n.descFocus,
-                                            onTap: () => _selectLifeOption(
-                                                const FocusScreen(),
-                                                l10n.navFocus),
-                                            delay: 100,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'focus' &&
-                                            isModuleEnabled('focus'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'medications' &&
-                                            isModuleEnabled('medications'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.medication_rounded,
-                                            label: 'İlaçlarım',
-                                            color: Colors.teal.shade400,
-                                            desc:
-                                                'İlaç takibi ve hatırlatıcılar',
-                                            onTap: () => _selectLifeOption(
-                                                MedicationsScreen(
-                                                    onClose: () =>
-                                                        _onItemTapped(0)),
-                                                'İlaçlarım'),
-                                            delay: 150,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'medications' &&
-                                            isModuleEnabled('medications'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'appointments' &&
-                                            isModuleEnabled('appointments'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.event_available_rounded,
-                                            label: l10n.navAppointments,
-                                            color: Colors.cyan.shade400,
-                                            desc: l10n.descAppointments,
-                                            onTap: () => _selectLifeOption(
-                                                AppointmentScreen(
-                                                    onClose: () =>
-                                                        _onItemTapped(0)),
-                                                l10n.navAppointments),
-                                            delay: 200,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'appointments' &&
-                                            isModuleEnabled('appointments'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'notes' &&
-                                            isModuleEnabled('notes'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.note_alt_rounded,
-                                            label: 'Notlarım',
-                                            color: Colors.indigo.shade400,
-                                            desc: 'Düşüncelerinizi kaydedin',
-                                            onTap: () => _selectLifeOption(
-                                                const NotesScreen(),
-                                                'Notlarım'),
-                                            delay: 250,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'notes' &&
-                                            isModuleEnabled('notes'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'habit' &&
-                                            isModuleEnabled('habit'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.spa_rounded,
-                                            label: l10n.navHabits,
-                                            color: Colors.green.shade400,
-                                            desc: l10n.descHabits,
-                                            onTap: () => _selectLifeOption(
-                                                const HabitScreen(),
-                                                l10n.navHabits),
-                                            delay: 300,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'habit' &&
-                                            isModuleEnabled('habit'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'budget' &&
-                                            isModuleEnabled('budget'))
-                                          _buildModernMenuButton(
-                                            icon: Icons
-                                                .account_balance_wallet_rounded,
-                                            label: 'Bütçe Takip',
-                                            color: Colors.amber.shade700,
-                                            desc:
-                                                'Gelir ve giderlerinizi yönetin',
-                                            onTap: () => _selectLifeOption(
-                                                BudgetScreen(
-                                                    onClose: () =>
-                                                        _onItemTapped(0)),
-                                                'Bütçe Takip'),
-                                            delay: 350,
-                                            cs: cs,
-                                          ),
-                                        if (customNavButton != 'budget' &&
-                                            isModuleEnabled('budget'))
-                                          const SizedBox(height: 12),
-                                        if (customNavButton != 'teams' &&
-                                            isModuleEnabled('teams'))
-                                          _buildModernMenuButton(
-                                            icon: Icons.groups_2_rounded,
-                                            label: l10n.navTeams,
-                                            color: Colors.blue.shade600,
-                                            desc:
-                                                'Ekiplerinizle işbirliği yapın',
-                                            onTap: () => _onItemTapped(1),
-                                            delay: 400,
-                                            cs: cs,
-                                          ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (isWide)
-                DailyIntelligencePanel(
-                  onNotificationTap: () =>
-                      _onSidebarItemSelected(12, null, l10n),
-                ),
-            ],
-          ),
-          bottomNavigationBar:
-              isWide ? null : _buildPremiumNavBar(l10n, displayLifeTitle, cs),
+        return ValueListenableBuilder<bool>(
+          valueListenable:
+              ModuleSettingsService.instance.intelligencePanelEnabled,
+          builder: (context, intelligenceEnabled, _) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: ModuleSettingsService.instance.sidebarCollapsed,
+              builder: (context, sidebarCollapsedPref, _) {
+                final sidebarIconOnly = kIsWeb && sidebarCollapsedPref;
+                final shell = PhobesShellMetrics.fromWidth(
+                  constraints.maxWidth,
+                  sidebarCollapsed: sidebarIconOnly,
+                  intelligencePanelEnabled: intelligenceEnabled,
+                );
+                final showSidebar = shell.showSidebar;
+                return _buildShellScaffold(
+                  context: context,
+                  constraints: constraints,
+                  shell: shell,
+                  showSidebar: showSidebar,
+                  sidebarIconOnly: sidebarIconOnly,
+                  l10n: l10n,
+                  cs: cs,
+                  isDark: isDark,
+                  isAmoled: isAmoled,
+                  displayLifeTitle: displayLifeTitle,
+                );
+              },
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildPremiumNavBar(
-      AppLocalizations l10n, String displayLifeTitle, ColorScheme cs) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isAmoled = PhobesTheme.amoledMode.value;
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            height: 72,
-            decoration: BoxDecoration(
-              color: isAmoled && isDark
-                  ? Colors.black.withValues(alpha: 0.8)
-                  : cs.surfaceContainerHigh.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: cs.outline.withValues(alpha: 0.1),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ValueListenableBuilder<String>(
-              valueListenable: ModuleSettingsService.instance.customNavButton,
-              builder: (context, customNavButton, child) {
-                // Determine icon and label based on selection
-                IconData navIcon = Icons.groups_2_outlined;
-                IconData activeNavIcon = Icons.groups_2_rounded;
-                String navLabel = l10n.navTeams;
-
-                switch (customNavButton) {
-                  case 'budget':
-                    navIcon = Icons.account_balance_wallet_outlined;
-                    activeNavIcon = Icons.account_balance_wallet_rounded;
-                    navLabel = "Bütçe";
-                    break;
-                  case 'habit':
-                    navIcon = Icons.spa_outlined;
-                    activeNavIcon = Icons.spa_rounded;
-                    navLabel = l10n.navHabits;
-                    break;
-                  case 'notes':
-                    navIcon = Icons.note_alt_outlined;
-                    activeNavIcon = Icons.note_alt_rounded;
-                    navLabel = "Notlarım";
-                    break;
-                  case 'appointments':
-                    navIcon = Icons.event_available_outlined;
-                    activeNavIcon = Icons.event_available_rounded;
-                    navLabel = l10n.navAppointments;
-                    break;
-                  case 'medications':
-                    navIcon = Icons
-                        .medication_liquid_sharp; // Approximating medication icon
-                    activeNavIcon = Icons.medication_rounded;
-                    navLabel = "İlaçlarım";
-                    break;
-                  case 'focus':
-                    navIcon = Icons.timelapse_outlined;
-                    activeNavIcon = Icons.timelapse_rounded;
-                    navLabel = l10n.navFocus;
-                    break;
-                  case 'upcoming':
-                    navIcon = Icons.upcoming_outlined;
-                    activeNavIcon = Icons.upcoming_rounded;
-                    navLabel = "Yaklaşanlar";
-                    break;
-                  case 'statistics':
-                    navIcon = Icons.insights_outlined;
-                    activeNavIcon = Icons.insights_rounded;
-                    navLabel = l10n.navStatistics;
-                    break;
-                  case 'teams':
-                  default:
-                    navIcon = Icons.groups_2_outlined;
-                    activeNavIcon = Icons.groups_2_rounded;
-                    navLabel = l10n.navTeams;
-                    break;
-                }
-
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(
-                      icon: Icons.calendar_today_rounded,
-                      activeIcon: Icons.calendar_month_rounded,
-                      label: l10n.navCalendar,
-                      index: 0,
-                      cs: cs,
-                    ),
-                    _buildNavItem(
-                      icon: navIcon,
-                      activeIcon: activeNavIcon,
-                      label: navLabel,
-                      index: 1,
-                      cs: cs,
-                    ),
-                    _buildNovaButton(cs),
-                    _buildNavItem(
-                      icon: _isMenuOpen
-                          ? Icons.close_rounded
-                          : Icons.bento_rounded,
-                      activeIcon: Icons.bento_rounded,
-                      label: displayLifeTitle,
-                      index: 3,
-                      isLifeMenu: true,
-                      cs: cs,
-                    ),
-                    _buildNavItem(
-                      icon: Icons.person_outline_rounded,
-                      activeIcon: Icons.person_rounded,
-                      label: l10n.navAccount,
-                      index: 4,
-                      cs: cs,
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem({
-    required IconData icon,
-    required IconData activeIcon,
-    required String label,
-    required int index,
+  Widget _buildShellScaffold({
+    required BuildContext context,
+    required BoxConstraints constraints,
+    required PhobesShellMetrics shell,
+    required bool showSidebar,
+    required bool sidebarIconOnly,
+    required AppLocalizations l10n,
     required ColorScheme cs,
-    bool isLifeMenu = false,
+    required bool isDark,
+    required bool isAmoled,
+    required String displayLifeTitle,
   }) {
-    final isSelected = _selectedIndex == index;
-
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: PhobesTheme.animFast,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: PhobesTheme.animFast,
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? cs.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+    Widget intelligencePanel({required double width}) =>
+            DailyIntelligencePanel(
+              width: width,
+              compactTypography: shell.useCompactIntelligenceTypography,
+              onNotificationTap: () => PhobesPageRoute.pushResponsive(
+                context,
+                const NotificationsScreen(),
               ),
-              child: Icon(
-                isSelected ? activeIcon : icon,
-                color: isSelected
-                    ? cs.primary
-                    : cs.onSurface.withValues(alpha: 0.5),
-                size: 22,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.outfit(
-                color: isSelected
-                    ? cs.primary
-                    : cs.onSurface.withValues(alpha: 0.5),
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            );
 
-  Widget _buildNovaButton(ColorScheme cs) {
-    final isSelected = _selectedIndex == 2;
+    return Scaffold(
+          key: _shellScaffoldKey,
+          backgroundColor: isAmoled && isDark ? Colors.black : cs.surface,
+          extendBody: true,
+          body: Column(
+            children: [
+              const AnnouncementBanner(),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (showSidebar)
+                      ValueListenableBuilder<List<String>>(
+                        valueListenable:
+                            ModuleSettingsService.instance.disabledModules,
+                        builder: (context, disabledModules, child) {
+                          bool isModuleEnabled(String id) =>
+                              !disabledModules.contains(id);
+                          final availableSidebarItems = <SidebarItemData>[
+                            if (isModuleEnabled('calendar'))
+                              SidebarItemData(
+                                icon: Icons.calendar_month_rounded,
+                                label: l10n.navCalendar,
+                              ),
+                            if (isModuleEnabled('teams'))
+                              SidebarItemData(
+                                icon: Icons.groups_2_rounded,
+                                label: l10n.navTeams,
+                              ),
+                            if (isModuleEnabled('chat'))
+                              SidebarItemData(
+                                icon: Icons.auto_awesome,
+                                label: l10n.novaAssistant,
+                              ),
+                            if (isModuleEnabled('habit'))
+                              SidebarItemData(
+                                icon: Icons.spa_rounded,
+                                label: l10n.navHabits,
+                              ),
+                            if (isModuleEnabled('focus'))
+                              SidebarItemData(
+                                icon: Icons.timelapse_rounded,
+                                label: l10n.navFocus,
+                              ),
+                            if (isModuleEnabled('budget'))
+                              SidebarItemData(
+                                icon: Icons.account_balance_wallet_rounded,
+                                label: l10n.featBudgetManagement,
+                              ),
+                            if (isModuleEnabled('appointments'))
+                              SidebarItemData(
+                                icon: Icons.event_available_rounded,
+                                label: l10n.navAppointments,
+                              ),
+                            if (isModuleEnabled('notes'))
+                              SidebarItemData(
+                                icon: Icons.note_alt_rounded,
+                                label: l10n.noteMyNotes,
+                              ),
+                            if (isModuleEnabled('medications'))
+                              SidebarItemData(
+                                icon: Icons.medication_rounded,
+                                label: l10n.navMedications,
+                              ),
+                            if (isModuleEnabled('upcoming'))
+                              SidebarItemData(
+                                icon: Icons.upcoming_rounded,
+                                label: l10n.navUpcomingEvents,
+                              ),
+                            if (isModuleEnabled('statistics'))
+                              SidebarItemData(
+                                icon: Icons.insights_rounded,
+                                label: l10n.navStatistics,
+                              ),
+                            if (isModuleEnabled('corkboard'))
+                              SidebarItemData(
+                                icon: Icons.dashboard_customize_rounded,
+                                label: l10n.corkboardPersonalTitle,
+                              ),
+                            if (isModuleEnabled('books'))
+                              SidebarItemData(
+                                icon: Icons.menu_book_rounded,
+                                label: l10n.moduleNameBooks,
+                              ),
+                            if (!kIsWeb)
+                              SidebarItemData(
+                                icon: Icons.person_rounded,
+                                label: l10n.navAccount,
+                              ),
 
-    return GestureDetector(
-      onTap: () => _onItemTapped(2),
-      child: AnimatedContainer(
-        duration: PhobesTheme.animFast,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? PhobesTheme.primaryGradient
-                    : LinearGradient(
-                        colors: [
-                          cs.primary.withValues(alpha: 0.2),
-                          cs.secondary.withValues(alpha: 0.2),
+                            if (_isAdmin)
+                              SidebarItemData(
+                                icon: Icons.admin_panel_settings,
+                                label: l10n.adminPanelTitle,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const AdminGuard(
+                                        child: AdminScaffold(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                          ];
+
+                          int mapSidebarIndex(int newIndex) {
+                            final label = availableSidebarItems[newIndex].label;
+                            if (label == l10n.navCalendar) return 0;
+                            if (label == l10n.navTeams) return 1;
+                            if (label == l10n.novaAssistant) return 2;
+                            if (label == l10n.navHabits) return 3;
+                            if (label == l10n.navFocus) return 4;
+                            if (label == l10n.featBudgetManagement) return 5;
+                            if (label == l10n.navAppointments) return 6;
+                            if (label == l10n.noteMyNotes) return 7;
+                            if (label == l10n.navMedications) return 8;
+                            if (label == l10n.navUpcomingEvents) return 9;
+                            if (label == l10n.navStatistics) return 10;
+                            if (label == l10n.corkboardPersonalTitle) return 14;
+                            if (label == l10n.moduleNameBooks) return 15;
+                            if (label == l10n.navAccount) return 11;
+
+                            return 0;
+                          }
+
+                          // -1: hiçbir öğe seçili değil. Web'de "Account" sidebar
+                          // listesinde yok (footer'da), bu yüzden /account
+                          // rotasında eşleşme bulunmadığında varsayılan 0
+                          // (Takvim) seçili görünmesini engelliyoruz.
+                          int selectedMappedIndex = -1;
+                          for (int i = 0;
+                              i < availableSidebarItems.length;
+                              i++) {
+                            if (mapSidebarIndex(i) ==
+                                _getSidebarSelectedIndex()) {
+                              selectedMappedIndex = i;
+                              break;
+                            }
+                          }
+
+                          Widget sidebarLogo() => Container(
+                                width: 40,
+                                height: 40,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  gradient: PhobesTheme.primaryGradient,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: cs.primary.withOpacity(0.3),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  'P',
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1,
+                                  ),
+                                ),
+                              );
+
+                          Widget collapseButton({bool compact = false}) {
+                            void toggle() {
+                              final svc = ModuleSettingsService.instance;
+                              svc.setSidebarCollapsed(
+                                !svc.sidebarCollapsed.value,
+                              );
+                            }
+
+                            return Tooltip(
+                              message: sidebarIconOnly
+                                  ? l10n.sidebarExpand
+                                  : l10n.sidebarCollapse,
+                              child: IconButton(
+                                onPressed: toggle,
+                                icon: Icon(
+                                  sidebarIconOnly
+                                      ? Icons
+                                          .keyboard_double_arrow_right_rounded
+                                      : Icons
+                                          .keyboard_double_arrow_left_rounded,
+                                  size: compact ? 20 : 22,
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor:
+                                      cs.onSurface.withOpacity(0.06),
+                                  foregroundColor:
+                                      cs.onSurface.withOpacity(0.65),
+                                  minimumSize:
+                                      Size(compact ? 32 : 36, compact ? 32 : 36),
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+
+                          Widget? webFooter;
+                          if (kIsWeb) {
+                            webFooter = StreamBuilder<DocumentSnapshot>(
+                              stream: _userDataStream,
+                              builder: (context, snap) {
+                                var name = '';
+                                String? photoUrl;
+                                var xp = 0;
+                                if (snap.hasData && snap.data!.exists) {
+                                  final data = snap.data!.data()
+                                      as Map<String, dynamic>?;
+                                  if (data != null) {
+                                    name =
+                                        '${data['name'] ?? ''} ${data['surname'] ?? ''}'
+                                            .trim();
+                                    photoUrl = data['photoUrl'] as String?;
+                                    xp = (data['xp'] as num?)?.toInt() ?? 0;
+                                  }
+                                }
+                                if (name.isEmpty) {
+                                  name = FirebaseAuth
+                                          .instance.currentUser?.displayName ??
+                                      '';
+                                }
+                                photoUrl ??=
+                                    FirebaseAuth.instance.currentUser?.photoURL;
+
+                                return SidebarUserFooter(
+                                  displayName: name,
+                                  photoUrl: photoUrl,
+                                  xp: xp,
+                                  iconOnly: sidebarIconOnly,
+                                  isAccountSelected:
+                                      _getSidebarSelectedIndex() == 11,
+                                  onAccountTap: () => context.go('/account'),
+                                  onSignOut: () => _signOut(context),
+                                  signOutTooltip: l10n.signOut,
+                                );
+                              },
+                            );
+                          }
+
+                          return NavigationSidebar(
+                            width: shell.sidebarWidth,
+                            iconOnly: sidebarIconOnly,
+                            footer: webFooter,
+                            selectedIndex: selectedMappedIndex,
+                            selectedSubIndex: _selectedSubIndex,
+                            onItemSelected: (idx, subIdx) {
+                              final mappedIndex = mapSidebarIndex(idx);
+                              if (kIsWeb) {
+                                switch (mappedIndex) {
+                                  case 0:
+                                    context.go('/');
+                                    break;
+                                  case 1:
+                                    context.go('/teams');
+                                    break;
+                                  case 2:
+                                    context.go('/chat');
+                                    break;
+                                  case 3:
+                                    context.go('/habits');
+                                    break;
+                                  case 4:
+                                    context.go('/focus');
+                                    break;
+                                  case 5:
+                                    context.go('/budget');
+                                    break;
+                                  case 6:
+                                    context.go('/appointments');
+                                    break;
+                                  case 7:
+                                    context.go('/notes');
+                                    break;
+                                  case 8:
+                                    context.go('/medications');
+                                    break;
+                                  case 9:
+                                    context.go('/upcoming');
+                                    break;
+                                  case 10:
+                                    context.go('/statistics');
+                                    break;
+                                  case 14:
+                                    context.go('/corkboard');
+                                    break;
+                                  case 15:
+                                    context.go('/books');
+                                    break;
+                                  case 11:
+                                    context.go('/account');
+                                    break;
+                                }
+                              } else {
+                                _onSidebarItemSelected(
+                                    mappedIndex, subIdx, l10n);
+                              }
+                            },
+                            header: sidebarIconOnly
+                                ? Padding(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(8, 16, 8, 0),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Center(child: sidebarLogo()),
+                                        if (kIsWeb) ...[
+                                          const SizedBox(height: 8),
+                                          collapseButton(compact: true),
+                                        ],
+                                      ],
+                                    ),
+                                  )
+                                : Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        20, 20, 12, 0,),
+                                    child: Row(
+                                      children: [
+                                        sidebarLogo(),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            'Phobes',
+                                            style: GoogleFonts.outfit(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.bold,
+                                              color: cs.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                        if (kIsWeb) collapseButton(),
+                                      ],
+                                    ),
+                                  ),
+                            items: availableSidebarItems,
+                            signOutLabel: kIsWeb ? null : l10n.signOut,
+                            onSignOut:
+                                kIsWeb ? null : () => _signOut(context),
+                          );
+                        },
+                      ),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          (widget.navigationChild ?? widget.child) != null
+                              ? (widget.navigationChild ?? widget.child)!
+                              : IndexedStack(
+                                  index: (_visualIndex == 1 &&
+                                          _selectedTeam != null &&
+                                          _selectedSubIndex != -1)
+                                      ? 6
+                                      : _visualIndex,
+                                  children: [
+                                    ..._widgetOptions,
+                                    _selectedTeam != null
+                                        ? TeamDetailScreen(
+                                            key: ValueKey(_selectedTeam!.id),
+                                            team: _selectedTeam!,
+                                            externalIndex: _selectedSubIndex,
+                                          )
+                                        : const SizedBox.shrink(),
+                                  ],
+                                ),
+                          if (_isMenuOpen && !showSidebar)
+                            FadeTransition(
+                              opacity: _menuAnimation,
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _isMenuOpen = false;
+                                    _menuAnimController.reverse();
+                                    _selectedIndex = _visualIndex;
+                                  });
+                                },
+                                child: ClipRect(
+                                  child: BackdropFilter(
+                                    filter:
+                                        ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                    child: Container(
+                                      color: (isAmoled && isDark
+                                              ? Colors.black
+                                              : cs.surface)
+                                          .withOpacity(0.7),
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (_isMenuOpen && !showSidebar)
+                            Positioned(
+                              bottom: 100,
+                              right: 20,
+                              left: 20,
+                              top: MediaQuery.of(context).padding.top + 80,
+                              child: SingleChildScrollView(
+                                reverse: true,
+                                physics: const BouncingScrollPhysics(),
+                                child: ValueListenableBuilder<List<String>>(
+                                  valueListenable: ModuleSettingsService
+                                      .instance.disabledModules,
+                                  builder: (context, disabledModules, child) {
+                                    bool isModuleEnabled(String id) =>
+                                        !disabledModules.contains(id);
+                                    return ValueListenableBuilder<String>(
+                                      valueListenable: ModuleSettingsService
+                                          .instance.customNavButton,
+                                      builder:
+                                          (context, customNavButton, child) {
+                                        return Align(
+                                          alignment: Alignment.bottomRight,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              if (customNavButton !=
+                                                      'statistics' &&
+                                                  isModuleEnabled('statistics'))
+                                                NavMenuButton(
+                                                  icon: Icons.insights_rounded,
+                                                  label: l10n.navStatistics,
+                                                  color: Colors.purple.shade300,
+                                                  desc: l10n.descStats,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/statistics',
+                                                    l10n.navStatistics,
+                                                    const StatisticsScreen(),
+                                                  ),
+                                                  delay: 0,
+                                                ),
+                                              if (isModuleEnabled('corkboard'))
+                                                const SizedBox(height: 12),
+                                              if (isModuleEnabled('corkboard'))
+                                                NavMenuButton(
+                                                  icon: Icons
+                                                      .dashboard_customize_rounded,
+                                                  label: l10n.corkboardPersonalTitle,
+                                                  color: Colors.deepPurple.shade300,
+                                                  desc: l10n.corkboardSubtitleDefault,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/corkboard',
+                                                    l10n.corkboardPersonalTitle,
+                                                    const CorkboardScreen(),
+                                                  ),
+                                                  delay: 25,
+                                                ),
+                                              if (customNavButton != 'books' &&
+                                                  isModuleEnabled('books'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton != 'books' &&
+                                                  isModuleEnabled('books'))
+                                                NavMenuButton(
+                                                  icon: Icons
+                                                      .menu_book_rounded,
+                                                  label: l10n.moduleNameBooks,
+                                                  color: Colors.brown.shade400,
+                                                  desc: l10n.descBooks,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/books',
+                                                    l10n.moduleNameBooks,
+                                                    BooksScreen(
+                                                      onClose: () =>
+                                                          _onItemTapped(0),
+                                                    ),
+                                                  ),
+                                                  delay: 35,
+                                                ),
+                                              if (customNavButton !=
+                                                      'statistics' &&
+                                                  isModuleEnabled('statistics'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton !=
+                                                      'upcoming' &&
+                                                  isModuleEnabled('upcoming'))
+                                                NavMenuButton(
+                                                  icon: Icons.upcoming_rounded,
+                                                  label: l10n.navUpcomingEvents,
+                                                  color: Colors.pink.shade400,
+                                                  desc: l10n.descUpcomingEvents,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/upcoming',
+                                                    l10n.navUpcomingEvents,
+                                                    const UpcomingEventsScreen(),
+                                                  ),
+                                                  delay: 50,
+                                                ),
+                                              if (customNavButton !=
+                                                      'upcoming' &&
+                                                  isModuleEnabled('upcoming'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton != 'focus' &&
+                                                  isModuleEnabled('focus'))
+                                                NavMenuButton(
+                                                  icon: Icons.timelapse_rounded,
+                                                  label: l10n.navFocus,
+                                                  color: Colors
+                                                      .deepOrange.shade400,
+                                                  desc: l10n.descFocus,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/focus',
+                                                    l10n.navFocus,
+                                                    const FocusScreen(),
+                                                  ),
+                                                  delay: 100,
+                                                ),
+                                              if (customNavButton != 'focus' &&
+                                                  isModuleEnabled('focus'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton !=
+                                                      'medications' &&
+                                                  isModuleEnabled(
+                                                      'medications'))
+                                                NavMenuButton(
+                                                  icon:
+                                                      Icons.medication_rounded,
+                                                  label: l10n.navMedications,
+                                                  color: Colors.teal.shade400,
+                                                  desc: l10n.descMedications,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/medications',
+                                                    l10n.navMedications,
+                                                    MedicationsScreen(
+                                                      onClose: () =>
+                                                          _onItemTapped(0),
+                                                    ),
+                                                  ),
+                                                  delay: 150,
+                                                ),
+                                              if (customNavButton !=
+                                                      'medications' &&
+                                                  isModuleEnabled(
+                                                      'medications'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton !=
+                                                      'appointments' &&
+                                                  isModuleEnabled(
+                                                      'appointments'))
+                                                NavMenuButton(
+                                                  icon: Icons
+                                                      .event_available_rounded,
+                                                  label: l10n.navAppointments,
+                                                  color: Colors.cyan.shade400,
+                                                  desc: l10n.descAppointments,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/appointments',
+                                                    l10n.navAppointments,
+                                                    AppointmentScreen(
+                                                      onClose: () =>
+                                                          _onItemTapped(0),
+                                                    ),
+                                                  ),
+                                                  delay: 200,
+                                                ),
+                                              if (customNavButton !=
+                                                      'appointments' &&
+                                                  isModuleEnabled(
+                                                      'appointments'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton != 'notes' &&
+                                                  isModuleEnabled('notes'))
+                                                NavMenuButton(
+                                                  icon: Icons.note_alt_rounded,
+                                                  label: l10n.noteMyNotes,
+                                                  color: Colors.indigo.shade400,
+                                                  desc: l10n.descNotes,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/notes',
+                                                    l10n.noteMyNotes,
+                                                    const NotesScreen(),
+                                                  ),
+                                                  delay: 250,
+                                                ),
+                                              if (customNavButton != 'notes' &&
+                                                  isModuleEnabled('notes'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton != 'habit' &&
+                                                  isModuleEnabled('habit'))
+                                                NavMenuButton(
+                                                  icon: Icons.spa_rounded,
+                                                  label: l10n.navHabits,
+                                                  color: Colors.green.shade400,
+                                                  desc: l10n.descHabits,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/habits',
+                                                    l10n.navHabits,
+                                                    const HabitScreen(),
+                                                  ),
+                                                  delay: 300,
+                                                ),
+                                              if (customNavButton != 'habit' &&
+                                                  isModuleEnabled('habit'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton != 'budget' &&
+                                                  isModuleEnabled('budget'))
+                                                NavMenuButton(
+                                                  icon: Icons
+                                                      .account_balance_wallet_rounded,
+                                                  label: l10n.featBudgetManagement,
+                                                  color: Colors.amber.shade700,
+                                                  desc: l10n.featBudgetManagementDesc,
+                                                  onTap: () =>
+                                                      _selectLifeOption(
+                                                    '/budget',
+                                                    l10n.featBudgetManagement,
+                                                    BudgetScreen(
+                                                      onClose: () =>
+                                                          _onItemTapped(0),
+                                                    ),
+                                                  ),
+                                                  delay: 350,
+                                                ),
+                                              if (customNavButton != 'budget' &&
+                                                  isModuleEnabled('budget'))
+                                                const SizedBox(height: 12),
+                                              if (customNavButton != 'teams' &&
+                                                  isModuleEnabled('teams'))
+                                                NavMenuButton(
+                                                  icon: Icons.groups_2_rounded,
+                                                  label: l10n.navTeams,
+                                                  color: Colors.blue.shade600,
+                                                  desc: l10n.descTeams,
+                                                  onTap: () => _onItemTapped(1),
+                                                  delay: 400,
+                                                ),
+                                              if (_isAdmin) ...[
+                                                const SizedBox(height: 12),
+                                                NavMenuButton(
+                                                  icon: Icons
+                                                      .admin_panel_settings_rounded,
+                                                  label: l10n.adminPanelTitle,
+                                                  color: Colors.red.shade600,
+                                                  desc: l10n.adminPanelDesc,
+                                                  onTap: () {
+                                                    setState(
+                                                      () => _isMenuOpen = false,
+                                                    );
+                                                    _menuAnimController
+                                                        .reverse();
+                                                    Navigator.of(context).push(
+                                                      MaterialPageRoute(
+                                                        builder: (_) =>
+                                                            const AdminGuard(
+                                                          child:
+                                                              AdminScaffold(),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  delay: 450,
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
                         ],
                       ),
-                shape: BoxShape.circle,
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: cs.primary.withValues(alpha: 0.3),
-                          blurRadius: 15,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Icon(
-                Icons.auto_awesome,
-                color: isSelected
-                    ? cs.onPrimary
-                    : cs.onSurface.withValues(alpha: 0.7),
-                size: 24,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Nova',
-              style: GoogleFonts.outfit(
-                color: isSelected
-                    ? cs.primary
-                    : cs.onSurface.withValues(alpha: 0.5),
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModernMenuButton({
-    required IconData icon,
-    required String label,
-    required String desc,
-    required Color color,
-    required VoidCallback onTap,
-    required int delay,
-    required ColorScheme cs,
-  }) {
-    return FadeInUp(
-      duration: const Duration(milliseconds: 300),
-      delay: Duration(milliseconds: delay),
-      child: GestureDetector(
-        onTap: onTap,
-        child: SizedBox(
-          width: 280,
-          child: PhobesGlassCard(
-            margin: EdgeInsets.zero,
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color, color.withValues(alpha: 0.7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 24),
+                    if (shell.showIntelligencePanel)
+                      intelligencePanel(width: shell.intelligencePanelWidth),
+                  ],
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: GoogleFonts.outfit(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        desc,
-                        style: GoogleFonts.outfit(
-                          color: cs.onSurface.withValues(alpha: 0.5),
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
+              ), // Expanded
+            ],
+          ), // Column
+          bottomNavigationBar: showSidebar
+              ? null
+              : PremiumNavBar(
+                  selectedIndex: _getBottomBarIndex(),
+                  isMenuOpen: _isMenuOpen,
+                  displayLifeTitle: displayLifeTitle,
+                  onItemTapped: _onItemTapped,
                 ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: color.withValues(alpha: 0.5),
-                  size: 14,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

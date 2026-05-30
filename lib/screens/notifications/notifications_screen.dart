@@ -1,12 +1,19 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
 import '../../models/app_notification_model.dart';
 import '../../services/firebase_service.dart';
 import '../../core/page_transitions.dart';
 import 'notification_preferences_screen.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/phobes_widgets.dart';
 import '../../core/phobes_theme.dart';
+import '../habit/habit_screen.dart';
+import '../medication/medications_screen.dart';
+import '../appointments/appointment_screen.dart';
+import '../teams/team_screen.dart';
+import '../budget/budget_screen.dart';
+import '../common/survey_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -18,6 +25,14 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   final _firebaseService = FirebaseService();
   String _filter = 'all';
+  late final Stream<List<AppNotification>> _notifsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifsStream =
+        _firebaseService.getNotificationsStream().asBroadcastStream();
+  }
 
   static const _filters = {
     'all': 'Tümü',
@@ -55,110 +70,150 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isAmoled = PhobesTheme.amoledMode.value;
     final cs = Theme.of(context).colorScheme;
 
-    return LayoutBuilder(builder: (context, constraints) {
-      final isWide = constraints.maxWidth >= 900;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 900;
 
-      return Scaffold(
-        backgroundColor: isWide
-            ? Colors.transparent
-            : (isAmoled && isDark ? Colors.black : cs.surface),
-        appBar: isWide
-            ? null
-            : AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: UnconstrainedBox(
-                  child: PhobesIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                ),
-                title: Text(
-                  'Bildirimler',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSurface,
-                  ),
-                ),
-                actions: [
-                  PhobesIconButton(
-                    icon: Icons.done_all_rounded,
-                    color: cs.primary,
-                    onTap: () => _firebaseService.markAllNotificationsRead(),
-                  ),
-                  const SizedBox(width: 8),
-                  PhobesIconButton(
-                    icon: Icons.settings_outlined,
-                    onTap: () => PhobesPageRoute.pushResponsive(
-                      context,
-                      const NotificationPreferencesScreen(),
+        return Scaffold(
+          backgroundColor: isWide
+              ? Colors.transparent
+              : (isAmoled && isDark ? Colors.black : cs.surface),
+          appBar: isWide
+              ? null
+              : AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  leading: UnconstrainedBox(
+                    child: PhobesIconButton(
+                      icon: Icons.arrow_back_ios_new_rounded,
+                      onTap: () => Navigator.pop(context),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  title: Text(
+                    'Bildirimler',
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  actions: [
+                    PhobesIconButton(
+                      icon: Icons.done_all_rounded,
+                      color: cs.primary,
+                      onTap: () => _firebaseService.markAllNotificationsRead(),
+                    ),
+                    const SizedBox(width: 8),
+                    PhobesIconButton(
+                      icon: Icons.settings_outlined,
+                      onTap: () => PhobesPageRoute.pushResponsive(
+                        context,
+                        const NotificationPreferencesScreen(),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                ),
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 860),
+              child: Column(
+                children: [
+                  if (isWide)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Bildirimler',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 26,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          const Spacer(),
+                          PhobesIconButton(
+                            icon: Icons.done_all_rounded,
+                            color: cs.primary,
+                            onTap: () =>
+                                _firebaseService.markAllNotificationsRead(),
+                          ),
+                          const SizedBox(width: 8),
+                          PhobesIconButton(
+                            icon: Icons.settings_outlined,
+                            onTap: () => PhobesPageRoute.pushResponsive(
+                              context,
+                              const NotificationPreferencesScreen(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 12,
+                      children: _filters.entries.map((e) {
+                        final isSelected = _filter == e.key;
+                        final color = e.key == 'all'
+                            ? cs.primary
+                            : _typeColors[e.key] ?? const Color(0xFF607D8B);
+                        return PhobesChip(
+                          label: e.value,
+                          isSelected: isSelected,
+                          color: color,
+                          onTap: () => setState(() => _filter = e.key),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: StreamBuilder<List<AppNotification>>(
+                      stream: _notifsStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                            child: PhobesLoadingIndicator(color: cs.primary),
+                          );
+                        }
+
+                        var notifications = snapshot.data ?? [];
+                        if (_filter != 'all') {
+                          notifications = notifications
+                              .where((n) => n.type == _filter)
+                              .toList();
+                        }
+
+                        if (notifications.isEmpty) {
+                          return _buildEmptyState();
+                        }
+
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: notifications.length,
+                          itemBuilder: (context, index) {
+                            final notif = notifications[index];
+                            return FadeInRight(
+                              delay: Duration(milliseconds: index * 40),
+                              child: _buildNotificationCard(notif),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
                 ],
               ),
-        body: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-              width: double.infinity,
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 12,
-                children: _filters.entries.map((e) {
-                  final isSelected = _filter == e.key;
-                  final color = e.key == 'all'
-                      ? cs.primary
-                      : _typeColors[e.key] ?? const Color(0xFF607D8B);
-                  return PhobesChip(
-                    label: e.value,
-                    isSelected: isSelected,
-                    color: color,
-                    onTap: () => setState(() => _filter = e.key),
-                  );
-                }).toList(),
-              ),
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: StreamBuilder<List<AppNotification>>(
-                stream: _firebaseService.getNotificationsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: PhobesLoadingIndicator(color: cs.primary),
-                    );
-                  }
-
-                  var notifications = snapshot.data ?? [];
-                  if (_filter != 'all') {
-                    notifications =
-                        notifications.where((n) => n.type == _filter).toList();
-                  }
-
-                  if (notifications.isEmpty) {
-                    return _buildEmptyState();
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
-                      final notif = notifications[index];
-                      return FadeInRight(
-                        delay: Duration(milliseconds: index * 40),
-                        child: _buildNotificationCard(notif),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildNotificationCard(AppNotification notif) {
@@ -172,6 +227,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         if (!notif.isRead && notif.id != null) {
           _firebaseService.markNotificationRead(notif.id!);
         }
+        _navigateToTarget(notif);
       },
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.only(bottom: 8),
@@ -179,8 +235,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ? null
           : LinearGradient(
               colors: [
-                color.withValues(alpha: 0.08),
-                color.withValues(alpha: 0.02),
+                color.withOpacity(0.08),
+                color.withOpacity(0.02),
               ],
             ),
       child: Row(
@@ -190,7 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
@@ -221,7 +277,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       timeAgo,
                       style: GoogleFonts.outfit(
                         fontSize: 11,
-                        color: cs.onSurface.withValues(alpha: 0.3),
+                        color: cs.onSurface.withOpacity(0.3),
                       ),
                     ),
                   ],
@@ -231,7 +287,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   notif.body,
                   style: GoogleFonts.outfit(
                     fontSize: 12,
-                    color: cs.onSurface.withValues(alpha: 0.5),
+                    color: cs.onSurface.withOpacity(0.5),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -249,7 +305,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: color.withValues(alpha: 0.4),
+                    color: color.withOpacity(0.4),
                     blurRadius: 4,
                   ),
                 ],
@@ -260,52 +316,57 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  void _navigateToTarget(AppNotification notif) {
+    final targetType = notif.targetType ?? notif.type;
+    Widget? screen;
+    switch (targetType) {
+      case 'habit':
+        screen = const HabitScreen();
+        break;
+      case 'medication':
+        screen = const MedicationsScreen();
+        break;
+      case 'appointment':
+        screen = const AppointmentScreen();
+        break;
+      case 'team':
+        screen = const TeamScreen();
+        break;
+      case 'budget':
+        screen = BudgetScreen(onClose: () => Navigator.pop(context));
+        break;
+      case 'survey':
+        if (notif.targetId != null && notif.targetId!.isNotEmpty) {
+          PhobesPageRoute.pushResponsive(
+            context,
+            SurveyScreen(surveyId: notif.targetId!),
+          );
+        }
+        return;
+      default:
+        return; // task, system vb. — mevcut ekranda kal
+    }
+    PhobesPageRoute.pushResponsive(context, screen);
+  }
+
   Widget _buildEmptyState() {
-    final cs = Theme.of(context).colorScheme;
-    return Center(
-      child: FadeInUp(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              PhobesGlassCard(
-                padding: const EdgeInsets.all(28),
-                borderRadius: 40,
-                child: Icon(Icons.notifications_off_rounded,
-                    size: 48, color: cs.onSurface.withValues(alpha: 0.2)),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Henüz bildiriminiz yok',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: cs.onSurface,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Görevler, ilaçlar ve diğer etkinlikleriniz\nilgili bildirimler burada görünecek',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: cs.onSurface.withValues(alpha: 0.4),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    final l10n = AppLocalizations.of(context)!;
+    return PhobesEmptyState(
+      icon: Icons.notifications_off_rounded,
+      title: l10n.notificationsEmptyTitle,
+      description: l10n.notificationsEmptyDesc,
     );
   }
 
   String _formatTimeAgo(DateTime date) {
+    final l10n = AppLocalizations.of(context)!;
     final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'Şimdi';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}dk';
-    if (diff.inHours < 24) return '${diff.inHours}sa';
-    if (diff.inDays < 7) return '${diff.inDays}g';
+    if (diff.inMinutes < 1) return l10n.notificationsTimeNow;
+    if (diff.inMinutes < 60) {
+      return l10n.notificationsTimeMinutes(diff.inMinutes);
+    }
+    if (diff.inHours < 24) return l10n.notificationsTimeHours(diff.inHours);
+    if (diff.inDays < 7) return l10n.notificationsTimeDays(diff.inDays);
     return '${date.day}.${date.month}';
   }
 }

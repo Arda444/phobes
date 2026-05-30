@@ -1,328 +1,793 @@
 {
   "@@locale": "en",
   "appTitle": "Phobes",
-  "@appTitle": { "description": "App title" },
-
+  "@appTitle": {
+    "description": "App title"
+  },
   "login": "Login",
-  "@login": { "description": "Button label" },
+  "@login": {
+    "description": "Button label"
+  },
   "register": "Register",
-  "@register": { "description": "Button label" },
+  "@register": {
+    "description": "Button label"
+  },
   "email": "Email",
-  "@email": { "description": "Input label" },
+  "@email": {
+    "description": "Input label"
+  },
   "password": "Password",
-  "@password": { "description": "Input label" },
+  "@password": {
+    "description": "Input label"
+  },
   "forgotPassword": "Forgot Password?",
-  "@forgotPassword": { "description": "Button label" },
+  "@forgotPassword": {
+    "description": "Button label"
+  },
   "welcomeBack": "Welcome Back",
-  "@welcomeBack": { "description": "Title" },
+  "@welcomeBack": {
+    "description": "Title"
+  },
   "createAccount": "Create Account",
-  "@createAccount": { "description": "Title" },
+  "@createAccount": {
+    "description": "Title"
+  },
   "name": "Name",
-  "@name": { "description": "Input label" },
+  "@name": {
+    "description": "Input label"
+  },
   "surname": "Surname",
-  "@surname": { "description": "Input label" },
+  "@surname": {
+    "description": "Input label"
+  },
   "birthDateSelect": "Select Birth Date",
-  "@birthDateSelect": { "description": "Hint" },
+  "@birthDateSelect": {
+    "description": "Hint"
+  },
   "continueWithGoogle": "Continue with Google",
-  "@continueWithGoogle": { "description": "Button label" },
-
+  "@continueWithGoogle": {
+    "description": "Button label"
+  },
+  "continueWithApple": "Continue with Apple",
+  "@continueWithApple": {
+    "description": "Button label"
+  },
   "navCalendar": "Calendar",
-  "@navCalendar": { "description": "Nav item" },
+  "@navCalendar": {
+    "description": "Nav item"
+  },
   "navTeams": "Teams",
-  "@navTeams": { "description": "Nav item" },
+  "@navTeams": {
+    "description": "Nav item"
+  },
   "navStatistics": "Stats",
-  "@navStatistics": { "description": "Nav item" },
+  "@navStatistics": {
+    "description": "Nav item"
+  },
   "navAccount": "Account",
-  "@navAccount": { "description": "Nav item" },
-
+  "@navAccount": {
+    "description": "Nav item"
+  },
   "today": "Today",
-  "@today": { "description": "Button" },
+  "@today": {
+    "description": "Button"
+  },
   "events": "Events",
-  "@events": { "description": "Header" },
+  "@events": {
+    "description": "Header"
+  },
   "noEvents": "No events found",
-  "@noEvents": { "description": "Message" },
+  "@noEvents": {
+    "description": "Message"
+  },
   "allDay": "All Day",
-  "@allDay": { "description": "Label" },
+  "@allDay": {
+    "description": "Label"
+  },
   "complete": "Complete",
-  "@complete": { "description": "Action" },
+  "@complete": {
+    "description": "Action"
+  },
   "postpone": "Postpone",
-  "@postpone": { "description": "Action" },
+  "@postpone": {
+    "description": "Action"
+  },
   "edit": "Edit",
-  "@edit": { "description": "Action" },
+  "@edit": {
+    "description": "Action"
+  },
   "delete": "Delete",
-  "@delete": { "description": "Action" },
+  "@delete": {
+    "description": "Action"
+  },
   "save": "Save",
-  "@save": { "description": "Button" },
+  "@save": {
+    "description": "Button"
+  },
   "cancel": "Cancel",
-  "@cancel": { "description": "Button" },
+  "@cancel": {
+    "description": "Button"
+  },
   "update": "Update",
-  "@update": { "description": "Button" },
+  "@update": {
+    "description": "Button"
+  },
   "create": "Create",
-  "@create": { "description": "Button" },
+  "@create": {
+    "description": "Button"
+  },
   "join": "Join",
-  "@join": { "description": "Button" },
-
+  "@join": {
+    "description": "Button"
+  },
+  "yesterday": "YESTERDAY",
+  "@yesterday": {
+    "description": "Label"
+  },
+  "activityCreated": "created",
+  "@activityCreated": {
+    "description": "Activity verb"
+  },
+  "activityCompleted": "completed",
+  "@activityCompleted": {
+    "description": "Activity verb"
+  },
+  "activityStarted": "started working on",
+  "@activityStarted": {
+    "description": "Activity verb"
+  },
+  "activityMoved": "moved",
+  "@activityMoved": {
+    "description": "Activity verb"
+  },
+  "activityJoined": "joined",
+  "@activityJoined": {
+    "description": "Activity verb"
+  },
+  "activityUpdated": "updated",
+  "@activityUpdated": {
+    "description": "Activity verb"
+  },
+  "habitNew": "New Habit",
+  "@habitNew": {
+    "description": "Title"
+  },
+  "habitStartChain": "Start Chain",
+  "@habitStartChain": {
+    "description": "Button"
+  },
+  "habitGetStarted": "Let's Get Started",
+  "@habitGetStarted": {
+    "description": "Button"
+  },
+  "habitGreatGoing": "Great going! 🔥",
+  "@habitGreatGoing": {
+    "description": "Encouragement"
+  },
+  "habitDontBreakChain": "Don't Break the Chain",
+  "@habitDontBreakChain": {
+    "description": "Encouragement"
+  },
+  "habitDeleteTitle": "Delete Habit",
+  "@habitDeleteTitle": {
+    "description": "Dialog title"
+  },
+  "habitDeleteWarning": "This habit will be permanently deleted.",
+  "@habitDeleteWarning": {
+    "description": "Dialog message"
+  },
+  "asNeeded": "As Needed",
+  "@asNeeded": {
+    "description": "Frequency option"
+  },
+  "ok": "OK",
+  "@ok": {
+    "description": "Button"
+  },
+  "add": "Add",
+  "@add": {
+    "description": "Button"
+  },
+  "confirm": "Confirm",
+  "@confirm": {
+    "description": "Button"
+  },
+  "yes": "Yes",
+  "@yes": {
+    "description": "Button"
+  },
+  "no": "No",
+  "@no": {
+    "description": "Button"
+  },
+  "close": "Close",
+  "@close": {
+    "description": "Button"
+  },
+  "continueAction": "Continue",
+  "@continueAction": {
+    "description": "Button"
+  },
+  "dismiss": "Dismiss",
+  "@dismiss": {
+    "description": "Button"
+  },
   "newTask": "New Task",
-  "@newTask": { "description": "Title" },
+  "@newTask": {
+    "description": "Title"
+  },
   "editTask": "Edit Task",
-  "@editTask": { "description": "Title" },
+  "@editTask": {
+    "description": "Title"
+  },
   "title": "Title",
-  "@title": { "description": "Label" },
+  "@title": {
+    "description": "Label"
+  },
   "description": "Description",
-  "@description": { "description": "Label" },
+  "@description": {
+    "description": "Label"
+  },
   "descriptionOptional": "Description (Optional)",
-  "@descriptionOptional": { "description": "Hint" },
+  "@descriptionOptional": {
+    "description": "Hint"
+  },
   "locationOptional": "Location (Optional)",
-  "@locationOptional": { "description": "Hint" },
+  "@locationOptional": {
+    "description": "Hint"
+  },
   "linkOptional": "Link / URL (Optional)",
-  "@linkOptional": { "description": "Hint" },
+  "@linkOptional": {
+    "description": "Hint"
+  },
   "tagsHint": "Tags (comma separated)",
-  "@tagsHint": { "description": "Hint" },
+  "@tagsHint": {
+    "description": "Hint"
+  },
   "start": "Start",
-  "@start": { "description": "Label" },
+  "@start": {
+    "description": "Label"
+  },
   "end": "End",
-  "@end": { "description": "Label" },
+  "@end": {
+    "description": "Label"
+  },
   "selectColor": "Select Color",
-  "@selectColor": { "description": "Label" },
+  "@selectColor": {
+    "description": "Label"
+  },
   "requiredField": "This field is required",
-  "@requiredField": { "description": "Error" },
+  "@requiredField": {
+    "description": "Error"
+  },
   "repeat": "Repeat",
-  "@repeat": { "description": "Label" },
-
+  "@repeat": {
+    "description": "Label"
+  },
   "sectionTiming": "Timing",
-  "@sectionTiming": { "description": "Header" },
+  "@sectionTiming": {
+    "description": "Header"
+  },
   "sectionDetails": "Details",
-  "@sectionDetails": { "description": "Header" },
+  "@sectionDetails": {
+    "description": "Header"
+  },
   "sectionSettings": "Settings",
-  "@sectionSettings": { "description": "Header" },
-
+  "@sectionSettings": {
+    "description": "Header"
+  },
   "priority": "Priority",
-  "@priority": { "description": "Label" },
+  "@priority": {
+    "description": "Label"
+  },
   "priorityLow": "Low",
-  "@priorityLow": { "description": "Option" },
+  "@priorityLow": {
+    "description": "Option"
+  },
   "priorityMedium": "Medium",
-  "@priorityMedium": { "description": "Option" },
+  "@priorityMedium": {
+    "description": "Option"
+  },
   "priorityHigh": "High",
-  "@priorityHigh": { "description": "Option" },
-
+  "@priorityHigh": {
+    "description": "Option"
+  },
   "reminder": "Reminder",
-  "@reminder": { "description": "Label" },
+  "@reminder": {
+    "description": "Label"
+  },
   "reminderNone": "No Reminder",
-  "@reminderNone": { "description": "Option" },
+  "@reminderNone": {
+    "description": "Option"
+  },
   "reminderAtTime": "At time of event",
-  "@reminderAtTime": { "description": "Option" },
+  "@reminderAtTime": {
+    "description": "Option"
+  },
   "reminder10Min": "10 minutes before",
-  "@reminder10Min": { "description": "Option" },
+  "@reminder10Min": {
+    "description": "Option"
+  },
   "reminder30Min": "30 minutes before",
-  "@reminder30Min": { "description": "Option" },
+  "@reminder30Min": {
+    "description": "Option"
+  },
   "reminder1Hour": "1 hour before",
-  "@reminder1Hour": { "description": "Option" },
+  "@reminder1Hour": {
+    "description": "Option"
+  },
   "reminder1Day": "1 day before",
-  "@reminder1Day": { "description": "Option" },
-
+  "@reminder1Day": {
+    "description": "Option"
+  },
   "repeatNone": "No Repeat",
-  "@repeatNone": { "description": "Option" },
+  "@repeatNone": {
+    "description": "Option"
+  },
   "repeatDaily": "Daily",
-  "@repeatDaily": { "description": "Option" },
+  "@repeatDaily": {
+    "description": "Option"
+  },
   "repeatWeekly": "Weekly",
-  "@repeatWeekly": { "description": "Option" },
+  "@repeatWeekly": {
+    "description": "Option"
+  },
   "repeatMonthly": "Monthly",
-  "@repeatMonthly": { "description": "Option" },
-
+  "@repeatMonthly": {
+    "description": "Option"
+  },
   "notes": "Notes",
-  "@notes": { "description": "Header" },
+  "@notes": {
+    "description": "Header"
+  },
   "dailyNotes": "Daily Notes",
-  "@dailyNotes": { "description": "Header" },
+  "@dailyNotes": {
+    "description": "Header"
+  },
   "allNotes": "All Notes",
-  "@allNotes": { "description": "Button" },
+  "@allNotes": {
+    "description": "Button"
+  },
   "newNote": "New Note",
-  "@newNote": { "description": "Title" },
+  "@newNote": {
+    "description": "Title"
+  },
   "editNote": "Edit Note",
-  "@editNote": { "description": "Title" },
+  "@editNote": {
+    "description": "Title"
+  },
   "untitledNote": "Untitled Note",
-  "@untitledNote": { "description": "Default" },
+  "@untitledNote": {
+    "description": "Default"
+  },
   "writeYourNotes": "Write your notes here...",
-  "@writeYourNotes": { "description": "Hint" },
+  "@writeYourNotes": {
+    "description": "Hint"
+  },
   "weeklyNotesTitle": "Weekly Notes",
-  "@weeklyNotesTitle": { "description": "Title" },
+  "@weeklyNotesTitle": {
+    "description": "Title"
+  },
   "noteDeleted": "Note deleted",
-  "@noteDeleted": { "description": "Message" },
+  "@noteDeleted": {
+    "description": "Message"
+  },
   "noNotesForToday": "No notes for today",
-  "@noNotesForToday": { "description": "Message" },
+  "@noNotesForToday": {
+    "description": "Message"
+  },
   "noNotesAtAll": "No notes yet",
-  "@noNotesAtAll": { "description": "Message" },
+  "@noNotesAtAll": {
+    "description": "Message"
+  },
   "deleteNoteTitle": "Delete Note",
-  "@deleteNoteTitle": { "description": "Dialog title" },
+  "@deleteNoteTitle": {
+    "description": "Dialog title"
+  },
   "deleteNoteWarning": "Are you sure you want to delete this note?",
-  "@deleteNoteWarning": { "description": "Dialog message" },
-
+  "@deleteNoteWarning": {
+    "description": "Dialog message"
+  },
+  "noteTrash": "Trash",
+  "noteNotebookNotes": "Notebook Notes",
+  "notePin": "Pinned",
+  "noteSortDate": "Date",
+  "noteSortTitle": "Title",
+  "noteSortCategory": "Category",
+  "noteSearchHint": "Search notes...",
+  "noteAll": "All",
+  "noteTeamNotes": "Team",
+  "noteProjectNotes": "Projects",
+  "noteFavorites": "Favorites",
+  "noteArchive": "Archive",
+  "noteCatGeneral": "General",
+  "noteCatWork": "Work",
+  "noteCatPersonal": "Personal",
+  "noteCatIdeas": "Ideas",
+  "noteCatMeeting": "Meeting",
+  "noteCatResearch": "Research",
+  "noteCatStudy": "Study",
   "statistics": "Statistics",
-  "@statistics": { "description": "Title" },
+  "@statistics": {
+    "description": "Title"
+  },
+  "statsShare": "Share",
+  "@statsShare": {
+    "description": "Share statistics report"
+  },
+  "statsDownload": "Download",
+  "@statsDownload": {
+    "description": "Download statistics report"
+  },
+  "statsShareReport": "Share report",
+  "@statsShareReport": {
+    "description": "Share sheet title"
+  },
+  "statsDownloadReport": "Download report",
+  "@statsDownloadReport": {
+    "description": "Download sheet title"
+  },
+  "statsExportPdf": "PDF",
+  "@statsExportPdf": {
+    "description": "PDF format label"
+  },
+  "statsExportExcel": "Excel",
+  "@statsExportExcel": {
+    "description": "Excel format label"
+  },
+  "statsSharePdf": "Share as PDF",
+  "@statsSharePdf": {
+    "description": "Share PDF action"
+  },
+  "statsShareExcel": "Share as Excel",
+  "@statsShareExcel": {
+    "description": "Share Excel action"
+  },
+  "statsDownloadPdf": "Download PDF",
+  "@statsDownloadPdf": {
+    "description": "Download PDF action"
+  },
+  "statsDownloadExcel": "Download Excel",
+  "@statsDownloadExcel": {
+    "description": "Download Excel action"
+  },
+  "statsExporting": "Preparing export…",
+  "@statsExporting": {
+    "description": "Export in progress"
+  },
+  "statsExportFailed": "Export failed. Try again.",
+  "@statsExportFailed": {
+    "description": "Export error"
+  },
+  "statsDownloadSuccess": "File downloaded",
+  "@statsDownloadSuccess": {
+    "description": "Download completed"
+  },
   "statsGuide": "Statistics Guide",
-  "@statsGuide": { "description": "Title" },
+  "@statsGuide": {
+    "description": "Title"
+  },
   "statsGuideSubtitle": "What do these numbers mean?",
-  "@statsGuideSubtitle": { "description": "Subtitle" },
+  "@statsGuideSubtitle": {
+    "description": "Subtitle"
+  },
   "productivityScore": "Productivity Score",
-  "@productivityScore": { "description": "Metric" },
+  "@productivityScore": {
+    "description": "Metric"
+  },
   "productivityScoreDesc": "Your daily performance score.",
-  "@productivityScoreDesc": { "description": "Desc" },
+  "@productivityScoreDesc": {
+    "description": "Desc"
+  },
   "streak": "Streak",
-  "@streak": { "description": "Metric" },
+  "@streak": {
+    "description": "Metric"
+  },
   "streakDesc": "Consecutive days.",
-  "@streakDesc": { "description": "Desc" },
+  "@streakDesc": {
+    "description": "Desc"
+  },
   "completedTasks": "Completed",
-  "@completedTasks": { "description": "Metric" },
+  "@completedTasks": {
+    "description": "Metric"
+  },
   "completedTasksDesc": "Total tasks finished.",
-  "@completedTasksDesc": { "description": "Desc" },
+  "@completedTasksDesc": {
+    "description": "Desc"
+  },
   "mostProductiveTime": "Best Time",
-  "@mostProductiveTime": { "description": "Metric" },
+  "@mostProductiveTime": {
+    "description": "Metric"
+  },
   "mostProductiveTimeDesc": "Your peak hour.",
-  "@mostProductiveTimeDesc": { "description": "Desc" },
+  "@mostProductiveTimeDesc": {
+    "description": "Desc"
+  },
   "focusTime": "Focus Time",
-  "@focusTime": { "description": "Metric" },
+  "@focusTime": {
+    "description": "Metric"
+  },
   "activityHeatmapTitle": "Consistency Heatmap",
-  "@activityHeatmapTitle": { "description": "Chart title" },
+  "@activityHeatmapTitle": {
+    "description": "Chart title"
+  },
   "dailyActivityTitle": "Daily Activity",
-  "@dailyActivityTitle": { "description": "Chart title" },
+  "@dailyActivityTitle": {
+    "description": "Chart title"
+  },
   "weeklyTrendTitle": "Weekly Trend",
-  "@weeklyTrendTitle": { "description": "Chart title" },
+  "@weeklyTrendTitle": {
+    "description": "Chart title"
+  },
   "categoryAnalysisTitle": "Category Analysis",
-  "@categoryAnalysisTitle": { "description": "Chart title" },
+  "@categoryAnalysisTitle": {
+    "description": "Chart title"
+  },
   "priorityAnalysisTitle": "Priority Analysis",
-  "@priorityAnalysisTitle": { "description": "Chart title" },
+  "@priorityAnalysisTitle": {
+    "description": "Chart title"
+  },
   "hourlyActivityTitle": "Hourly Activity",
-  "@hourlyActivityTitle": { "description": "Chart title" },
+  "@hourlyActivityTitle": {
+    "description": "Chart title"
+  },
   "lifeBalanceTitle": "Life Balance",
-  "@lifeBalanceTitle": { "description": "Chart title" },
+  "@lifeBalanceTitle": {
+    "description": "Chart title"
+  },
   "burnoutTitle": "Burnout Risk",
-  "@burnoutTitle": { "description": "Chart title" },
+  "@burnoutTitle": {
+    "description": "Chart title"
+  },
   "burnoutCreated": "Created",
-  "@burnoutCreated": { "description": "Legend" },
+  "@burnoutCreated": {
+    "description": "Legend"
+  },
   "burnoutCompleted": "Completed",
-  "@burnoutCompleted": { "description": "Legend" },
+  "@burnoutCompleted": {
+    "description": "Legend"
+  },
   "completionRateTitle": "Completion Rate",
-  "@completionRateTitle": { "description": "Chart title" },
+  "@completionRateTitle": {
+    "description": "Chart title"
+  },
   "monthlyTrendTitle": "Monthly Trend",
-  "@monthlyTrendTitle": { "description": "Chart title" },
+  "@monthlyTrendTitle": {
+    "description": "Chart title"
+  },
   "tagCompletionTitle": "Tag Completion",
-  "@tagCompletionTitle": { "description": "Chart title" },
+  "@tagCompletionTitle": {
+    "description": "Chart title"
+  },
   "tagTimeSpentTitle": "Time Spent by Tag",
-  "@tagTimeSpentTitle": { "description": "Chart title" },
+  "@tagTimeSpentTitle": {
+    "description": "Chart title"
+  },
   "dayOfWeekEfficiencyTitle": "Day Efficiency",
-  "@dayOfWeekEfficiencyTitle": { "description": "Chart title" },
+  "@dayOfWeekEfficiencyTitle": {
+    "description": "Chart title"
+  },
   "projectionTitle": "Projection",
-  "@projectionTitle": { "description": "Widget title" },
+  "@projectionTitle": {
+    "description": "Widget title"
+  },
   "projectionPast": "Past 30 Days",
-  "@projectionPast": { "description": "Label" },
+  "@projectionPast": {
+    "description": "Label"
+  },
   "projectionFuture": "Next 30 Days",
-  "@projectionFuture": { "description": "Label" },
+  "@projectionFuture": {
+    "description": "Label"
+  },
   "change": "Change",
-  "@change": { "description": "Label" },
+  "@change": {
+    "description": "Label"
+  },
   "tagTimeSpentNoData": "Not enough data",
-  "@tagTimeSpentNoData": { "description": "Message" },
+  "@tagTimeSpentNoData": {
+    "description": "Message"
+  },
   "aiAdvice": "AI Advice",
-  "@aiAdvice": { "description": "Title" },
+  "@aiAdvice": {
+    "description": "Title"
+  },
   "error": "Error",
-  "@error": { "description": "Label" },
+  "@error": {
+    "description": "Label"
+  },
   "noData": "No Data",
-  "@noData": { "description": "Label" },
+  "@noData": {
+    "description": "Label"
+  },
   "perfectDaysTitle": "Perfect Days",
-  "@perfectDaysTitle": { "description": "Widget title" },
+  "@perfectDaysTitle": {
+    "description": "Widget title"
+  },
   "perfectDaysDesc": "100% completion & 0 postpones",
-  "@perfectDaysDesc": { "description": "Widget desc" },
-
+  "@perfectDaysDesc": {
+    "description": "Widget desc"
+  },
   "accountAndSettings": "Account & Settings",
-  "@accountAndSettings": { "description": "Title" },
+  "@accountAndSettings": {
+    "description": "Title"
+  },
   "totalNotes": "Total Notes",
-  "@totalNotes": { "description": "Metric" },
+  "@totalNotes": {
+    "description": "Metric"
+  },
   "dailyStreak": "Daily Streak",
-  "@dailyStreak": { "description": "Metric" },
+  "@dailyStreak": {
+    "description": "Metric"
+  },
   "productivitySummary": "Productivity Summary",
-  "@productivitySummary": { "description": "Header" },
+  "@productivitySummary": {
+    "description": "Header"
+  },
   "dataManagement": "Data Management",
-  "@dataManagement": { "description": "Header" },
+  "@dataManagement": {
+    "description": "Header"
+  },
   "add1YearSimulation": "Generate Test Data (1 Year)",
-  "@add1YearSimulation": { "description": "Action" },
+  "@add1YearSimulation": {
+    "description": "Action"
+  },
   "add1YearSimulationDesc": "Adds random data",
-  "@add1YearSimulationDesc": { "description": "Desc" },
+  "@add1YearSimulationDesc": {
+    "description": "Desc"
+  },
   "exportData": "Export Data",
-  "@exportData": { "description": "Action" },
+  "@exportData": {
+    "description": "Action"
+  },
   "exportDataDesc": "Backup your data",
-  "@exportDataDesc": { "description": "Desc" },
+  "@exportDataDesc": {
+    "description": "Desc"
+  },
   "clearAllData": "Clear All Data",
-  "@clearAllData": { "description": "Action" },
+  "@clearAllData": {
+    "description": "Action"
+  },
   "clearAllDataDesc": "Permanently remove all data",
-  "@clearAllDataDesc": { "description": "Desc" },
+  "@clearAllDataDesc": {
+    "description": "Desc"
+  },
   "clearAllDataTitle": "Clear Data",
-  "@clearAllDataTitle": { "description": "Dialog title" },
+  "@clearAllDataTitle": {
+    "description": "Dialog title"
+  },
   "clearAllDataWarning": "Are you sure? This cannot be undone.",
-  "@clearAllDataWarning": { "description": "Dialog msg" },
+  "@clearAllDataWarning": {
+    "description": "Dialog msg"
+  },
   "allDataDeleted": "All data deleted",
-  "@allDataDeleted": { "description": "Msg" },
+  "@allDataDeleted": {
+    "description": "Msg"
+  },
   "backupFeatureComingSoon": "Backup feature coming soon!",
-  "@backupFeatureComingSoon": { "description": "Msg" },
+  "@backupFeatureComingSoon": {
+    "description": "Msg"
+  },
   "simulationStarting": "Simulation started...",
-  "@simulationStarting": { "description": "Msg" },
+  "@simulationStarting": {
+    "description": "Msg"
+  },
   "simulationComplete": "Simulation complete! Check stats.",
-  "@simulationComplete": { "description": "Msg" },
+  "@simulationComplete": {
+    "description": "Msg"
+  },
   "simulationError": "Error: {error}",
-  "@simulationError": { "description": "Msg", "placeholders": { "error": { "type": "String" } } },
+  "@simulationError": {
+    "description": "Msg",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "simulationGeneratedTask": "Simulation Data",
-  "@simulationGeneratedTask": { "description": "Desc" },
+  "@simulationGeneratedTask": {
+    "description": "Desc"
+  },
   "dataLoadError": "Failed to load data",
-  "@dataLoadError": { "description": "Error" },
-
+  "@dataLoadError": {
+    "description": "Error"
+  },
   "loading": "Loading...",
-  "@loading": { "description": "Loading text" },
+  "@loading": {
+    "description": "Loading text"
+  },
   "fetchingData": "Fetching data from server...",
-  "@fetchingData": { "description": "Loading text" },
+  "@fetchingData": {
+    "description": "Loading text"
+  },
   "analyzingData": "Analyzing {count} records...",
   "@analyzingData": {
-    "description": "Loading text",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "generatingCharts": "Generating charts...",
-  "@generatingCharts": { "description": "Loading text" },
-
+  "@generatingCharts": {
+    "description": "Loading text"
+  },
   "languageSettings": "Language",
-  "@languageSettings": { "description": "Header" },
+  "@languageSettings": {
+    "description": "Header"
+  },
   "language": "Language",
-  "@language": { "description": "Label" },
+  "@language": {
+    "description": "Label"
+  },
   "about": "About",
-  "@about": { "description": "Header" },
+  "@about": {
+    "description": "Header"
+  },
   "appVersion": "App Version",
-  "@appVersion": { "description": "Label" },
+  "@appVersion": {
+    "description": "Label"
+  },
   "developer": "Developer",
-  "@developer": { "description": "Label" },
+  "@developer": {
+    "description": "Label"
+  },
   "account": "Account",
-  "@account": { "description": "Label" },
+  "@account": {
+    "description": "Label"
+  },
   "changePassword": "Change Password",
-  "@changePassword": { "description": "Action" },
+  "@changePassword": {
+    "description": "Action"
+  },
   "changeEmail": "Change Email",
-  "@changeEmail": { "description": "Action" },
+  "@changeEmail": {
+    "description": "Action"
+  },
   "editInfo": "Edit Info",
-  "@editInfo": { "description": "Action" },
+  "@editInfo": {
+    "description": "Action"
+  },
   "editInfoTitle": "Edit Information",
-  "@editInfoTitle": { "description": "Title" },
+  "@editInfoTitle": {
+    "description": "Title"
+  },
   "infoUpdated": "Information updated",
-  "@infoUpdated": { "description": "Msg" },
+  "@infoUpdated": {
+    "description": "Msg"
+  },
   "securityPrompt": "Please sign in again.",
-  "@securityPrompt": { "description": "Msg" },
+  "@securityPrompt": {
+    "description": "Msg"
+  },
   "passwordMinLength": "Min 6 characters",
-  "@passwordMinLength": { "description": "Error" },
+  "@passwordMinLength": {
+    "description": "Error"
+  },
   "passwordChanged": "Password changed",
-  "@passwordChanged": { "description": "Msg" },
+  "@passwordChanged": {
+    "description": "Msg"
+  },
   "emailChangePrompt": "Verification email will be sent.",
-  "@emailChangePrompt": { "description": "Msg" },
+  "@emailChangePrompt": {
+    "description": "Msg"
+  },
   "newEmail": "New Email",
-  "@newEmail": { "description": "Label" },
+  "@newEmail": {
+    "description": "Label"
+  },
   "newPassword": "New Password",
-  "@newPassword": { "description": "Label" },
+  "@newPassword": {
+    "description": "Label"
+  },
   "emailVerificationSent": "Verification email sent",
-  "@emailVerificationSent": { "description": "Msg" },
+  "@emailVerificationSent": {
+    "description": "Msg"
+  },
   "signOut": "Sign Out",
-  "@signOut": { "description": "Button" },
-
+  "@signOut": {
+    "description": "Button"
+  },
   "resetPasswordPrompt": "Enter your email address, we will send a reset link.",
   "send": "Send",
   "resetPasswordEmailSent": "Reset email sent!",
@@ -340,7 +805,6 @@
   "securityPrivacy": "Security & Privacy",
   "brandHeroTitle": "Future Time Management Ecosystem",
   "brandHeroDesc": "Phobes is a digital life laboratory that transforms chaos into order, synchronizing every moment of life with AI.",
-
   "productivity": "Productivity",
   "harmony": "Harmony",
   "order": "Order",
@@ -363,29 +827,23 @@
   "contactChannels": "Contact Channels",
   "generalContact": "General Contact",
   "supportHotline": "Support Hotline",
-
   "catTaskProject": "TASKS & PROJECTS",
   "catTaskProjectDesc": "Action layer; the main hub that turns ideas into reality and manages time.",
   "secActionManagement": "Action Management",
   "secViewModes": "View Modes",
   "secNavDiscovery": "Nav & Discovery",
-  
   "catNovaAi": "NOVA AI",
   "catNovaAiDesc": "Smart controller; the intelligence that monitors, analyzes, and guides you.",
   "secAnalysisPlanning": "Analysis & Planning",
-
   "catFinance": "FINANCE",
   "catFinanceDesc": "Financial peace; the module that manages your budget and plans your financial future.",
   "secControlPanel": "Control Panel",
-
   "catLifeHealth": "LIFE & HEALTH",
   "catLifeHealthDesc": "Holistic balance; reminders that protect both your physical and mental health.",
   "secBalanceTools": "Balance Tools",
-
   "catPhobesCore": "PHOBES CORE",
   "catPhobesCoreDesc": "Core infrastructure; the lifeblood that protects your data and keeps it ready everywhere.",
   "secSecuritySpeed": "Security & Speed",
-
   "featAddTask": "Add New Task",
   "featAddTaskDesc": "Quick entry with one tap and detailed planning.",
   "featDynamicSnooze": "Dynamic Snooze",
@@ -394,7 +852,6 @@
   "featSubtasksDesc": "Breaking down complex jobs into small pieces.",
   "featQuickEdit": "Quick Edit",
   "featQuickEditDesc": "Instant text and date updates via the list.",
-
   "featDailyList": "Daily List",
   "featDailyListDesc": "A simple and efficient flow focusing on today.",
   "featWeeklyCalendar": "Weekly Calendar",
@@ -403,425 +860,849 @@
   "featMonthlyPlannerDesc": "Long-term strategic calendar view.",
   "featKanbanBoard": "Kanban Board",
   "featKanbanBoardDesc": "Drag-and-drop cards for process management.",
-
   "featAdvancedFiltering": "Advanced Filtering",
   "featAdvancedFilteringDesc": "Filter by importance, team, and category.",
   "featSmartTaskSearch": "Smart Task Search",
   "featSmartTaskSearchDesc": "Instant keyword search across all projects.",
   "featPriorityLabels": "Priority Labels",
   "featPriorityLabelsDesc": "Mark critical jobs with colored levels.",
-
   "featVoiceCommand": "Voice Command Recognition",
   "featVoiceCommandDesc": "Creating tasks and managing the system with voice.",
   "featSmartReminders": "Smart Reminders",
   "featSmartRemindersDesc": "Context-aware and priority-based notifications.",
   "featUsageAnalytics": "Usage Analytics",
   "featUsageAnalyticsDesc": "Deep insights into your productivity habits.",
-
   "featBudgetManagement": "Budget Management",
   "featBudgetManagementDesc": "Detailed tracking of income, expenses, and savings.",
   "featFinancialGoals": "Financial Goals",
   "featFinancialGoalsDesc": "Set and track goals for future investments.",
   "featSubscriptionTracking": "Subscription Tracking",
   "featSubscriptionTrackingDesc": "Keep all your monthly payments under control.",
-
   "featHealthTracking": "Health Tracking",
   "featHealthTrackingDesc": "Track water, sleep, and physical activity.",
   "featMindfulnessReminders": "Mindfulness Reminders",
   "featMindfulnessRemindersDesc": "Subtle alerts for mental focus and rest.",
   "featMedicationTracking": "Medication Tracking",
   "featMedicationTrackingDesc": "Full management for pills and treatments.",
-
   "featCloudSync": "Cloud Sync",
   "featCloudSyncDesc": "Your data is always ready on all devices.",
   "featBiometricLock": "Biometric Lock",
   "featBiometricLockDesc": "Security with Fingerprint or Face ID.",
   "featOfflineSupport": "Offline Support",
   "featOfflineSupportDesc": "Ability to work even without internet.",
-
   "corpInfo": "Corporate Information",
   "techlunaDesc": "A software laboratory that combines technology and design for modern productivity solutions.",
   "allRightsReserved": "© 2026 Techluna Software • Phobes v1.2.5",
   "aboutPhobes": "About Phobes",
   "featureTree": "Feature Tree",
   "contact": "Contact",
-
   "daysAgo30": "30d ago",
-  "@daysAgo30": { "description": "Label" },
+  "@daysAgo30": {
+    "description": "Label"
+  },
   "daysAgo15": "15d ago",
-  "@daysAgo15": { "description": "Label" },
+  "@daysAgo15": {
+    "description": "Label"
+  },
   "weeksAgo3": "3w ago",
-  "@weeksAgo3": { "description": "Label" },
+  "@weeksAgo3": {
+    "description": "Label"
+  },
   "weeksAgo2": "2w ago",
-  "@weeksAgo2": { "description": "Label" },
+  "@weeksAgo2": {
+    "description": "Label"
+  },
   "weeksAgo1": "1w ago",
-  "@weeksAgo1": { "description": "Label" },
+  "@weeksAgo1": {
+    "description": "Label"
+  },
   "thisWeek": "This Week",
-  "@thisWeek": { "description": "Label" },
+  "@thisWeek": {
+    "description": "Label"
+  },
   "last14Days": "Last 14 Days",
-  "@last14Days": { "description": "Subtitle" },
+  "@last14Days": {
+    "description": "Subtitle"
+  },
   "last4Weeks": "Last 4 Weeks",
-  "@last4Weeks": { "description": "Subtitle" },
+  "@last4Weeks": {
+    "description": "Subtitle"
+  },
   "taskDistribution": "Task Distribution",
-  "@taskDistribution": { "description": "Subtitle" },
+  "@taskDistribution": {
+    "description": "Subtitle"
+  },
   "prioritySubtitle": "Low - Medium - High",
-  "@prioritySubtitle": { "description": "Subtitle" },
+  "@prioritySubtitle": {
+    "description": "Subtitle"
+  },
   "hourlyActivitySubtitle": "Active Hours",
-  "@hourlyActivitySubtitle": { "description": "Subtitle" },
-
+  "@hourlyActivitySubtitle": {
+    "description": "Subtitle"
+  },
   "week3Ago": "3W Ago",
-  "@week3Ago": { "description": "Chart label" },
+  "@week3Ago": {
+    "description": "Chart label"
+  },
   "week2Ago": "2W Ago",
-  "@week2Ago": { "description": "Chart label" },
+  "@week2Ago": {
+    "description": "Chart label"
+  },
   "lastWeek": "Last W",
-  "@lastWeek": { "description": "Chart label" },
-
-  "dayMon": "Mon", "@dayMon": { "description": "Day" },
-  "dayTue": "Tue", "@dayTue": { "description": "Day" },
-  "dayWed": "Wed", "@dayWed": { "description": "Day" },
-  "dayThu": "Thu", "@dayThu": { "description": "Day" },
-  "dayFri": "Fri", "@dayFri": { "description": "Day" },
-  "daySat": "Sat", "@daySat": { "description": "Day" },
-  "daySun": "Sun", "@daySun": { "description": "Day" },
-  "dayMonday": "Monday", "@dayMonday": { "description": "Day" },
-  "dayTuesday": "Tuesday", "@dayTuesday": { "description": "Day" },
-  "dayWednesday": "Wednesday", "@dayWednesday": { "description": "Day" },
-  "dayThursday": "Thursday", "@dayThursday": { "description": "Day" },
-  "dayFriday": "Friday", "@dayFriday": { "description": "Day" },
-  "daySaturday": "Saturday", "@daySaturday": { "description": "Day" },
-  "daySunday": "Sunday", "@daySunday": { "description": "Day" },
-
+  "@lastWeek": {
+    "description": "Chart label"
+  },
+  "dayMon": "Mon",
+  "@dayMon": {
+    "description": "Day"
+  },
+  "dayTue": "Tue",
+  "@dayTue": {
+    "description": "Day"
+  },
+  "dayWed": "Wed",
+  "@dayWed": {
+    "description": "Day"
+  },
+  "dayThu": "Thu",
+  "@dayThu": {
+    "description": "Day"
+  },
+  "dayFri": "Fri",
+  "@dayFri": {
+    "description": "Day"
+  },
+  "daySat": "Sat",
+  "@daySat": {
+    "description": "Day"
+  },
+  "daySun": "Sun",
+  "@daySun": {
+    "description": "Day"
+  },
+  "dayMonday": "Monday",
+  "@dayMonday": {
+    "description": "Day"
+  },
+  "dayTuesday": "Tuesday",
+  "@dayTuesday": {
+    "description": "Day"
+  },
+  "dayWednesday": "Wednesday",
+  "@dayWednesday": {
+    "description": "Day"
+  },
+  "dayThursday": "Thursday",
+  "@dayThursday": {
+    "description": "Day"
+  },
+  "dayFriday": "Friday",
+  "@dayFriday": {
+    "description": "Day"
+  },
+  "daySaturday": "Saturday",
+  "@daySaturday": {
+    "description": "Day"
+  },
+  "daySunday": "Sunday",
+  "@daySunday": {
+    "description": "Day"
+  },
   "adviceWelcome": "Welcome! Add your first task.",
-  "@adviceWelcome": { "description": "Advice" },
+  "@adviceWelcome": {
+    "description": "Advice"
+  },
   "adviceStreak": "Great! {count} day streak.",
-  "@adviceStreak": { "description": "Advice", "placeholders": { "count": { "type": "int" } } },
+  "@adviceStreak": {
+    "description": "Advice",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "adviceStartStreak": "Consistency is key.",
-  "@adviceStartStreak": { "description": "Advice" },
+  "@adviceStartStreak": {
+    "description": "Advice"
+  },
   "adviceUpcomingBusy": "Busy days ahead! ({percent}%)",
-  "@adviceUpcomingBusy": { "description": "Advice", "placeholders": { "percent": { "type": "String" } } },
+  "@adviceUpcomingBusy": {
+    "description": "Advice",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "adviceUpcomingCalm": "Calm days ahead.",
-  "@adviceUpcomingCalm": { "description": "Advice" },
+  "@adviceUpcomingCalm": {
+    "description": "Advice"
+  },
   "adviceBusiestHour": "Peak hour: {hour}:00.",
-  "@adviceBusiestHour": { "description": "Advice", "placeholders": { "hour": { "type": "String" } } },
+  "@adviceBusiestHour": {
+    "description": "Advice",
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
   "adviceAvgDuration": "Avg task: {minutes} mins.",
-  "@adviceAvgDuration": { "description": "Advice", "placeholders": { "minutes": { "type": "String" } } },
+  "@adviceAvgDuration": {
+    "description": "Advice",
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
   "adviceBusiestDay": "Busiest day: {day}.",
-  "@adviceBusiestDay": { "description": "Advice", "placeholders": { "day": { "type": "String" } } },
+  "@adviceBusiestDay": {
+    "description": "Advice",
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
   "adviceOverdueRate": "Watch out! {percent}% overdue.",
-  "@adviceOverdueRate": { "description": "Advice", "placeholders": { "percent": { "type": "String" } } },
+  "@adviceOverdueRate": {
+    "description": "Advice",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "advicePostponedTag": "Often postponing: {tag}.",
-  "@advicePostponedTag": { "description": "Advice", "placeholders": { "tag": { "type": "String" } } },
+  "@advicePostponedTag": {
+    "description": "Advice",
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
   "zombieTaskTitle": "Zombie Task",
-  "@zombieTaskTitle": { "description": "Title" },
+  "@zombieTaskTitle": {
+    "description": "Title"
+  },
   "zombieTaskAdvice": "'{title}' waiting for {days} days.",
-  "@zombieTaskAdvice": { "description": "Msg", "placeholders": { "title": { "type": "String" }, "days": { "type": "int" } } },
-
+  "@zombieTaskAdvice": {
+    "description": "Msg",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
   "addEvent": "Add Event",
-  "@addEvent": { "description": "Button" },
+  "@addEvent": {
+    "description": "Button"
+  },
   "addNote": "Add Note",
-  "@addNote": { "description": "Button" },
+  "@addNote": {
+    "description": "Button"
+  },
   "viewAllEvents": "View All Events",
-  "@viewAllEvents": { "description": "Button" },
+  "@viewAllEvents": {
+    "description": "Button"
+  },
   "postponeAllDay": "Postpone All Day",
-  "@postponeAllDay": { "description": "Button" },
+  "@postponeAllDay": {
+    "description": "Button"
+  },
   "hiddenItemsCount": "+{count} more",
-  "@hiddenItemsCount": { "description": "Label", "placeholders": { "count": { "type": "int" } } },
-  
+  "@hiddenItemsCount": {
+    "description": "Label",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "postponeAllDayWarning": "Move all tasks to later?",
-  "@postponeAllDayWarning": { "description": "Msg" },
+  "@postponeAllDayWarning": {
+    "description": "Msg"
+  },
   "postpone15Min": "15 Min",
-  "@postpone15Min": { "description": "Option" },
+  "@postpone15Min": {
+    "description": "Option"
+  },
   "postpone1Hour": "1 Hour",
-  "@postpone1Hour": { "description": "Option" },
+  "@postpone1Hour": {
+    "description": "Option"
+  },
   "postpone2Hour": "2 Hours",
-  "@postpone2Hour": { "description": "Option" },
+  "@postpone2Hour": {
+    "description": "Option"
+  },
   "postponeTomorrow": "Tomorrow",
-  "@postponeTomorrow": { "description": "Option" },
+  "@postponeTomorrow": {
+    "description": "Option"
+  },
   "postpone1Week": "1 Week",
-  "@postpone1Week": { "description": "Option" },
+  "@postpone1Week": {
+    "description": "Option"
+  },
   "postponeThisInstance1Hour": "Postpone This (1H)",
-  "@postponeThisInstance1Hour": { "description": "Option" },
+  "@postponeThisInstance1Hour": {
+    "description": "Option"
+  },
   "postponeAllInstances1Hour": "Postpone All (1H)",
-  "@postponeAllInstances1Hour": { "description": "Option" },
+  "@postponeAllInstances1Hour": {
+    "description": "Option"
+  },
   "postponeThisInstanceTomorrow": "Postpone This (Tmw)",
-  "@postponeThisInstanceTomorrow": { "description": "Option" },
+  "@postponeThisInstanceTomorrow": {
+    "description": "Option"
+  },
   "postponeAllInstancesTomorrow": "Postpone All (Tmw)",
-  "@postponeAllInstancesTomorrow": { "description": "Option" },
+  "@postponeAllInstancesTomorrow": {
+    "description": "Option"
+  },
   "postponeRepeatingTaskTitle": "Repeating: {title}",
-  "@postponeRepeatingTaskTitle": { "description": "Title", "placeholders": { "title": { "type": "String" } } },
+  "@postponeRepeatingTaskTitle": {
+    "description": "Title",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "postponedMessage": "{label} postponed!",
-  "@postponedMessage": { "description": "Msg", "placeholders": { "label": { "type": "String" } } },
+  "@postponedMessage": {
+    "description": "Msg",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
   "linkError": "Link error",
-  "@linkError": { "description": "Error" },
-
+  "@linkError": {
+    "description": "Error"
+  },
   "createTeam": "Create Team",
-  "@createTeam": { "description": "Button" },
+  "@createTeam": {
+    "description": "Button"
+  },
   "joinTeam": "Join Team",
-  "@joinTeam": { "description": "Button" },
+  "@joinTeam": {
+    "description": "Button"
+  },
   "teamName": "Team Name",
-  "@teamName": { "description": "Input" },
+  "@teamName": {
+    "description": "Input"
+  },
   "joinCode": "Join Code",
-  "@joinCode": { "description": "Input" },
+  "@joinCode": {
+    "description": "Input"
+  },
   "teamCreated": "Team created: {code}",
-  "@teamCreated": { "description": "Msg", "placeholders": { "code": { "type": "String" } } },
+  "@teamCreated": {
+    "description": "Msg",
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
   "teamJoined": "Joined!",
-  "@teamJoined": { "description": "Msg" },
+  "@teamJoined": {
+    "description": "Msg"
+  },
   "invalidCode": "Invalid code",
-  "@invalidCode": { "description": "Error" },
+  "@invalidCode": {
+    "description": "Error"
+  },
+  "joinTeamPermissionDenied": "You do not have permission to join this team.",
+  "joinTeamFailed": "Could not join the team. Try again later.",
+  "joinCodeHint": "Enter team join code",
+  "statsLoading": "Loading data…",
+  "statsLoadFailed": "Could not load statistics. Pull to refresh.",
+  "teamRoleOwner": "Owner",
+  "teamRoleAdmin": "Admin",
+  "teamRoleMember": "Member",
+  "createTeamTitle": "Create new team",
+  "teamWorkspace": "Workspace",
   "members": "Members",
-  "@members": { "description": "Label" },
+  "@members": {
+    "description": "Label"
+  },
   "copyCode": "Copy Code",
-  "@copyCode": { "description": "Tooltip" },
+  "@copyCode": {
+    "description": "Tooltip"
+  },
   "taskContext": "Context",
-  "@taskContext": { "description": "Label" },
+  "@taskContext": {
+    "description": "Label"
+  },
   "personal": "Personal",
-  "@personal": { "description": "Label" },
+  "@personal": {
+    "description": "Label"
+  },
   "team": "Team",
-  "@team": { "description": "Label" },
+  "@team": {
+    "description": "Label"
+  },
   "assignTo": "Assign To",
-  "@assignTo": { "description": "Label" },
+  "@assignTo": {
+    "description": "Label"
+  },
   "assignedTo": "Assigned: {name}",
-  "@assignedTo": { "placeholders": { "name": { "type": "String" } } },
+  "@assignedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "kickMember": "Remove Member",
-  "@kickMember": { "description": "Button text" },
+  "@kickMember": {
+    "description": "Button text"
+  },
   "kickMemberWarning": "Are you sure you want to remove this member?",
-  "@kickMemberWarning": { "description": "Warning message" },
+  "@kickMemberWarning": {
+    "description": "Warning message"
+  },
   "memberRemoved": "Member removed",
-  "@memberRemoved": { "description": "Success message" },
+  "@memberRemoved": {
+    "description": "Success message"
+  },
   "me": "(Me)",
-  "@me": { "description": "Label" },
+  "@me": {
+    "description": "Label"
+  },
   "tabTasks": "Tasks",
-  "@tabTasks": { "description": "Tab label" },
+  "@tabTasks": {
+    "description": "Tab label"
+  },
   "tabDashboard": "Dashboard",
-  "@tabDashboard": { "description": "Tab label" },
+  "@tabDashboard": {
+    "description": "Tab label"
+  },
   "tabActivity": "Activity",
-  "@tabActivity": { "description": "Tab label" },
+  "@tabActivity": {
+    "description": "Tab label"
+  },
   "teamLeaderboard": "Leaderboard",
-  "@teamLeaderboard": { "description": "Header" },
+  "@teamLeaderboard": {
+    "description": "Header"
+  },
   "projectProgress": "Project Progress",
-  "@projectProgress": { "description": "Header" },
+  "@projectProgress": {
+    "description": "Header"
+  },
   "recentActivity": "Recent Activity",
-  "@recentActivity": { "description": "Header" },
+  "@recentActivity": {
+    "description": "Header"
+  },
   "actTaskCreated": "created task",
-  "@actTaskCreated": { "description": "Activity action" },
+  "@actTaskCreated": {
+    "description": "Activity action"
+  },
   "actTaskCompleted": "completed task",
-  "@actTaskCompleted": { "description": "Activity action" },
+  "@actTaskCompleted": {
+    "description": "Activity action"
+  },
   "actMemberJoined": "joined the team",
-  "@actMemberJoined": { "description": "Activity action" },
+  "@actMemberJoined": {
+    "description": "Activity action"
+  },
   "actMemberLeft": "left the team",
-  "@actMemberLeft": { "description": "Activity action" },
+  "@actMemberLeft": {
+    "description": "Activity action"
+  },
   "filterAll": "All Events",
-  "@filterAll": { "description": "Filter option" },
+  "@filterAll": {
+    "description": "Filter option"
+  },
   "filterPersonal": "Personal Only",
-  "@filterPersonal": { "description": "Filter option" },
+  "@filterPersonal": {
+    "description": "Filter option"
+  },
   "filterTeam": "Team Only",
-  "@filterTeam": { "description": "Filter option" },
+  "@filterTeam": {
+    "description": "Filter option"
+  },
   "assignedToMe": "Assigned to me",
-  "@assignedToMe": { "description": "Filter option" },
+  "@assignedToMe": {
+    "description": "Filter option"
+  },
   "viewWeekly": "Weekly",
-  "@viewWeekly": { "description": "Calendar View" },
+  "@viewWeekly": {
+    "description": "Calendar View"
+  },
   "viewMonthly": "Monthly",
-  "@viewMonthly": { "description": "Calendar View" },
+  "@viewMonthly": {
+    "description": "Calendar View"
+  },
   "viewDaily": "Daily",
-  "@viewDaily": { "description": "Calendar View" },
-  
+  "@viewDaily": {
+    "description": "Calendar View"
+  },
   "addSmart": "Smart Add (Nova)",
-  "@addSmart": { "description": "Menu Option" },
+  "@addSmart": {
+    "description": "Menu Option"
+  },
   "addManual": "Manual Add",
-  "@addManual": { "description": "Menu Option" },
+  "@addManual": {
+    "description": "Menu Option"
+  },
   "novaAssistant": "Nova Assistant",
-  "@novaAssistant": { "description": "Title" },
+  "@novaAssistant": {
+    "description": "Title"
+  },
   "novaPrompt": "Type or speak, I will create for you.",
-  "@novaPrompt": { "description": "Hint" },
+  "@novaPrompt": {
+    "description": "Hint"
+  },
   "novaInputHint": "Type here...",
-  "@novaInputHint": { "description": "Hint" },
+  "@novaInputHint": {
+    "description": "Hint"
+  },
   "novaUnderstandError": "Nova didn't understand that.",
-  "@novaUnderstandError": { "description": "Error" },
+  "@novaUnderstandError": {
+    "description": "Error"
+  },
   "micPermissionError": "Microphone permission denied.",
-  "@micPermissionError": { "description": "Error" },
+  "@micPermissionError": {
+    "description": "Error"
+  },
   "poweredBy": "Powered by",
-  "@poweredBy": { "description": "Footer" },
+  "@poweredBy": {
+    "description": "Footer"
+  },
   "techlunaSoftware": "Techluna Software",
-  "@techlunaSoftware": { "description": "Company Name" },
+  "@techlunaSoftware": {
+    "description": "Company Name"
+  },
   "tabKanban": "Kanban",
-  "@tabKanban": { "description": "Tab title" },
+  "@tabKanban": {
+    "description": "Tab title"
+  },
   "tabResources": "Resources",
-  "@tabResources": { "description": "Tab title" },
+  "@tabResources": {
+    "description": "Tab title"
+  },
   "statusTodo": "To Do",
-  "@statusTodo": { "description": "Status" },
+  "@statusTodo": {
+    "description": "Status"
+  },
   "statusInProgress": "In Progress",
-  "@statusInProgress": { "description": "Status" },
+  "@statusInProgress": {
+    "description": "Status"
+  },
   "statusDone": "Done",
-  "@statusDone": { "description": "Status" },
+  "@statusDone": {
+    "description": "Status"
+  },
   "addLink": "Add Link",
-  "@addLink": { "description": "Button" },
+  "@addLink": {
+    "description": "Button"
+  },
   "announcements": "Announcements",
-  "@announcements": { "description": "Header" },
+  "@announcements": {
+    "description": "Header"
+  },
   "pinnedMessage": "Pinned Message",
-  "@pinnedMessage": { "description": "Header" },
+  "@pinnedMessage": {
+    "description": "Header"
+  },
   "mvpTitle": "Star of the Week",
-  "@mvpTitle": { "description": "Header" },
+  "@mvpTitle": {
+    "description": "Header"
+  },
   "workloadTitle": "Workload Distribution",
-  "@workloadTitle": { "description": "Header" },
+  "@workloadTitle": {
+    "description": "Header"
+  },
   "linkUrl": "Link (https://...)",
-  "@linkUrl": { "description": "Hint" },
+  "@linkUrl": {
+    "description": "Hint"
+  },
   "linkTitle": "Title",
-  "@linkTitle": { "description": "Hint" },
+  "@linkTitle": {
+    "description": "Hint"
+  },
   "openLink": "Open Link",
-  "@openLink": { "description": "Action" },
+  "@openLink": {
+    "description": "Action"
+  },
   "noResources": "No resources added yet.",
-  "@noResources": { "description": "Msg" },
+  "@noResources": {
+    "description": "Msg"
+  },
   "moveNext": "Move Next",
-  "@moveNext": { "description": "Action" },
+  "@moveNext": {
+    "description": "Action"
+  },
   "movePrev": "Move Back",
-  "@movePrev": { "description": "Action" },
-
+  "@movePrev": {
+    "description": "Action"
+  },
   "appointmentCenter": "Appointment Center",
-  "@appointmentCenter": { "description": "Screen Title" },
+  "@appointmentCenter": {
+    "description": "Screen Title"
+  },
   "manageServices": "Service Settings",
-  "@manageServices": { "description": "Button Tooltip" },
+  "@manageServices": {
+    "description": "Button Tooltip"
+  },
   "bookNewAppointment": "Book Appointment",
-  "@bookNewAppointment": { "description": "Button Tooltip" },
+  "@bookNewAppointment": {
+    "description": "Button Tooltip"
+  },
   "managementTab": "Management",
-  "@managementTab": { "description": "Tab Label" },
+  "@managementTab": {
+    "description": "Tab Label"
+  },
   "myAppointmentsTab": "My Appointments",
-  "@myAppointmentsTab": { "description": "Tab Label" },
-
+  "@myAppointmentsTab": {
+    "description": "Tab Label"
+  },
   "statusPending": "Pending",
-  "@statusPending": { "description": "Appointment Status" },
+  "@statusPending": {
+    "description": "Appointment Status"
+  },
   "statusConfirmed": "Confirmed",
-  "@statusConfirmed": { "description": "Appointment Status" },
+  "@statusConfirmed": {
+    "description": "Appointment Status"
+  },
   "statusCancelled": "Cancelled",
-  "@statusCancelled": { "description": "Appointment Status" },
+  "@statusCancelled": {
+    "description": "Appointment Status"
+  },
   "statusCompleted": "Completed",
-  "@statusCompleted": { "description": "Appointment Status" },
-
+  "@statusCompleted": {
+    "description": "Appointment Status"
+  },
   "btnApprove": "Approve",
-  "@btnApprove": { "description": "Button" },
+  "@btnApprove": {
+    "description": "Button"
+  },
   "btnReject": "Reject",
-  "@btnReject": { "description": "Button" },
+  "@btnReject": {
+    "description": "Button"
+  },
   "btnCall": "Call",
-  "@btnCall": { "description": "Button" },
+  "@btnCall": {
+    "description": "Button"
+  },
   "btnMap": "Directions",
-  "@btnMap": { "description": "Button" },
+  "@btnMap": {
+    "description": "Button"
+  },
   "btnWeb": "Web",
-  "@btnWeb": { "description": "Button" },
+  "@btnWeb": {
+    "description": "Button"
+  },
   "btnShare": "Share",
-  "@btnShare": { "description": "Button" },
+  "@btnShare": {
+    "description": "Button"
+  },
   "btnCopy": "Copy",
-  "@btnCopy": { "description": "Button" },
+  "@btnCopy": {
+    "description": "Button"
+  },
   "btnEdit": "Edit",
-  "@btnEdit": { "description": "Button" },
-
+  "@btnEdit": {
+    "description": "Button"
+  },
   "labelService": "Service",
-  "@labelService": { "description": "Label" },
+  "@labelService": {
+    "description": "Label"
+  },
   "labelProvider": "Provider",
-  "@labelProvider": { "description": "Label" },
+  "@labelProvider": {
+    "description": "Label"
+  },
   "labelDate": "Date & Time",
-  "@labelDate": { "description": "Label" },
+  "@labelDate": {
+    "description": "Label"
+  },
   "labelNote": "Note",
-  "@labelNote": { "description": "Label" },
+  "@labelNote": {
+    "description": "Label"
+  },
   "labelClient": "Client",
-  "@labelClient": { "description": "Label" },
-
+  "@labelClient": {
+    "description": "Label"
+  },
   "msgNoAppointments": "No appointments yet.",
-  "@msgNoAppointments": { "description": "Msg" },
+  "@msgNoAppointments": {
+    "description": "Msg"
+  },
   "msgNoServices": "No service groups created yet.",
-  "@msgNoServices": { "description": "Msg" },
+  "@msgNoServices": {
+    "description": "Msg"
+  },
   "msgCodeCopied": "Code copied!",
-  "@msgCodeCopied": { "description": "Msg" },
+  "@msgCodeCopied": {
+    "description": "Msg"
+  },
   "msgStatusUpdated": "Status updated",
-  "@msgStatusUpdated": { "description": "Msg" },
-
+  "@msgStatusUpdated": {
+    "description": "Msg"
+  },
   "businessName": "Business Name",
-  "@businessName": { "description": "Form Label" },
+  "@businessName": {
+    "description": "Form Label"
+  },
   "serviceTitle": "Service Title",
-  "@serviceTitle": { "description": "Form Label" },
+  "@serviceTitle": {
+    "description": "Form Label"
+  },
   "duration": "Duration",
-  "@duration": { "description": "Form Label" },
+  "@duration": {
+    "description": "Form Label"
+  },
   "price": "Price",
-  "@price": { "description": "Form Label" },
+  "@price": {
+    "description": "Form Label"
+  },
   "address": "Address",
-  "@address": { "description": "Form Label" },
+  "@address": {
+    "description": "Form Label"
+  },
   "cancellationPolicy": "Cancellation Policy",
-  "@cancellationPolicy": { "description": "Form Label" },
+  "@cancellationPolicy": {
+    "description": "Form Label"
+  },
   "policyWarning": "Cancellation is not allowed within {hours} hours.",
-  "@policyWarning": { "description": "Msg", "placeholders": { "hours": { "type": "Object" } } },
+  "@policyWarning": {
+    "description": "Msg",
+    "placeholders": {
+      "hours": {
+        "type": "Object"
+      }
+    }
+  },
   "searchPlaceholder": "Client name or phone...",
-  "@searchPlaceholder": { "description": "Hint" },
+  "@searchPlaceholder": {
+    "description": "Hint"
+  },
   "bookAppointment": "Book Appointment",
-  "@bookAppointment": { "description": "Button" },
-
+  "@bookAppointment": {
+    "description": "Button"
+  },
   "filterMyTasks": "My Tasks Only",
-  "@filterMyTasks": { "description": "Kanban filter" },
+  "@filterMyTasks": {
+    "description": "Kanban filter"
+  },
   "filterAllTeamTasks": "All Team Tasks",
-  "@filterAllTeamTasks": { "description": "Kanban filter" },
+  "@filterAllTeamTasks": {
+    "description": "Kanban filter"
+  },
   "empty": "Empty",
-  "@empty": { "description": "Empty state" },
+  "@empty": {
+    "description": "Empty state"
+  },
   "unassigned": "Unassigned",
-  "@unassigned": { "description": "User label" },
+  "@unassigned": {
+    "description": "User label"
+  },
   "pending": "Pending",
-  "@pending": { "description": "Status" },
+  "@pending": {
+    "description": "Status"
+  },
   "urgent": "Urgent",
-  "@urgent": { "description": "Priority" },
+  "@urgent": {
+    "description": "Priority"
+  },
   "taskStatus": "Task Status",
-  "@taskStatus": { "description": "Header" },
+  "@taskStatus": {
+    "description": "Header"
+  },
   "completed": "Completed",
-  "@completed": { "description": "Status" },
+  "@completed": {
+    "description": "Status"
+  },
   "noCompletedTasksYet": "No completed tasks yet.",
-  "@noCompletedTasksYet": { "description": "Msg" },
+  "@noCompletedTasksYet": {
+    "description": "Msg"
+  },
   "taskCount": "Task",
-  "@taskCount": { "description": "Unit" },
+  "@taskCount": {
+    "description": "Unit"
+  },
   "actMovedToProgress": "started task",
-  "@actMovedToProgress": { "description": "Activity" },
+  "@actMovedToProgress": {
+    "description": "Activity"
+  },
   "actMovedToTodo": "moved task back",
-  "@actMovedToTodo": { "description": "Activity" },
+  "@actMovedToTodo": {
+    "description": "Activity"
+  },
   "actFinished": "finished task",
-  "@actFinished": { "description": "Activity" },
+  "@actFinished": {
+    "description": "Activity"
+  },
   "addLinkTitle": "Add Link",
-  "@addLinkTitle": { "description": "Dialog title" },
+  "@addLinkTitle": {
+    "description": "Dialog title"
+  },
   "linkTitleHint": "Title",
-  "@linkTitleHint": { "description": "Hint" },
+  "@linkTitleHint": {
+    "description": "Hint"
+  },
   "linkUrlHint": "Link (https://...)",
-  "@linkUrlHint": { "description": "Hint" },
+  "@linkUrlHint": {
+    "description": "Hint"
+  },
   "publish": "Publish",
-  "@publish": { "description": "Button" },
+  "@publish": {
+    "description": "Button"
+  },
   "makeAnnouncement": "Make Announcement",
-  "@makeAnnouncement": { "description": "Dialog title" },
+  "@makeAnnouncement": {
+    "description": "Dialog title"
+  },
   "announcementHint": "Your message...",
-  "@announcementHint": { "description": "Hint" },
+  "@announcementHint": {
+    "description": "Hint"
+  },
   "noAnnouncements": "No announcements yet.",
-  "@noAnnouncements": { "description": "Msg" },
+  "@noAnnouncements": {
+    "description": "Msg"
+  },
   "resourcesTitle": "Resources",
-  "@resourcesTitle": { "description": "Header" },
+  "@resourcesTitle": {
+    "description": "Header"
+  },
   "noResourcesYet": "No resources added yet.",
-  "@noResourcesYet": { "description": "Msg" },
+  "@noResourcesYet": {
+    "description": "Msg"
+  },
   "tabKanbanTitle": "Kanban",
-  "@tabKanbanTitle": { "description": "Tab" },
+  "@tabKanbanTitle": {
+    "description": "Tab"
+  },
   "tabDashboardTitle": "Dashboard",
-  "@tabDashboardTitle": { "description": "Tab" },
+  "@tabDashboardTitle": {
+    "description": "Tab"
+  },
   "tabResourcesTitle": "Resources",
-  "@tabResourcesTitle": { "description": "Tab" },
+  "@tabResourcesTitle": {
+    "description": "Tab"
+  },
   "tabActivityTitle": "Activity",
-  "@tabActivityTitle": { "description": "Tab" },
-  "bookNewAppointment": "Book Appointment",
-  "joinCode": "Appointment Code",
+  "@tabActivityTitle": {
+    "description": "Tab"
+  },
+  "appointmentCode": "Appointment Code",
   "enterServiceCodeHint": "Enter the code provided by the service provider.",
   "btnContinue": "Continue",
-  "name": "Full Name",
   "phone": "Phone Number",
   "completeBooking": "Complete Booking",
-  "btnApprove": "Confirm",
+  "btnConfirm": "Confirm",
   "msgAppointmentSent": "Appointment request sent! ✅",
   "msgNoSlots": "No available slots for today.",
-  "invalidCode": "Invalid code or group not found!",
-  "btnCall": "Call",
-  "btnMap": "Directions",
-  "btnWeb": "Web",
-  "businessName": "Business Name",
-  "duration": "Duration",
-  "price": "Price",
-  "enterServiceCodeHint": "Enter the code you received from your service provider.",
+  "invalidAppointmentCode": "Invalid code or group not found!",
   "businessInfo": "Business Info",
   "cancelAppointment": "Cancel Appointment",
   "cancelWarning": "Are you sure you want to cancel this appointment?",
@@ -837,21 +1718,16 @@
   "descStats": "Productivity analysis",
   "filterTitle": "Filter",
   "reset": "Reset",
-  "filterPersonal": "Personal Tasks",
   "filterClient": "My Appointments (Client)",
   "filterProvider": "Business Appointments",
   "filterTeams": "Teams & Groups",
   "viewDetails": "View Details",
   "undo": "Undo",
   "unknown": "Unknown",
-  "error": "Error",
-  "loading": "Loading",
-
   "navMedications": "Medications",
   "navUpcomingEvents": "Upcoming",
   "descMedications": "Track medications & doses",
   "descUpcomingEvents": "Upcoming events",
-
   "medicationsTitle": "Medications",
   "medicationName": "Medication Name",
   "medicationDosage": "Dosage",
@@ -874,7 +1750,6 @@
   "frequencyDaily": "Daily",
   "frequencyWeekly": "Weekly",
   "frequencyAsNeeded": "As Needed",
-
   "notificationsTitle": "Notifications",
   "notificationSettings": "Notification Settings",
   "markAllRead": "Mark All as Read",
@@ -886,7 +1761,6 @@
   "notifFilterAppts": "Appointments",
   "notifFilterTeams": "Teams",
   "notifFilterSystem": "System",
-
   "upcomingEventsTitle": "Upcoming Events",
   "upcomingToday": "Today",
   "upcomingTomorrow": "Tomorrow",
@@ -897,7 +1771,6 @@
   "upcomingFilterMeds": "Medications",
   "upcomingFilterAppts": "Appointments",
   "upcomingFilterHabits": "Habits",
-
   "prefTaskDeadline": "Task Deadline",
   "prefTaskOverdue": "Overdue Task",
   "prefHabitStreak": "Streak at Risk",
@@ -913,5 +1786,2781 @@
   "prefTeamAnnounce": "Announcements",
   "prefTeamDeadline": "Team Deadline",
   "prefMorningBrief": "Morning Brief",
-  "prefWeeklyDigest": "Weekly Digest"
+  "prefWeeklyDigest": "Weekly Digest",
+  "noteMyNotes": "My Notes",
+  "@noteMyNotes": {
+    "description": "Tab"
+  },
+  "noteUnpin": "Unpin",
+  "@noteUnpin": {
+    "description": "Action"
+  },
+  "noteFavorite": "Favorite",
+  "@noteFavorite": {
+    "description": "Action"
+  },
+  "noteUnfavorite": "Remove Favorite",
+  "@noteUnfavorite": {
+    "description": "Action"
+  },
+  "noteArchiveAction": "Archive",
+  "@noteArchiveAction": {
+    "description": "Action"
+  },
+  "noteUnarchive": "Unarchive",
+  "@noteUnarchive": {
+    "description": "Action"
+  },
+  "notePermissions": "Permissions",
+  "@notePermissions": {
+    "description": "Action"
+  },
+  "noteLinkTask": "Link Task",
+  "@noteLinkTask": {
+    "description": "Action"
+  },
+  "noteUnlinkTask": "Unlink Task",
+  "@noteUnlinkTask": {
+    "description": "Action"
+  },
+  "noteComingSoon": "Coming Soon 🚀",
+  "@noteComingSoon": {
+    "description": "Label"
+  },
+  "noteWords": "{count} words",
+  "@noteWords": {
+    "description": "Stats",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noteChars": "{count} chars",
+  "@noteChars": {
+    "description": "Stats",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noteReadTime": "~{min} min read",
+  "@noteReadTime": {
+    "description": "Stats",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "noteAutoSaved": "Auto-saved",
+  "@noteAutoSaved": {
+    "description": "Status"
+  },
+  "noteUnsaved": "Unsaved changes",
+  "@noteUnsaved": {
+    "description": "Status"
+  },
+  "noteViewPermission": "View Permission",
+  "@noteViewPermission": {
+    "description": "Label"
+  },
+  "noteEditPermission": "Edit Permission",
+  "@noteEditPermission": {
+    "description": "Label"
+  },
+  "notePermOwner": "Only Me",
+  "@notePermOwner": {
+    "description": "Permission"
+  },
+  "notePermTeam": "Entire Team",
+  "@notePermTeam": {
+    "description": "Permission"
+  },
+  "notePermAdmins": "Admins Only",
+  "@notePermAdmins": {
+    "description": "Permission"
+  },
+  "notePermSpecific": "Specific Users",
+  "@notePermSpecific": {
+    "description": "Permission"
+  },
+  "noteTableInsert": "Insert Table",
+  "@noteTableInsert": {
+    "description": "Action"
+  },
+  "noteTableRows": "Rows",
+  "@noteTableRows": {
+    "description": "Label"
+  },
+  "noteTableCols": "Columns",
+  "@noteTableCols": {
+    "description": "Label"
+  },
+  "noteLinkedTasks": "Linked Tasks",
+  "@noteLinkedTasks": {
+    "description": "Header"
+  },
+  "noteNoLinkedTasks": "No linked tasks",
+  "@noteNoLinkedTasks": {
+    "description": "Msg"
+  },
+  "noteTemplate": "Template",
+  "@noteTemplate": {
+    "description": "Label"
+  },
+  "noteTemplateMeeting": "Meeting Notes",
+  "@noteTemplateMeeting": {
+    "description": "Template"
+  },
+  "noteTemplateDiary": "Diary",
+  "@noteTemplateDiary": {
+    "description": "Template"
+  },
+  "noteTemplateIdea": "Ideas",
+  "@noteTemplateIdea": {
+    "description": "Template"
+  },
+  "noteTemplateProject": "Project Plan",
+  "@noteTemplateProject": {
+    "description": "Template"
+  },
+  "noteTemplateBlank": "Blank Note",
+  "@noteTemplateBlank": {
+    "description": "Template"
+  },
+  "noteFromTemplate": "From Template",
+  "@noteFromTemplate": {
+    "description": "Action"
+  },
+  "noteQuickNote": "Quick Note",
+  "@noteQuickNote": {
+    "description": "Action"
+  },
+  "noteFocusMode": "Focus Mode",
+  "@noteFocusMode": {
+    "description": "Action"
+  },
+  "noteSaved": "Note saved",
+  "@noteSaved": {
+    "description": "Msg"
+  },
+  "noteEmptyState": "Your notes will appear here",
+  "@noteEmptyState": {
+    "description": "Msg"
+  },
+  "noteEmptyStateDesc": "Tap + to create your first note",
+  "@noteEmptyStateDesc": {
+    "description": "Msg"
+  },
+  "noteGridView": "Grid View",
+  "@noteGridView": {
+    "description": "Tooltip"
+  },
+  "noteListView": "List View",
+  "@noteListView": {
+    "description": "Tooltip"
+  },
+  "noteSelectTeam": "Select Team",
+  "@noteSelectTeam": {
+    "description": "Label"
+  },
+  "noteSelectProject": "Select Project",
+  "@noteSelectProject": {
+    "description": "Label"
+  },
+  "noteDuplicate": "Duplicate",
+  "@noteDuplicate": {
+    "description": "Action"
+  },
+  "noteShare": "Share",
+  "@noteShare": {
+    "description": "Action"
+  },
+  "noteAddImage": "Add Image",
+  "@noteAddImage": {
+    "description": "Action"
+  },
+  "noteAddFile": "Add File",
+  "@noteAddFile": {
+    "description": "Action"
+  },
+  "noteCreateTable": "Create Table",
+  "@noteCreateTable": {
+    "description": "Action"
+  },
+  "errorGeneric": "An error occurred: {error}",
+  "@errorGeneric": {
+    "description": "Generic error with detail",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "errorPermissionDenied": "You do not have permission for this action.",
+  "errorNotFound": "Record not found.",
+  "errorUnavailable": "Service temporarily unavailable.",
+  "errorRateLimited": "Too many requests. Please wait.",
+  "errorInvalidInput": "Invalid input.",
+  "errorAuth": "Authentication error.",
+  "adminRoleClaimHint": "Admin access uses Firebase custom claims. Run: node admin-cli/set-admin.js <uid>",
+  "errorMedicineNameRequired": "Medicine name is required",
+  "@errorMedicineNameRequired": {
+    "description": "Validation error"
+  },
+  "errorNoteSave": "Save error: {error}",
+  "@errorNoteSave": {
+    "description": "Note save error",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "habitReminderSet": "Daily reminder set for {time}!",
+  "@habitReminderSet": {
+    "description": "Habit reminder confirmation",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmDeleteNotebook": "Are you sure you want to delete the \"{name}\" notebook?",
+  "@confirmDeleteNotebook": {
+    "description": "Delete notebook confirmation",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteNotebook": "Delete Notebook",
+  "@deleteNotebook": {
+    "description": "Dialog title"
+  },
+  "confirmDeleteMedicine": "Delete Medicine?",
+  "@confirmDeleteMedicine": {
+    "description": "Dialog title"
+  },
+  "medicineStatusToggleActive": "Activate",
+  "@medicineStatusToggleActive": {
+    "description": "Button label"
+  },
+  "medicineStatusTogglePassive": "Deactivate",
+  "@medicineStatusTogglePassive": {
+    "description": "Button label"
+  },
+  "adminConsole": "ADMIN CONSOLE",
+  "@adminConsole": {
+    "description": "Admin header"
+  },
+  "adminDashboard": "Dashboard",
+  "@adminDashboard": {
+    "description": "Admin menu"
+  },
+  "adminUsers": "Users",
+  "@adminUsers": {
+    "description": "Admin menu"
+  },
+  "adminEngagement": "Engagement",
+  "@adminEngagement": {
+    "description": "Admin menu"
+  },
+  "adminSystemSettings": "System Settings",
+  "@adminSystemSettings": {
+    "description": "Admin menu"
+  },
+  "adminExitPanel": "Exit Panel",
+  "@adminExitPanel": {
+    "description": "Admin footer action"
+  },
+  "adminSystemModules": "System Modules",
+  "adminModulesSubtitle": "Quick access to all tools",
+  "adminRecentActivity": "Recent Activity",
+  "adminRecentActivitySubtitle": "Latest operations performed on the system",
+  "adminWelcome": "Welcome, {name} 👋",
+  "@adminWelcome": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminSystemStatusStable": "Overall system status looks stable today.",
+  "adminTotalUsers": "Total Users",
+  "adminOpenFeedback": "Open Feedback",
+  "adminActiveSurveys": "Active Surveys",
+  "adminAuditLogs": "Audit Logs",
+  "adminUserDatabase": "User Database",
+  "adminUserDatabaseSubtitle": "Card-based ultra-modern user directory",
+  "statusActive": "Active",
+  "statusBanned": "Banned",
+  "adminNoUsersFound": "No Users Found",
+  "adminNoUsersFoundSubtitle": "No records found matching your search criteria.",
+  "adminSearchUsers": "Search users by name, email or ID...",
+  "adminUserGuest": "Guest",
+  "adminEmailNotSet": "Email not set",
+  "adminRoleUser": "User",
+  "adminRoleAdmin": "Admin",
+  "adminUnknown": "Unknown",
+  "adminUnbanUser": "Allow Access",
+  "adminBanUser": "Ban User",
+  "adminDemoteRole": "Demote Role",
+  "adminPromoteRole": "Make Admin",
+  "adminBlacklistManagement": "Blacklist Management",
+  "adminBlacklistSubtitle": "Detailed audit of blocked identities and addresses",
+  "adminBlacklistAddTitle": "New Blacklist Entry",
+  "adminCategoryType": "Category Type",
+  "adminEmailAddress": "Email Address",
+  "adminIpAddress": "IP Address",
+  "adminDeviceId": "Device ID",
+  "adminBlockReason": "Block Reason",
+  "adminAddRecord": "ADD RECORD",
+  "adminDeleteRecord": "Delete Record",
+  "adminDeleteBlacklistConfirm": "Do you want to remove \"{value}\" from the blacklist?",
+  "@adminDeleteBlacklistConfirm": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteConfirmAction": "Yes, Delete",
+  "adminNewEntry": "New Entry",
+  "adminBlacklistClean": "Blacklist is Clean",
+  "doseTakenCount": "{taken} / {total} doses taken",
+  "@doseTakenCount": {
+    "placeholders": {
+      "taken": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "medicationCountBadge": "{count} Meds",
+  "@medicationCountBadge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "showingInactiveMeds": "Showing Inactive",
+  "showInactiveMeds": "Show Inactive",
+  "medicationWeeklyShort": "Weekly",
+  "remainingStock": "Stock: {count}",
+  "@remainingStock": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "criticalLevel": "Critical Level",
+  "deleteMedicationConfirmDesc": "\"{name}\" will be deleted. This action cannot be undone.",
+  "@deleteMedicationConfirmDesc": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteMedicationTitle": "Delete Medication",
+  "noMedicationsYet": "No medications yet",
+  "startTrackingMeds": "Start tracking your medications",
+  "teamMemberCountLabel": "Member",
+  "teamProjectCountLabel": "Project",
+  "teamOverdueCountLabel": "Overdue",
+  "memberWorkloadTitle": "Member Workload (Active Tasks)",
+  "weeklyActivity": "Weekly Activity",
+  "statusReview": "Review",
+  "newProjectTitle": "New Project",
+  "projectNameHint": "Project name",
+  "projectDescriptionHint": "Description (optional)",
+  "colorSelectionLabel": "COLOR SELECTION",
+  "deadlineLabel": "DEADLINE",
+  "noDateSelected": "No date selected",
+  "createProjectButton": "Create Project",
+  "selectCharacter": "Select Character",
+  "profilePictureUpdated": "Profile picture updated! 😎",
+  "requestVerification": "Request Verification",
+  "signOutConfirmation": "Are you sure you want to sign out?",
+  "deleteAccount": "Delete Account",
+  "deleteAccountConfirmation": "Are you sure you want to permanently delete your account and all data? This cannot be undone.",
+  "deletePermanently": "Delete Permanently",
+  "accountDeleted": "Your account has been successfully deleted.",
+  "clearData": "Clear Data",
+  "clearDataConfirmation": "All your tasks and settings will be deleted. Are you sure?",
+  "allDataCleared": "All data cleared",
+  "levelXpFormat": "Level {level} • {xp} XP",
+  "@levelXpFormat": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      },
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "birthDateLabel": "Birth Date: {date}",
+  "@birthDateLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationPreferences": "Notification Preferences",
+  "accessAndSecurity": "Access & Security",
+  "appearanceAndTheme": "Appearance & Theme",
+  "appInformation": "App Information",
+  "appsAndModules": "Apps & Modules",
+  "languageAndData": "Language & Data",
+  "pushNotifications": "Push Notifications",
+  "taskReminders": "Task Reminders",
+  "teamInvites": "Team Invites",
+  "dailyBriefing": "Daily Briefing",
+  "emailNotifications": "Email Notifications",
+  "btnDelete": "Delete",
+  "changePasswordTitle": "Change Password",
+  "changeEmailTitle": "Change Email",
+  "editProfile": "Edit Profile",
+  "securityAndPrivacy": "Security & Privacy",
+  "aboutPhobesTitle": "About Phobes",
+  "featureTreeTitleLabel": "Feature Tree",
+  "contactSupport": "Contact & Support",
+  "selectModules": "Select Modules",
+  "simulateTestData": "3-Month Full Test System",
+  "simulateTestDataSubtitle": "Synchronizes the whole app",
+  "tabOverview": "Overview",
+  "tabStatistics": "Statistics",
+  "tabAccounts": "Accounts",
+  "tabDebts": "Debts",
+  "tabGoals": "Goals",
+  "walletTitle": "Wallet",
+  "expenseDistribution": "Expense Distribution",
+  "budgetLimitExceeded": "Budget Limit Exceeded! 🚨 +{amount}",
+  "@budgetLimitExceeded": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "levelUpTitle": "Level Up! 🎉",
+  "levelUpBody": "Congratulations! You reached Level {level}!",
+  "@levelUpBody": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "aiLabelActiveMeds": "Active Medications",
+  "aiLabelUpcomingTasks7Days": "Tasks for the Next 7 Days",
+  "budgetStatus": "Budget Status for This Month",
+  "financialAnalysis": "Financial Analysis",
+  "gaugeBudgetHiz": "Budget Velocity Gauge",
+  "moneyJourney": "Journey of Money (Sankey)",
+  "incomeVsExpenseTrend": "Income vs Expense Trend",
+  "anomalyTracking": "Smart Anomaly Tracking",
+  "assetTreemap": "Asset Distribution Tree Map",
+  "dailyHeatmap": "Spending Activity Heatmap",
+  "recurringAnalysis": "Recurring Expense Analysis",
+  "kpiMonthlyExpense": "Monthly Expense",
+  "kpiMonthlyIncome": "Monthly Income",
+  "kpiNetSavings": "Net Savings",
+  "kpiDailyAvg": "Daily Avg.",
+  "kpiRemainingLimit": "Remaining Limit",
+  "kpiEndOfMonthForecast": "End of Month Forecast",
+  "budgetLimitApproaching": "Budget Limit Approaching! ⚠️",
+  "transactionHistory": "Transaction History",
+  "clearAccount": "Clear Account",
+  "categoryAll": "All",
+  "categoryIncomes": "Incomes",
+  "categoryExpenses": "Expenses",
+  "noTransactionsYet": "No transactions yet",
+  "deleteTransaction": "Delete Transaction",
+  "deleteTransactionConfirm": "Are you sure you want to delete this transaction?",
+  "transactionDeleted": "Transaction deleted",
+  "addNewTransaction": "Add New Transaction",
+  "hintTransactionTitle": "Title (e.g. Grocery)",
+  "hintAmount": "Amount ({symbol})",
+  "@hintAmount": {
+    "placeholders": {
+      "symbol": {
+        "type": "String"
+      }
+    }
+  },
+  "hintDescription": "Description (optional)",
+  "hintSubCategory": "Sub-Category (e.g. Food)",
+  "aiSystemRole": "You are Nova, the AI life coach and personal assistant of the Phobes app. You are intelligent, friendly, direct, motivating, and slightly witty. Keep responses concise and use bullet points. Always speak in {language}.",
+  "@aiSystemRole": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "aiContextUser": "[USER INFO & CONTEXT]",
+  "aiContextCurrentTime": "Current Time",
+  "aiLabelTasksToday": "Today's Pending Tasks",
+  "aiLabelUpcomingTasks": "Upcoming Tasks (Next 7 Days)",
+  "aiLabelDailyHabits": "Daily Habits",
+  "aiLabelAppointments": "Upcoming Appointments",
+  "aiLabelRecentNotes": "Recent Notes (Last 5)",
+  "aiLabelBudgetStatus": "Budget Status (This Month)",
+  "aiLabelActiveTeams": "Active Teams",
+  "aiInstructionToolUsage": "[TOOL USAGE RULES]",
+  "aiInstructionReady": "I've prepared it, do you approve? 🚀",
+  "aiOnline": "Online",
+  "aiGuideTitle": "Nova User Guide",
+  "aiGuideSubtitle": "What can Nova do?",
+  "aiStatusApproved": "Approved",
+  "aiStatusCancelled": "Cancelled",
+  "aiErrorConnection": "Connection problem, please try again.",
+  "aiInitialGreeting": "Hello {name}! I am Nova. How can I help you today?",
+  "@aiInitialGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiGuideAnladim": "I Understand",
+  "aiGuideItem1Title": "Task Creation",
+  "aiGuideItem1Desc": "\"Add exercise for tomorrow 8am\"",
+  "aiGuideItem2Title": "Full Editing",
+  "aiGuideItem2Desc": "\"Reschedule gym to Friday 3pm\", \"Change title to walk\" or \"Add description Buy water\"",
+  "aiGuideItem3Title": "Task Deletion",
+  "aiGuideItem3Desc": "\"Delete finish project task, I changed my mind\"",
+  "aiGuideItem4Title": "Search & UI",
+  "aiGuideItem4Desc": "\"Find my walk task\" (Draws clickable card)",
+  "aiGuideItem5Title": "Subtask Split",
+  "aiGuideItem5Desc": "\"Add write email and make presentation subtasks to my task\"",
+  "aiGuideItem6Title": "Team Announcement",
+  "aiGuideItem6Desc": "\"Announce to dev team that there is a meeting tomorrow\"",
+  "aiGuideItem7Title": "Jarvis Mode",
+  "aiGuideItem7Desc": "Use the microphone for voice commands.",
+  "aiLabelNewTask": "New Task",
+  "aiLabelAddExpense": "Add Expense",
+  "aiLabelMedRecord": "Medication Record",
+  "aiLabelSubtasks": "Subtasks",
+  "aiLabelTeamAnnouncement": "Team Announcement",
+  "aiFieldTitle": "Title",
+  "aiFieldDate": "Date",
+  "aiFieldTime": "Time",
+  "aiFieldAmount": "Amount",
+  "aiFieldCategory": "Category",
+  "aiFieldDescription": "Description",
+  "aiFieldMedName": "Medication Name",
+  "aiBtnApprove": "Approve",
+  "aiBtnReject": "Cancel",
+  "btnCancel": "Cancel",
+  "btnSave": "Save",
+  "btnSuccess": "Great!",
+  "focusSessionEnded": "Focus Session Ended!",
+  "focusSessionDesc": "Great job! Time for a break. ⭐",
+  "congratulations": "Congratulations!",
+  "focusMinutesDesc": "You focused for {minutes} minutes",
+  "@focusMinutesDesc": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "focusDefaultAdvice": "Now rest your eyes for 5 minutes and drink water.",
+  "focusMode": "Focus Mode",
+  "focusing": "Focusing...",
+  "ready": "Ready",
+  "focusXpReward": "Earn {xp} XP once completed",
+  "@focusXpReward": {
+    "placeholders": {
+      "xp": {
+        "type": "int"
+      }
+    }
+  },
+  "friend": "Friend",
+  "aiActionFailed": "Processing failed. Please try again.",
+  "featureComingSoon": "This feature is coming soon! 🚀",
+  "apptTimeline": "Timeline",
+  "@apptTimeline": {
+    "description": "View mode"
+  },
+  "apptWeeklyGrid": "Weekly",
+  "@apptWeeklyGrid": {
+    "description": "View mode"
+  },
+  "apptListView": "List",
+  "@apptListView": {
+    "description": "View mode"
+  },
+  "apptMonthView": "Monthly",
+  "@apptMonthView": {
+    "description": "View mode"
+  },
+  "apptToday": "Today",
+  "@apptToday": {
+    "description": "Label"
+  },
+  "apptNoSlots": "No available time slots for this day.",
+  "@apptNoSlots": {
+    "description": "Empty state"
+  },
+  "apptFreeSlot": "Available",
+  "@apptFreeSlot": {
+    "description": "Slot label"
+  },
+  "apptOccupancy": "Occupancy",
+  "@apptOccupancy": {
+    "description": "Analytics"
+  },
+  "apptRevenue": "Revenue",
+  "@apptRevenue": {
+    "description": "Analytics"
+  },
+  "apptCancelRate": "Cancel Rate",
+  "@apptCancelRate": {
+    "description": "Analytics"
+  },
+  "apptPopularHours": "Popular Hours",
+  "@apptPopularHours": {
+    "description": "Analytics"
+  },
+  "apptAnalytics": "Analytics",
+  "@apptAnalytics": {
+    "description": "Screen title"
+  },
+  "apptClients": "Clients",
+  "@apptClients": {
+    "description": "Tab label"
+  },
+  "apptAddClient": "Add Client",
+  "@apptAddClient": {
+    "description": "Button"
+  },
+  "apptEditClient": "Edit Client",
+  "@apptEditClient": {
+    "description": "Button"
+  },
+  "apptDeleteClient": "Delete Client",
+  "@apptDeleteClient": {
+    "description": "Button"
+  },
+  "apptDeleteClientConfirm": "Are you sure you want to delete this client?",
+  "@apptDeleteClientConfirm": {
+    "description": "Dialog"
+  },
+  "apptClientEmail": "Email",
+  "@apptClientEmail": {
+    "description": "Form"
+  },
+  "apptClientNote": "Client Note",
+  "@apptClientNote": {
+    "description": "Form"
+  },
+  "apptClientTags": "Tags",
+  "@apptClientTags": {
+    "description": "Form"
+  },
+  "apptTagVip": "VIP",
+  "@apptTagVip": {
+    "description": "Tag"
+  },
+  "apptTagRegular": "Regular",
+  "@apptTagRegular": {
+    "description": "Tag"
+  },
+  "apptTagNew": "New",
+  "@apptTagNew": {
+    "description": "Tag"
+  },
+  "apptTotalVisits": "Total Visits",
+  "@apptTotalVisits": {
+    "description": "Stat"
+  },
+  "apptTotalSpent": "Total Spent",
+  "@apptTotalSpent": {
+    "description": "Stat"
+  },
+  "apptLastVisit": "Last Visit",
+  "@apptLastVisit": {
+    "description": "Stat"
+  },
+  "apptNoClients": "No clients yet.",
+  "@apptNoClients": {
+    "description": "Empty state"
+  },
+  "apptServiceColor": "Color",
+  "@apptServiceColor": {
+    "description": "Form label"
+  },
+  "apptServiceIcon": "Icon",
+  "@apptServiceIcon": {
+    "description": "Form label"
+  },
+  "apptServiceCategory": "Category",
+  "@apptServiceCategory": {
+    "description": "Form label"
+  },
+  "apptServiceActive": "Active",
+  "@apptServiceActive": {
+    "description": "Toggle"
+  },
+  "apptRecurrence": "Recurrence",
+  "@apptRecurrence": {
+    "description": "Form label"
+  },
+  "apptRecurrenceNone": "None",
+  "@apptRecurrenceNone": {
+    "description": "Option"
+  },
+  "apptRecurrenceWeekly": "Weekly",
+  "@apptRecurrenceWeekly": {
+    "description": "Option"
+  },
+  "apptRecurrenceBiweekly": "Biweekly",
+  "@apptRecurrenceBiweekly": {
+    "description": "Option"
+  },
+  "apptRecurrenceMonthly": "Monthly",
+  "@apptRecurrenceMonthly": {
+    "description": "Option"
+  },
+  "apptReminder": "Reminder",
+  "@apptReminder": {
+    "description": "Form label"
+  },
+  "apptReminderNone": "No reminder",
+  "@apptReminderNone": {
+    "description": "Option"
+  },
+  "apptReminderAtTime": "At appointment time",
+  "@apptReminderAtTime": {
+    "description": "Option"
+  },
+  "apptReminder10Min": "10 minutes before",
+  "@apptReminder10Min": {
+    "description": "Option"
+  },
+  "apptReminder30Min": "30 minutes before",
+  "@apptReminder30Min": {
+    "description": "Option"
+  },
+  "apptReminder1Hour": "1 hour before",
+  "@apptReminder1Hour": {
+    "description": "Option"
+  },
+  "apptReminder2Hours": "2 hours before",
+  "@apptReminder2Hours": {
+    "description": "Option"
+  },
+  "apptReminder1Day": "1 day before",
+  "@apptReminder1Day": {
+    "description": "Option"
+  },
+  "apptWhatsapp": "WhatsApp",
+  "@apptWhatsapp": {
+    "description": "Button"
+  },
+  "apptSendReminder": "Send Reminder",
+  "@apptSendReminder": {
+    "description": "Action"
+  },
+  "apptSelectClient": "Select Client",
+  "@apptSelectClient": {
+    "description": "Form label"
+  },
+  "apptSelectService": "Select Service",
+  "@apptSelectService": {
+    "description": "Form label"
+  },
+  "apptQuickAdd": "Quick Appointment",
+  "@apptQuickAdd": {
+    "description": "Button"
+  },
+  "apptWorkHours": "Working Hours",
+  "@apptWorkHours": {
+    "description": "Section"
+  },
+  "apptBreaks": "Breaks",
+  "@apptBreaks": {
+    "description": "Section"
+  },
+  "apptAddBreak": "Add Break",
+  "@apptAddBreak": {
+    "description": "Button"
+  },
+  "apptBuffer": "Buffer (min)",
+  "@apptBuffer": {
+    "description": "Form label"
+  },
+  "apptCancelReason": "Cancellation Reason",
+  "@apptCancelReason": {
+    "description": "Form label"
+  },
+  "apptMinutes": "{count} min",
+  "@apptMinutes": {
+    "description": "Duration",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "apptHours": "{count}h",
+  "@apptHours": {
+    "description": "Duration",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "apptTotalAppointments": "Total Appointments",
+  "@apptTotalAppointments": {
+    "description": "Stat"
+  },
+  "apptConfirmedCount": "{count} confirmed",
+  "@apptConfirmedCount": {
+    "description": "Stat",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "apptPendingCount": "{count} pending",
+  "@apptPendingCount": {
+    "description": "Stat",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "apptCancelledCount": "{count} cancelled",
+  "@apptCancelledCount": {
+    "description": "Stat",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "apptSearchClients": "Search clients...",
+  "@apptSearchClients": {
+    "description": "Hint"
+  },
+  "apptCategoryGeneral": "General",
+  "@apptCategoryGeneral": {
+    "description": "Category"
+  },
+  "apptAlwaysAllow": "Always",
+  "@apptAlwaysAllow": {
+    "description": "Cancellation option"
+  },
+  "apptHoursBefore": "{hours}h before",
+  "@apptHoursBefore": {
+    "description": "Cancellation option",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "apptDeleteAppointment": "Delete Appointment",
+  "@apptDeleteAppointment": {
+    "description": "Action"
+  },
+  "apptDeleteAppointmentConfirm": "Are you sure you want to delete this appointment?",
+  "@apptDeleteAppointmentConfirm": {
+    "description": "Dialog"
+  },
+  "apptAppointmentDeleted": "Appointment deleted",
+  "@apptAppointmentDeleted": {
+    "description": "Snackbar"
+  },
+  "apptSaved": "Appointment saved",
+  "@apptSaved": {
+    "description": "Snackbar"
+  },
+  "baseCurrency": "Base Currency",
+  "@baseCurrency": {
+    "description": "Budget settings label"
+  },
+  "liveRates": "Live Rates",
+  "@liveRates": {
+    "description": "Budget overview section"
+  },
+  "editTransaction": "Edit Transaction",
+  "@editTransaction": {
+    "description": "Edit transaction sheet title"
+  },
+  "netWorth": "Net Worth",
+  "@netWorth": {
+    "description": "Budget overview card"
+  },
+  "totalAssets": "Assets",
+  "@totalAssets": {
+    "description": "Net worth chip label"
+  },
+  "totalLiabilities": "Liabilities",
+  "@totalLiabilities": {
+    "description": "Net worth chip label"
+  },
+  "noGoalsYet": "No savings goals yet",
+  "@noGoalsYet": {
+    "description": "Goals empty state title"
+  },
+  "noGoalsYetDesc": "Set a goal and start saving today",
+  "@noGoalsYetDesc": {
+    "description": "Goals empty state subtitle"
+  },
+  "noDebtsYet": "No debts recorded",
+  "@noDebtsYet": {
+    "description": "Debts empty state title"
+  },
+  "noDebtsYetDesc": "Track who owes you and who you owe",
+  "@noDebtsYetDesc": {
+    "description": "Debts empty state subtitle"
+  },
+  "addGoal": "Add Goal",
+  "@addGoal": {
+    "description": "Button"
+  },
+  "addDebt": "Add Debt",
+  "@addDebt": {
+    "description": "Button"
+  },
+  "apptSearchHint": "Search appointments...",
+  "@apptSearchHint": {
+    "description": "Appointment search bar placeholder"
+  },
+  "bulkAddTasks": "Bulk Add Tasks",
+  "@bulkAddTasks": {
+    "description": "Bulk add button/title"
+  },
+  "bulkAddHint": "Enter one task per line...",
+  "@bulkAddHint": {
+    "description": "Bulk add text area hint"
+  },
+  "bulkAddInfo": "Each line becomes a separate task with the same date, time and settings.",
+  "@bulkAddInfo": {
+    "description": "Bulk add info text"
+  },
+  "bulkAddCount": "{count} tasks will be created",
+  "@bulkAddCount": {
+    "description": "Preview count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recurringSeriesCreated": "Recurring series created ({count} tasks)",
+  "@recurringSeriesCreated": {
+    "description": "Success message",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "repeatSeriesEndDate": "Series end date",
+  "@repeatSeriesEndDate": {
+    "description": "Label"
+  },
+  "moduleInfoGotIt": "Got it",
+  "moduleInfoTipsTitle": "Tips",
+  "moduleInfoCalendarIntro": "The calendar unifies tasks, appointments, medications, habits, and notes on one timeline.",
+  "moduleInfoCalendarSection1Title": "Central tracking",
+  "moduleInfoCalendarSection1B1": "See every module event in month, week, or day view.",
+  "moduleInfoCalendarSection1B2": "Jump between dates quickly with the header controls.",
+  "moduleInfoCalendarSection2Title": "Quick add",
+  "moduleInfoCalendarSection2B1": "Use + to create tasks with smart or manual entry.",
+  "moduleInfoCalendarSection2B2": "Changes in other modules sync here instantly.",
+  "moduleInfoCalendarTip1": "Long-press a day to open the detailed timeline.",
+  "moduleInfoBudgetTitle": "Budget",
+  "moduleInfoBudgetIntro": "Track income, expenses, accounts, debts, and savings goals in one place.",
+  "moduleInfoBudgetSection1Title": "What you can do",
+  "moduleInfoBudgetSection1B1": "Categorize transactions and watch account balances update automatically.",
+  "moduleInfoBudgetSection1B2": "Set limits and goals with visual progress.",
+  "moduleInfoBudgetTip1": "Use the Overview tab + button for the fastest transaction entry.",
+  "moduleInfoBooksTitle": "Library",
+  "moduleInfoBooksIntro": "Organize your reading life with shelves, progress, and quotes.",
+  "moduleInfoBooksSection1Title": "Highlights",
+  "moduleInfoBooksSection1B1": "Drag books between shelves and track page progress.",
+  "moduleInfoBooksSection1B2": "Search Google Books or Open Library to auto-fill metadata.",
+  "moduleInfoBooksTip1": "Pin favorite quotes from the book detail screen.",
+  "moduleInfoNotesTitle": "Notes",
+  "moduleInfoNotesIntro": "Capture ideas in notebooks with rich text, tags, and team sharing.",
+  "moduleInfoNotesSection1Title": "Features",
+  "moduleInfoNotesSection1B1": "Switch list or grid view; filter favorites and team notes.",
+  "moduleInfoNotesSection1B2": "Search and sort by title, date, or category.",
+  "moduleInfoNotesTip1": "On web, the editor opens full screen while sidebars stay visible.",
+  "moduleInfoMedsTitle": "Medications",
+  "moduleInfoMedsIntro": "Never miss a dose with reminders, stock tracking, and history.",
+  "moduleInfoMedsSection1Title": "Stay on schedule",
+  "moduleInfoMedsSection1B1": "Log taken doses from the daily flow.",
+  "moduleInfoMedsSection1B2": "Get alerts when stock runs low.",
+  "moduleInfoMedsTip1": "Enable reminders per medication for best results.",
+  "moduleInfoApptTitle": "Appointments",
+  "moduleInfoApptIntro": "Manage personal appointments and client booking in one hub.",
+  "moduleInfoApptSection1Title": "Views & workflow",
+  "moduleInfoApptSection1B1": "Timeline, weekly grid, or list — filter by status.",
+  "moduleInfoApptSection1B2": "Configure service groups and working hours in settings.",
+  "moduleInfoApptTip1": "Use the My Appointments tab for your personal calendar.",
+  "moduleInfoHabitsTitle": "Habits",
+  "moduleInfoHabitsIntro": "Build streaks and track daily routines with reminders.",
+  "moduleInfoHabitsSection1Title": "Motivation",
+  "moduleInfoHabitsSection1B1": "Streak counters keep you consistent.",
+  "moduleInfoHabitsSection1B2": "Weekly stats show your completion rate.",
+  "moduleInfoHabitsTip1": "Set a reminder time that fits your routine.",
+  "moduleInfoUpcomingTitle": "Upcoming",
+  "moduleInfoUpcomingIntro": "A smart 30-day feed of everything coming up across modules.",
+  "moduleInfoUpcomingSection1Title": "How to use it",
+  "moduleInfoUpcomingSection1B1": "Tasks, appointments, meds, and events in one chronological list.",
+  "moduleInfoUpcomingSection1B2": "Tap any item to jump to its module.",
+  "moduleInfoUpcomingTip1": "Use category chips to narrow the list.",
+  "moduleInfoTeamsIntro": "Collaborate with projects, tasks, announcements, and shared resources.",
+  "moduleInfoTeamsSection1Title": "Team workspace",
+  "moduleInfoTeamsSection1B1": "Join with a code or create your own team.",
+  "moduleInfoTeamsSection1B2": "Kanban tasks and activity feed keep everyone aligned.",
+  "moduleInfoTeamsTip1": "Admins can post announcements from the team header.",
+  "moduleInfoFocusIntro": "Pomodoro-style focus sessions to stay productive without distractions.",
+  "moduleInfoFocusTip1": "Complete a session to log progress in your day.",
+  "moduleInfoStatsIntro": "Charts and summaries across tasks, habits, budget, and more.",
+  "moduleInfoStatsTip1": "Pull to refresh for the latest aggregates.",
+  "moduleInfoCorkboardTitle": "Planning board",
+  "moduleInfoCorkboardIntro": "Cards and connections on an infinite canvas.",
+  "moduleInfoCorkboardTip1": "Drag cards to arrange; link related ideas with connections.",
+  "corkboardPersonalTitle": "Planning board",
+  "corkboardTeamTitle": "Team planning board",
+  "corkboardSubtitleDefault": "Place ideas freely and link them with strings",
+  "corkboardBoardNotes": "{title} · {count} notes",
+  "@corkboardBoardNotes": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "corkboardAddNote": "Add note",
+  "corkboardNewBoard": "New board",
+  "corkboardRenameBoard": "Rename board",
+  "corkboardBoardNameHint": "Board name",
+  "corkboardDefaultBoardName": "Board {number}",
+  "@corkboardDefaultBoardName": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "corkboardFirstBoardName": "Board 1",
+  "corkboardDeleteBoardTitle": "Delete \"{name}\"?",
+  "@corkboardDeleteBoardTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "corkboardDeleteBoardBody": "All notes and connections on this board will be deleted.",
+  "corkboardDeleteBoardFailed": "Could not delete board: {error}",
+  "@corkboardDeleteBoardFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "corkboardNoBoardsTitle": "No planning boards yet",
+  "corkboardNoBoardsDesc": "Create your first board to place ideas freely and link notes with strings.",
+  "corkboardNoBoardsError": "Could not load boards. Try creating a new board.",
+  "corkboardAddBoard": "Add board",
+  "corkboardBoardTab": "Board",
+  "corkboardRename": "Rename",
+  "corkboardDeleteBoardMenu": "Delete board",
+  "corkboardEmptyTitle": "Your board is empty",
+  "corkboardEmptySubtitle": "Tap + to add notes and link them with strings",
+  "corkboardConnectSecond": "Select the second note to link",
+  "corkboardConnectFirst": "Select the first note, then tap the second",
+  "corkboardNewNoteColor": "New note color",
+  "corkboardLinkType": "Connection type",
+  "corkboardEditHint": "Write your plan or idea…",
+  "corkboardCardColor": "Card color",
+  "corkboardConnectLink": "Create connection",
+  "corkboardManageConnections": "Manage connections",
+  "corkboardNotePlaceholder": "Write a note…",
+  "corkboardNoConnections": "No connections on this note",
+  "corkboardDeleteConnection": "Remove connection",
+  "corkboardConnectionDeleted": "Connection removed",
+  "corkboardTapLinkToDelete": "Tap a string to remove it",
+  "corkboardLinkRelated": "Related",
+  "corkboardLinkNext": "Next",
+  "corkboardLinkDepends": "Depends",
+  "corkboardLinkIdea": "Idea",
+  "corkboardLinkImportant": "Important",
+  "corkboardLinkReference": "Reference",
+  "corkboardConnectionTo": "Link to \"{label}\"",
+  "@corkboardConnectionTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "moduleInfoProjectsTitle": "Projects",
+  "moduleInfoProjectsIntro": "Organize team work into projects with status filters and deadlines.",
+  "moduleInfoProjectsTip1": "Use + to create a project under the selected team.",
+  "novaClearChat": "Clear chat",
+  "@novaClearChat": {
+    "description": "Nova overflow menu"
+  },
+  "novaChatCleared": "Chat cleared",
+  "@novaChatCleared": {
+    "description": "Nova chat cleared snackbar"
+  },
+  "backupExportData": "Export data",
+  "@backupExportData": {
+    "description": "Account backup export"
+  },
+  "backupExportSubtitle": "Share a JSON backup of your tasks, notes, and more",
+  "@backupExportSubtitle": {
+    "description": "Account backup export subtitle"
+  },
+  "privacyPolicy": "Privacy Policy",
+  "termsOfService": "Terms of Service",
+  "cookiePolicy": "Cookie Policy",
+  "legalLastUpdated": "Last updated: May 2026",
+  "footerProduct": "Product",
+  "footerCompany": "Company",
+  "footerLegal": "Legal",
+  "landingTagline": "Your time, under your control.",
+  "landingAllFeatures": "ALL FEATURES",
+  "landingAllFeaturesTitle": "One app for\nevery need",
+  "aboutModulesTitle": "Phobes modules",
+  "aboutModulesDesc": "Enable only what you need from Account settings.",
+  "dailySummary": "Daily summary",
+  "landingFeatCalendarSubtitle": "Weekly, monthly, and daily views",
+  "landingFeatTasksSubtitle": "Priority, recurrence, voice capture",
+  "landingFeatAppointmentsSubtitle": "Clients, groups, and booking links",
+  "landingFeatStatisticsSubtitle": "Productivity charts and insights",
+  "landingFeatBudgetSubtitle": "Income, expenses, goals, and limits",
+  "landingFeatNovaSubtitle": "Smart assistant with your context",
+  "landingFeatNotesSubtitle": "Rich editor, pages, tables, and tasks",
+  "landingFeatProjectsSubtitle": "Kanban, resources, and team activity",
+  "landingFeatTeamsSubtitle": "Leaderboards and shared workspaces",
+  "landingFeatFocusSubtitle": "Pomodoro and deep-work sessions",
+  "landingFeatHabitsSubtitle": "Streaks and daily routines",
+  "landingFeatMedicationsSubtitle": "Doses, stock, and reminders",
+  "landingFeatUpcomingSubtitle": "Unified upcoming timeline",
+  "landingFeatBooksSubtitle": "Shelves, goals, quotes, and search",
+  "landingFeatCorkboardSubtitle": "Visual cards and idea connections",
+  "landingFeatNotificationsSubtitle": "Customizable smart reminders",
+  "landingFeatPersonalizationTitle": "Personalization",
+  "landingFeatPersonalizationSubtitle": "Themes, accents, and AMOLED mode",
+  "catNotesKnowledge": "Notes & knowledge",
+  "catNotesKnowledgeDesc": "Multi-page notes with embeds and sharing.",
+  "catBooksReading": "Books & reading",
+  "catBooksReadingDesc": "Track reading life, goals, and favorite quotes.",
+  "catCorkboardPlanning": "Planning board",
+  "catCorkboardPlanningDesc": "Infinite canvas with linked idea cards.",
+  "catProjectsTeams": "Projects & teams",
+  "catProjectsTeamsDesc": "Kanban, projects, resources, and collaboration.",
+  "catCalendarPlanning": "Calendar & upcoming",
+  "catCalendarPlanningDesc": "Tasks, appointments, meds, and habits in one view.",
+  "secRichEditor": "Rich editor",
+  "featNotePages": "Multi-page notes",
+  "featNotePagesDesc": "Page breaks, margins, and print-friendly layout.",
+  "featNoteEmbeds": "Embeds",
+  "featNoteEmbedsDesc": "Tables, callouts, task cards, and workflows.",
+  "secReadingLife": "Reading",
+  "featBookShelves": "Shelves & progress",
+  "featBookShelvesDesc": "Drag books between shelves and track pages read.",
+  "featBookQuotes": "Quotes & goals",
+  "featBookQuotesDesc": "Pin quotes and set annual reading goals.",
+  "secVisualPlanning": "Visual planning",
+  "featCorkboardCards": "Idea cards",
+  "featCorkboardCardsDesc": "Tasks, notes, and links on a free-form board.",
+  "featCorkboardLinks": "Connections",
+  "featCorkboardLinksDesc": "Relate ideas with typed strings between cards.",
+  "secTeamDelivery": "Delivery",
+  "featTeamProjects": "Team projects",
+  "featTeamProjectsDesc": "Status filters, deadlines, and project tabs.",
+  "featTeamKanbanDelivery": "Team kanban",
+  "featTeamKanbanDeliveryDesc": "Shared boards with assignees and columns.",
+  "secUnifiedCalendar": "Unified calendar",
+  "featCalendarMerge": "All modules in one place",
+  "featCalendarMergeDesc": "See tasks, notes, appointments, and more together.",
+  "featUpcomingTimeline": "Upcoming timeline",
+  "featUpcomingTimelineDesc": "Chronological view of what is next.",
+  "moduleNameCalendar": "Calendar",
+  "moduleNameTeams": "Teams",
+  "moduleNameNova": "Nova",
+  "moduleNameHabits": "Habits",
+  "moduleNameFocus": "Focus",
+  "moduleNameBudget": "Budget",
+  "moduleNameAppointments": "Appointments",
+  "moduleNameNotes": "Notes",
+  "moduleNameMedications": "Medications",
+  "moduleNameUpcoming": "Upcoming",
+  "moduleNameStatistics": "Statistics",
+  "moduleNameCorkboard": "Planning board",
+  "moduleNameBooks": "Books",
+  "navBudget": "Budget",
+  "navNotes": "Notes",
+  "navCorkboard": "Board",
+  "navBooks": "Books",
+  "descNotes": "Capture your thoughts",
+  "descTeams": "Collaborate with your teams",
+  "descBooks": "Shelves, goals, and reading quotes",
+  "habitScreenTitle": "Habits",
+  "habitAddTooltip": "Add habit",
+  "habitSubtitle": "Don't break the chain! 💪",
+  "habitNameLabel": "Habit name",
+  "habitNameHint": "e.g. Drink 2L water",
+  "habitReminderDaily": "Remind daily at {time}",
+  "@habitReminderDaily": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "habitReminderOptional": "Add daily reminder (optional)",
+  "habitReminderTimeHelp": "Daily reminder time",
+  "habitNotifTitle": "🔥 Habit time!",
+  "habitNotifBody": "Don't forget today's goals. Keep the chain going!",
+  "habitEmptyTitle": "No habits yet",
+  "habitEmptyDesc": "Start a new habit and begin your streak.",
+  "habitStreakDays": "{count} DAYS",
+  "@habitStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "calendarWeeklySummary": "Weekly summary",
+  "calendarWeeklyRange": "{start} – {end}",
+  "@calendarWeeklyRange": {
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" }
+    }
+  },
+  "calendarTasksLabel": "Tasks",
+  "calendarAppointmentsLabel": "Appointments",
+  "calendarMedsDoses": "{taken}/{total} doses",
+  "@calendarMedsDoses": {
+    "placeholders": {
+      "taken": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "calendarHabitsWeek": "{done}/{total}",
+  "@calendarHabitsWeek": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "calendarBusiestDay": "Busiest: {day}",
+  "@calendarBusiestDay": {
+    "placeholders": {
+      "day": { "type": "String" }
+    }
+  },
+  "calendarWeekTotalItems": "{count} items this week",
+  "@calendarWeekTotalItems": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "calendarFilterSectionGeneral": "Overview",
+  "calendarFilterOnlyMyTasks": "Only my tasks",
+  "calendarFilterOnlyMyTasksDesc": "Assigned to you or created by you",
+  "calendarFilterSectionTeams": "Teams & projects",
+  "calendarFilterTeam": "Team filter",
+  "calendarFilterAllTeams": "All teams",
+  "calendarFilterProject": "Project filter",
+  "calendarFilterAllProjects": "All projects",
+  "calendarFilterSectionAppointments": "Appointments",
+  "calendarFilterSectionOther": "Other",
+  "calendarFilterMedications": "Medications",
+  "calendarFilterHabits": "Habits",
+  "calendarFilterNotes": "Notes",
+  "unnamedTeam": "Unnamed team",
+  "unnamedGroup": "Unnamed group",
+  "upcomingHabitDefault": "Habit",
+  "upcomingHabitNotDoneToday": "Not completed today",
+  "upcomingPriorityHigh": "🔴 High priority",
+  "upcomingPriorityMedium": "🟡 Medium priority",
+  "upcomingPriorityLow": "🟢 Low priority",
+  "upcomingClientAppointment": "Client appointment",
+  "upcomingAppointment": "Appointment",
+  "upcomingDoseTime": "Dose time",
+  "upcomingEventCount": "{count} events",
+  "@upcomingEventCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "booksMyLibraryTitle": "My library",
+  "booksAddBook": "Add book",
+  "booksLibrarySubtitle": "{total} books · {read} read · {reading} reading",
+  "@booksLibrarySubtitle": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "read": {
+        "type": "int"
+      },
+      "reading": {
+        "type": "int"
+      }
+    }
+  },
+  "booksTabLibrary": "Library",
+  "booksTabStats": "Statistics",
+  "booksTabQuotes": "Quotes",
+  "booksTabGoals": "Goals",
+  "booksFilterAll": "All",
+  "booksStatusToRead": "To read",
+  "booksStatusReading": "Reading",
+  "booksStatusRead": "Read",
+  "booksStatusLent": "Lent",
+  "booksEmptyLibraryTitle": "Library is empty",
+  "booksEmptyFilterTitle": "No books in this category",
+  "booksEmptyLibraryDesc": "Tap + above to add a book",
+  "modulesPanelTitle": "Modules",
+  "modulesNavShortcutTitle": "Mobile quick access",
+  "modulesNavShortcutSubtitle": "4th button on the bottom bar",
+  "modulesVisibleTitle": "Visible modules",
+  "modulesCollapse": "Collapse",
+  "modulesExpandAll": "Show all",
+  "modulesStatusActive": "Active",
+  "modulesStatusHidden": "Hidden",
+  "booksShelfNameHint": "Shelf name...",
+  "booksPickDecorationTitle": "Pick decoration",
+  "booksRemove": "Remove",
+  "booksDecorationCategoryPlants": "🪴 Plants",
+  "booksDecorationCategoryObjects": "🏺 Objects",
+  "booksDecorationCategoryDecor": "🖼️ Decor",
+  "booksDecorationCategoryFigures": "🐾 Figures",
+  "booksStatTotal": "Total",
+  "booksStatPages": "Pages",
+  "booksCategoryDistributionTitle": "Category distribution",
+  "booksReadingSpeedTitle": "My reading speed",
+  "booksPagesPerDay": "pages/day",
+  "booksPagesPerWeek": "pages/week",
+  "booksBooksPerMonth": "books/month*",
+  "booksReadingSpeedFootnote": "* Assumes 300 pages/book",
+  "booksRecommendationsTitle": "You might also like",
+  "booksRecommendationsSubtitle": "Based on your reading habits",
+  "booksQuotesEmptyTitle": "No quotes yet",
+  "booksQuotesEmptyDescTab": "Add beautiful sentences from the book page",
+  "booksGoalsTitle": "My reading goals",
+  "booksGoalsEmptyTitleTab": "No goal set",
+  "booksGoalsEmptyDescTab": "Add goals like \"20 books a year\"",
+  "booksAddGoal": "Add goal",
+  "booksUnitPages": "pages",
+  "booksUnitBooks": "books",
+  "booksGoalTypeYearlyBooks": "Yearly books",
+  "booksGoalTypeMonthlyBooks": "Monthly books",
+  "booksGoalTypeYearlyPages": "Yearly pages",
+  "booksGoalTypeMonthlyPages": "Monthly pages",
+  "booksGoalDefaultYearlyBooks": "Read {target} books this year",
+  "@MapEntry(booksGoalDefaultYearlyBooks: Read {target} books this year).key": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "booksGoalDefaultMonthlyBooks": "Read {target} books this month",
+  "@MapEntry(booksGoalDefaultMonthlyBooks: Read {target} books this month).key": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "booksGoalDefaultYearlyPages": "Read {target} pages this year",
+  "@MapEntry(booksGoalDefaultYearlyPages: Read {target} pages this year).key": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "booksGoalDefaultMonthlyPages": "Read {target} pages this month",
+  "@MapEntry(booksGoalDefaultMonthlyPages: Read {target} pages this month).key": {
+    "placeholders": {
+      "target": {
+        "type": "int"
+      }
+    }
+  },
+  "booksGoalDefaultFallback": "Reading goal",
+  "booksNewGoalTitle": "New reading goal",
+  "booksGoalTargetBooksLabel": "How many books?",
+  "booksGoalTargetPagesLabel": "How many pages?",
+  "booksCreateGoal": "Create goal",
+  "booksPageCount": "{count} pages",
+  "@MapEntry(booksPageCount: {count} pages).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "booksReadingStatusTitle": "Reading status",
+  "booksProgressTitle": "Progress",
+  "booksProgressPages": "{current} / {total} pages",
+  "@MapEntry(booksProgressPages: {current} / {total} pages).key": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "booksPagesRemaining": "{count} pages left",
+  "@MapEntry(booksPagesRemaining: {count} pages left).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "booksAvgPagesPerDay": "Avg. {count} pages/day",
+  "@MapEntry(booksAvgPagesPerDay: Avg. {count} pages/day).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "booksCurrentPageLabel": "Current page",
+  "booksDatesTitle": "Dates",
+  "booksAcquisitionDate": "Acquired on",
+  "booksStartDate": "Start date",
+  "booksFinishDate": "Finish date",
+  "booksMyRatingTitle": "My rating",
+  "booksRatingTerrible": "Terrible",
+  "booksRatingMediocre": "Mediocre",
+  "booksRatingGood": "Good",
+  "booksRatingVeryGood": "Very good",
+  "booksRatingExcellent": "Excellent",
+  "booksNotesAndQuotesTitle": "My notes & quotes",
+  "booksNotesHint": "Your thoughts about this book, quotes...",
+  "booksQuotesSectionTitle": "Quotes",
+  "booksAdd": "Add",
+  "booksQuotesEmptyDetail": "No quotes added yet",
+  "booksViewAllQuotes": "View all ({count})",
+  "@MapEntry(booksViewAllQuotes: View all ({count})).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "booksLendingInfoTitle": "Lending info",
+  "booksLentTo": "Lent to",
+  "booksLentDate": "Lent on",
+  "booksMarkReturned": "Mark as returned",
+  "booksRemoveFromLibrary": "Remove book from library",
+  "booksRemoveBookTitle": "Remove book",
+  "booksRemoveBookConfirm": "Remove \"{title}\" from your library?",
+  "@MapEntry(booksRemoveBookConfirm: Remove \"{title}\" from your library?).key": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "booksLendBookTitle": "Lend book",
+  "booksLendToLabel": "Who are you lending it to?",
+  "booksLendBookAction": "Lend",
+  "booksSelectDate": "Select",
+  "booksBookAddedSuccess": "Book added successfully",
+  "booksBookAddFailed": "Could not add book. Try again.",
+  "booksAddBookWhereTitle": "Where should we add this book?",
+  "booksSearchTitle": "Search books",
+  "booksSearchHint": "Book title or author...",
+  "booksSearchNoResults": "No results found",
+  "booksAddToWantToRead": "Want to read",
+  "booksAddToCurrentlyReading": "Currently reading",
+  "booksAddToRead": "Finished",
+  "booksMyQuotesTitle": "My quotes",
+  "booksQuotesEmptyDescScreen": "Open a book detail and add your favorite sentences here.",
+  "booksQuotePageAbbrev": "p. {page}",
+  "@MapEntry(booksQuotePageAbbrev: p. {page}).key": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "booksAddQuoteTitle": "Add quote",
+  "booksAddQuoteHint": "Write the quote here...",
+  "booksQuotePageOptional": "Page (optional)",
+  "booksEditQuoteTitle": "Edit quote",
+  "booksDeleteQuoteTitle": "Delete quote?",
+  "booksDeleteQuoteMessage": "This quote will be permanently deleted.",
+  "booksSelectBookForQuote": "Choose a book",
+  "booksSelectBookForQuoteHint": "Which book is this quote from?",
+  "booksNoBooksForQuote": "Add a book to your library first.",
+  "booksUnpinQuote": "Unpin",
+  "booksPinQuote": "Pin",
+  "booksGoalsEmptyTitle": "No goals yet",
+  "booksGoalsEmptyDesc": "Set trackable goals like \"20 books a year\"",
+  "booksAddFirstGoal": "Add your first goal",
+  "booksGoalCompleted": "✓ Completed",
+  "booksGoalProgress": "{current} / {target} {unit}",
+  "@MapEntry(booksGoalProgress: {current} / {target} {unit}).key": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "target": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "booksGoalRemaining": "{count} {unit} left",
+  "@MapEntry(booksGoalRemaining: {count} {unit} left).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "booksGoalAddFailed": "Could not add goal",
+  "booksGoalTypeSection": "Goal type",
+  "booksGoalTargetSection": "Target number",
+  "booksTitleOptionalSection": "Title (optional)",
+  "booksIconSection": "Icon",
+  "booksColorSection": "Color",
+  "booksReadingStatsTitle": "Reading statistics",
+  "booksRecommendationsSubtitleLong": "Recommendations based on your reading habits",
+  "calendarAddTask": "Add task",
+  "calendarSearchPrompt": "Type a word to search.",
+  "calendarSearchNoResults": "No results found.",
+  "calendarSearchTitle": "Search",
+  "calendarSearchHint": "Search tasks, notes...",
+  "calendarTypeTask": "Task",
+  "calendarTypeAppointment": "Appointment",
+  "calendarTypeMedication": "Medication",
+  "calendarTypeHabit": "Habit",
+  "calendarTypeNote": "Note",
+  "calendarHabitFallbackTitle": "Habit",
+  "calendarHabitStreakDays": "{days} day streak",
+  "@MapEntry(calendarHabitStreakDays: {days} day streak).key": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "calendarSectionAllDay": "ALL DAY",
+  "calendarSectionSchedule": "SCHEDULE",
+  "calendarCompletedBadge": "COMPLETED",
+  "calendarDurationMinutes": "{minutes} min",
+  "@MapEntry(calendarDurationMinutes: {minutes} min).key": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "calendarDeleteTaskTitle": "Delete task",
+  "calendarDeleteTaskConfirm": "Are you sure you want to delete this task?",
+  "calendarDismiss": "Cancel",
+  "calendarPostponeTaskTitle": "Postpone task",
+  "calendarPostpone15Min": "15 minutes",
+  "calendarPostpone1Hour": "1 hour",
+  "calendarPostponeTomorrow": "Tomorrow",
+  "calendarTaskPostponed": "Task {label} postponed",
+  "@MapEntry(calendarTaskPostponed: Task {label} postponed).key": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "calendarEmptyDayTitle": "Nothing planned today ☀️",
+  "calendarEmptyDaySubtitle": "Tap + to start planning",
+  "calendarNoteSingular": "Note",
+  "calendarNoteCount": "{count} Notes",
+  "@MapEntry(calendarNoteCount: {count} Notes).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "taskMemberNotFound": "No members found",
+  "taskOverlapTitle": "Time conflict",
+  "taskOverlapMessage": "You are busy at the selected time with \"{taskName}\".\n\nFree slots:\n{freeSlots}\n\nSave anyway?",
+  "@MapEntry(taskOverlapMessage: You are busy at the selected time with \"{taskName}\".\n\nFree slots:\n{freeSlots}\n\nSave anyway?).key": {
+    "placeholders": {
+      "taskName": {
+        "type": "String"
+      },
+      "freeSlots": {
+        "type": "String"
+      }
+    }
+  },
+  "taskSaveAnyway": "Save anyway",
+  "taskGoogleCalendarEvent": "Google Calendar event",
+  "taskRepeatEndSelect": "Select end date",
+  "taskRepeatEndLabel": "Series end:",
+  "taskLinkOpenFailed": "Could not open link",
+  "taskErrorWithDetails": "Error: {error}",
+  "@MapEntry(taskErrorWithDetails: Error: {error}).key": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "taskNovaSuggestionFailed": "Nova could not generate a suggestion.",
+  "taskNovaSuggestingTitle": "Nova suggests",
+  "taskNovaSplitPrompt": "Split this task into these steps?",
+  "taskAddSteps": "Add steps",
+  "taskStepsAddedAsSubtasks": "Steps added as subtasks!",
+  "taskNovaFindingSlot": "Nova is looking for free time… 🕵️",
+  "taskTimeFoundTitle": "Time found!",
+  "taskTimeFoundConfirm": "This time slot looks suitable. Confirm?",
+  "taskSchedule": "Schedule",
+  "taskScheduledSuccess": "Task scheduled successfully!",
+  "taskNoFreeSlotFound": "Could not find a suitable free slot :(",
+  "taskPostponeTitle": "Postpone task",
+  "taskSmartPostponeNova": "Smart postpone (Nova)",
+  "taskCustomTimePick": "Choose custom time",
+  "taskPostpone15Min": "15 minutes",
+  "taskPostpone1Hour": "1 hour",
+  "taskPostponeTomorrow": "Tomorrow",
+  "taskPostpone1Week": "1 week",
+  "taskPostponedWithLabel": "{label} postponed!",
+  "@MapEntry(taskPostponedWithLabel: {label} postponed!).key": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "taskPostponedToDate": "Task postponed to {date}",
+  "@MapEntry(taskPostponedToDate: Task postponed to {date}).key": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "taskDeleteTitle": "Delete task",
+  "taskDeleteMessage": "This task will be permanently deleted. Are you sure?",
+  "taskDeleted": "Task deleted",
+  "taskSectionDescription": "Description",
+  "taskSectionSubtasks": "Subtasks",
+  "taskSectionLink": "Link",
+  "taskSectionTags": "Tags",
+  "taskSectionPeople": "People",
+  "taskCompleted": "Task completed!",
+  "taskUncompleted": "Task marked incomplete.",
+  "taskBadgeCompleted": "COMPLETED",
+  "taskBadgeComplete": "COMPLETE",
+  "taskPriorityHighBadge": "HIGH PRIORITY",
+  "taskPriorityNormalBadge": "NORMAL",
+  "taskPriorityLowBadge": "LOW",
+  "taskStartLabel": "START",
+  "taskEndLabel": "END",
+  "taskNovaAssistant": "Nova Assistant",
+  "taskNovaSplitSubtitle": "Split into smart steps",
+  "taskAddSubtaskHint": "Add a new subtask…",
+  "projectTasksLoadError": "Could not load tasks. Check your connection.",
+  "projectMakeActive": "Mark active",
+  "projectMarkComplete": "Mark complete",
+  "projectArchive": "Archive",
+  "projectViewKanban": "Boards",
+  "projectViewList": "List",
+  "projectViewNotes": "Notes",
+  "projectViewResources": "Resources",
+  "projectViewStatistics": "Statistics",
+  "projectViewActivity": "Activity",
+  "projectSearchTasksHint": "Search tasks…",
+  "projectNoTasks": "No tasks in this project.",
+  "projectStatusTodoUpper": "TO DO",
+  "projectStatusInProgressUpper": "IN PROGRESS",
+  "projectStatusReviewUpper": "REVIEW",
+  "projectStatusDoneUpper": "DONE",
+  "projectStatusUnknownUpper": "UNKNOWN",
+  "projectKanbanEmpty": "Empty",
+  "projectTaskBadge": "TASK",
+  "projectDeleteTitle": "Delete project",
+  "projectDeleteConfirm": "Delete this project?",
+  "projectStatusActiveUpper": "ACTIVE",
+  "projectStatusArchivedUpper": "ARCHIVED",
+  "projectNewTaskTitle": "New task",
+  "projectEditTitle": "Edit project",
+  "projectDescriptionLabel": "Description",
+  "projectFilterAll": "All",
+  "projectFilterActive": "Active",
+  "projectFilterCompleted": "Completed",
+  "projectFilterArchived": "Archived",
+  "projectEmptyTitle": "No projects yet",
+  "projectEmptySubtitle": "Tap + to create a new project",
+  "projectStatusCompletedUpper": "COMPLETED",
+  "projectNewProjectTitle": "New project",
+  "projectColorSelection": "COLOR",
+  "projectDeadlineLabel": "DEADLINE",
+  "projectNoDateSelected": "No date selected",
+  "projectCreateButton": "Create project",
+  "projectActivityTitle": "Project history",
+  "projectActivityEmpty": "No project activity yet",
+  "projectNotesTitle": "Project notes",
+  "projectNoLinkedNotes": "No notes linked to this project",
+  "projectStatisticsTitle": "Project statistics",
+  "projectStatTotal": "Total",
+  "projectStatCompleted": "Completed",
+  "projectStatOpen": "Open",
+  "projectStatOverdue": "Overdue",
+  "projectCompletionRate": "Completion — {percent}%",
+  "@MapEntry(projectCompletionRate: Completion — {percent}%).key": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "projectNoTasksYet": "No tasks yet",
+  "projectEditResource": "Edit resource",
+  "projectResourceTitleLabel": "Title",
+  "projectResourceUrlLabel": "URL",
+  "projectResourceDescHint": "Add a short note or description…",
+  "projectResourceDescLabel": "Description",
+  "projectColorSelectionTitle": "Color selection",
+  "projectResourcesHeader": "RESOURCES",
+  "projectResourcesEmpty": "No resources added yet",
+  "projectResourceUntitled": "Untitled",
+  "teamTabBoards": "Boards",
+  "teamTabProjects": "Projects",
+  "teamTabStats": "Statistics",
+  "teamTabResources": "Resources",
+  "teamTabActivity": "Activity",
+  "teamTabNotes": "Notes",
+  "teamTabBookClub": "Book Club",
+  "teamNotFound": "Team not found",
+  "teamNameHint": "Enter team name",
+  "teamColorLabel": "TEAM COLOR",
+  "teamErrorWithDetail": "Error: {error}",
+  "@MapEntry(teamErrorWithDetail: Error: {error}).key": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "teamWorkspaceSubtitle": "Manage your teams and projects",
+  "teamActiveTeams": "Active teams",
+  "teamPerformance": "Performance",
+  "teamPerformanceGood": "Good",
+  "teamEmptyTitle": "You don't have a team yet",
+  "teamEmptyDescription": "Boost productivity with teamwork. Create a team or join with an invite code.",
+  "teamTaskProgress": "Task progress",
+  "teamProjectsLabel": "Projects",
+  "teamTasksLabel": "Tasks",
+  "teamPersonalTasks": "Personal tasks",
+  "teamAllTeamTasks": "All team tasks",
+  "teamSearchProjectsHint": "Search projects...",
+  "teamKanbanEmpty": "Empty",
+  "teamNoDeadline": "No deadline",
+  "teamProjectBadge": "PROJECT",
+  "teamEditResourceTitle": "Edit resource",
+  "teamResourceTitleLabel": "Title",
+  "teamResourceUrlLabel": "URL",
+  "teamResourceDescriptionHint": "Add a short note or description...",
+  "teamResourceDescriptionLabel": "Description",
+  "teamResourceColorSelection": "Color selection",
+  "teamAnnouncementContentLabel": "Announcement content",
+  "teamUnnamedResource": "Untitled",
+  "teamRevokeAdmin": "Revoke admin",
+  "teamMakeAdmin": "Make admin",
+  "teamRoleUpdatedRefresh": "Role updated (refresh the page)",
+  "teamRemoveFromTeam": "Remove from team",
+  "teamRemoveMemberTitle": "Remove member",
+  "teamRemoveMemberConfirm": "Remove {name} from this team?",
+  "@MapEntry(teamRemoveMemberConfirm: Remove {name} from this team?).key": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamRemoveButton": "Remove",
+  "teamMemberRemoved": "Member removed",
+  "teamLeaveTeam": "Leave team",
+  "teamLeaveConfirm": "Leave this team?",
+  "teamLeaveButton": "Leave",
+  "teamJoinCodeCopied": "{joinCode} copied!",
+  "@MapEntry(teamJoinCodeCopied: {joinCode} copied!).key": {
+    "placeholders": {
+      "joinCode": {
+        "type": "String"
+      }
+    }
+  },
+  "teamMemberYouSuffix": "(Me)",
+  "teamRoleFounder": "Founder",
+  "teamRoleAdminShort": "Admin",
+  "teamRoleMemberShort": "Member",
+  "teamBookClubEmptyTitle": "No book club",
+  "teamBookClubEmptyDescription": "Read a book with your team.\nTrack everyone's progress.",
+  "teamBookClubStart": "Start book club",
+  "teamBookNotSelected": "No book selected",
+  "teamBookChange": "Change book",
+  "teamBookClubEnd": "End club",
+  "teamBookPickPrompt": "Which book will you read?",
+  "teamBookSelect": "Select book",
+  "teamMemberProgressTitle": "Member progress",
+  "teamMemberDefaultName": "Member",
+  "teamMemberYou": "{name} (You)",
+  "@MapEntry(teamMemberYou: {name} (You)).key": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "teamBookPagesProgress": "{pages} / {total} p.",
+  "@MapEntry(teamBookPagesProgress: {pages} / {total} p.).key": {
+    "placeholders": {
+      "pages": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "teamUpdateMyProgress": "Update my progress",
+  "teamCurrentPageLabel": "What page are you on?",
+  "teamTargetFinish": "Target finish",
+  "teamNotSet": "Not set",
+  "teamDaysLeft": "{days} days left",
+  "@MapEntry(teamDaysLeft: {days} days left).key": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "teamLastDayToday": "Last day today!",
+  "teamSelect": "Select",
+  "teamClubNameLabel": "Club name",
+  "teamCreateClub": "Create club",
+  "teamTargetFinishDateHelp": "Target finish date",
+  "teamEndClubConfirm": "End this reading season?",
+  "teamFinish": "End",
+  "budgetModuleTitle": "Budget tracker",
+  "budgetAddTransactionTooltip": "Add transaction",
+  "budgetPeriodMonth": "This month",
+  "budgetPeriodQuarter": "Quarter",
+  "budgetPeriodYear": "This year",
+  "budgetPeriodAll": "All",
+  "budgetNoAnomalies": "No anomalies detected.",
+  "budgetFixedExpenses": "Fixed expenses",
+  "budgetCashFlow": "Cash flow",
+  "budgetIncomeLegend": "Income",
+  "budgetExpenseLegend": "Expense",
+  "budgetAddLimit": "Add budget limit",
+  "budgetLimitsTitle": "Budget limits",
+  "budgetDeleteLimitTitle": "Delete limit",
+  "budgetDeleteLimitMessage": "Delete the {category} limit?",
+  "@MapEntry(budgetDeleteLimitMessage: Delete the {category} limit?).key": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetLimitAmountHint": "Limit amount ({symbol})",
+  "@MapEntry(budgetLimitAmountHint: Limit amount ({symbol})).key": {
+    "placeholders": {
+      "symbol": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetSaveLimit": "Save limit",
+  "budgetSearchTransactionsHint": "Search transactions...",
+  "budgetErrorWithDetail": "Error: {error}",
+  "@MapEntry(budgetErrorWithDetail: Error: {error}).key": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetToday": "TODAY",
+  "budgetYesterday": "YESTERDAY",
+  "budgetTargetAccount": "Target account",
+  "budgetTransactionUpdated": "Transaction updated!",
+  "budgetTransactionAdded": "Transaction added successfully!",
+  "budgetCurrency": "Currency",
+  "budgetRecurrence": "Repeat",
+  "budgetPaymentMethod": "Payment method",
+  "budgetCategory": "Category",
+  "budgetPaymentAccount": "Payment account",
+  "budgetRecurrenceNone": "None",
+  "budgetRecurrenceDaily": "Daily",
+  "budgetRecurrenceWeekly": "Weekly",
+  "budgetRecurrenceMonthly": "Monthly",
+  "budgetRecurrenceYearly": "Yearly",
+  "budgetMethodCash": "Cash",
+  "budgetMethodCreditCard": "Credit card",
+  "budgetMethodBankTransfer": "Bank/EFT",
+  "budgetCatGeneral": "General",
+  "budgetCatFood": "Food",
+  "budgetCatGroceries": "Groceries",
+  "budgetCatTransport": "Transport",
+  "budgetCatEntertainment": "Entertainment",
+  "budgetCatRent": "Rent",
+  "budgetCatBills": "Bills",
+  "budgetCatHealth": "Health",
+  "budgetCatSalary": "Salary",
+  "budgetCatOther": "Other",
+  "medAddTooltip": "Add medication",
+  "medNewTitle": "New medication",
+  "medEditTitle": "Edit medication",
+  "medDeactivate": "Deactivate",
+  "medActivate": "Activate",
+  "medNameRequired": "Medication name is required",
+  "medUpdatedSuccess": "Medication updated successfully",
+  "medAddedSuccess": "Medication added successfully",
+  "medSaveFailed": "Could not save medication. Try again.",
+  "medNameLabel": "Medication name",
+  "medDosageHint": "Dose (e.g. 500mg, 1 tablet)",
+  "medFrequencySection": "Frequency",
+  "medDoseTimesSection": "Dose times",
+  "medAddTime": "Add time",
+  "medColorSection": "Color",
+  "medDatesSection": "Dates",
+  "medStartDate": "Start",
+  "medEndDateOptional": "End (optional)",
+  "medNotesOptional": "Notes (optional)",
+  "medReminderTitle": "Reminder notification",
+  "medReminderSubtitle": "Notify at each dose time",
+  "medActiveTitle": "Active",
+  "medActiveSubtitle": "Inactive meds are hidden from the daily list",
+  "medStockSection": "Stock tracking",
+  "medEnableStockTitle": "Enable stock tracking",
+  "medEnableStockSubtitle": "Track remaining quantity automatically",
+  "medCurrentStock": "Current stock",
+  "medCriticalThreshold": "Critical threshold",
+  "medSearching": "Searching medications...",
+  "medSearchNotFound": "No medication found",
+  "medSearchNotFoundHint": "Import official data or try a different name.",
+  "medMatchedFromDb": "Matched from database",
+  "medActiveIngredient": "Active ingredient",
+  "medAtcCode": "ATC code",
+  "medBarcode": "Barcode",
+  "medNotSelected": "Not selected",
+  "medPickIcon": "Choose icon",
+  "medDeleteTitle": "Delete medication",
+  "medDeleteConfirm": "This medication will be permanently deleted. Are you sure?",
+  "medDeleted": "Medication deleted",
+  "medUsageSection": "Usage",
+  "medDosage": "Dosage",
+  "medFrequency": "Frequency",
+  "medTodayDoses": "Today's doses",
+  "medNotes": "Notes",
+  "medStockStatus": "Stock status",
+  "medProductInfo": "Product information",
+  "medClassification": "Medication classification",
+  "medViewProspectus": "View package insert (PDF)",
+  "medInactiveBadge": "INACTIVE",
+  "medRemainingStock": "Remaining stock",
+  "medFreqDaily": "Daily",
+  "medFreqWeekly": "Weekly",
+  "medFreqAsNeeded": "As needed",
+  "apptNewTitle": "New appointment",
+  "apptReschedule": "Reschedule",
+  "apptInactiveBadge": "Inactive",
+  "apptSlotTaken": "This slot is full; please choose another time.",
+  "adminPanelTitle": "Admin Panel",
+  "adminPanelDesc": "System admin panel",
+  "loginSuccess": "Signed in successfully",
+  "accountCreatedSuccess": "Account created successfully",
+  "accountAccessDenied": "Access to your account is blocked.",
+  "invalidEmailOrPassword": "Email or password is incorrect",
+  "appleSignInFailed": "Apple sign-in failed: {error}",
+  "@MapEntry(appleSignInFailed: Apple sign-in failed: {error}).key": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "passwordStrengthWeak": "Weak",
+  "passwordStrengthMedium": "Medium",
+  "passwordStrengthStrong": "Strong",
+  "languageTurkish": "Turkish",
+  "languageEnglish": "English",
+  "accountChooseAvatar": "Choose Avatar",
+  "requestConfirmation": "Request Confirmation",
+  "backupReady": "Backup ready",
+  "exportFailed": "Export failed",
+  "dataCleared": "All data cleared",
+  "passwordUpdated": "Password updated",
+  "accountHeaderSubtitle": "Profile · preferences · modules",
+  "defaultUserName": "User",
+  "themeDay": "Day",
+  "themeNight": "Night",
+  "themeSystem": "System",
+  "themeAmoledTitle": "AMOLED black",
+  "themeAmoledSubtitle": "True black background · battery saving",
+  "uiScaleLabel": "Interface scale",
+  "uiScaleSubtitle": "Scale the whole interface (layout + text)",
+  "accentColorLabel": "Accent color",
+  "accountSectionSecurity": "Access & Security",
+  "accountSectionAppearance": "Appearance",
+  "accountSectionWebUi": "Web interface",
+  "accountSectionWebUiSubtitle": "Right panel and shell",
+  "weatherPanelTitle": "Weather panel",
+  "weatherPanelSubtitle": "When off, open only from here",
+  "accountSectionData": "Data & backup",
+  "testData": "Test data",
+  "sidebarExpand": "Expand sidebar",
+  "sidebarCollapse": "Collapse sidebar",
+  "modulesPanelSubtitle": "{enabled} active · menu and sidebar",
+  "@MapEntry(modulesPanelSubtitle: {enabled} active · menu and sidebar).key": {
+    "placeholders": {
+      "enabled": {
+        "type": "int"
+      }
+    }
+  },
+  "novaPreparing": "Nova is getting ready…",
+  "novaListening": "Listening…",
+  "aiActionCreateFailed": "Action could not be created. Please try again.",
+  "aiStatusAnswered": "Answered",
+  "aiTasksAddedCount": "{count} tasks added ✅",
+  "@MapEntry(aiTasksAddedCount: {count} tasks added ✅).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiApproveAllTasksTitle": "{count} Tasks — Approve All",
+  "@MapEntry(aiApproveAllTasksTitle: {count} Tasks — Approve All).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiAddAllTasks": "Add All ✓",
+  "aiLabelDeleteTask": "Delete Task",
+  "aiLabelUpdateTask": "Update Task",
+  "aiLabelRescheduleTask": "Reschedule Task",
+  "aiLabelCompleteTask": "Complete Task",
+  "aiLabelCreateAppointment": "Create Appointment",
+  "aiLabelCancelAppointment": "Cancel Appointment",
+  "aiLabelRescheduleAppointment": "Reschedule Appointment",
+  "aiLabelCreateNote": "Create Note",
+  "aiLabelAddHabit": "Add Habit",
+  "aiLabelAddIncome": "Add Income",
+  "aiLabelSavingsGoal": "Savings Goal",
+  "aiTaskDeletePermanentWarning": "This task will be permanently deleted!",
+  "aiAppointmentCancelPermanentWarning": "The appointment will be permanently cancelled.",
+  "aiFieldClient": "Client",
+  "aiFieldPhone": "Phone",
+  "aiFieldDuration": "Duration",
+  "aiFieldNotebook": "Notebook",
+  "aiFieldReminder": "Reminder",
+  "aiFieldGoal": "Goal",
+  "aiFieldDeadline": "Deadline",
+  "aiFieldNewDate": "New date",
+  "aiFieldNewTime": "New time",
+  "aiFieldTask": "Task",
+  "aiCreatedByNova": "Created by Nova.",
+  "defaultTask": "Task",
+  "defaultExpense": "Expense",
+  "defaultCategoryOther": "Other",
+  "defaultAppointment": "Appointment",
+  "defaultNote": "Note",
+  "defaultHabit": "Habit",
+  "defaultIncome": "Income",
+  "defaultGoal": "Goal",
+  "noteTaskNotFound": "Task not found or deleted.",
+  "noteAddTask": "Add Task",
+  "noteNoOpenTasks": "No open tasks.",
+  "noteLockedMessage": "This note is locked — editing disabled.",
+  "noteUnlock": "Unlock",
+  "noteLock": "Lock",
+  "notePageLayout": "Page Layout",
+  "noteAddLink": "Add Link",
+  "noteLinkUrlHint": "https://",
+  "notebookNew": "New Notebook",
+  "notebookNameLabel": "Notebook name",
+  "notebookNameHint": "e.g. Work, Personal...",
+  "notebookEmpty": "You haven't created any notebooks yet.",
+  "noteEmbedLoadFailed": "Content could not be loaded",
+  "noteSelectMembers": "Select Members",
+  "notesLoadFailed": "Notes could not be loaded",
+  "noteCreateFirst": "Create Your First Note",
+  "noteRestore": "Restore",
+  "noteDeletePermanent": "Delete Permanently",
+  "noteMoveToTrash": "Move to Trash",
+  "noteCalloutTip": "Tip",
+  "noteCalloutInfo": "Info",
+  "noteCalloutWarning": "Warning",
+  "noteCalloutDanger": "Critical",
+  "noteCalloutPlaceholder": "Write here…",
+  "noteCalloutAdd": "Add Callout",
+  "noteDividerLine": "Thin Line",
+  "noteDividerThick": "Thick Line",
+  "noteDividerDots": "Dotted",
+  "noteTableDeleteTitle": "Delete Table",
+  "noteTableDeleteBody": "This cannot be undone.",
+  "noteTableCellHint": "Cell content…",
+  "noteTableCreate": "Create Table",
+  "noteWorkflowDone": "Completed",
+  "noteWorkflowNewStep": "New Step",
+  "noteWorkflowCompletedCelebration": "🎉 Completed!",
+  "notePageSettings": "Page Settings",
+  "notePageOrientation": "Orientation",
+  "notePageMargins": "Margins",
+  "apply": "Apply",
+  "custom": "Custom",
+  "wide": "Wide",
+  "notePageBreakLabel": "PAGE BREAK",
+  "quoteOfDay": "Quote of the Day",
+  "quickNote": "Quick Note",
+  "quickNoteHint": "Jot something down…",
+  "quickNoteSaved": "Note saved successfully",
+  "weatherWind": "Wind",
+  "weatherSelectCity": "Select City/District",
+  "myAccount": "My Account",
+  "focusXpBonus": "+100 XP",
+  "focusBreakLabel": "Break",
+  "corkboardPaperYellow": "Yellow",
+  "corkboardPaperWhite": "White",
+  "corkboardPaperBlue": "Blue",
+  "corkboardPaperPink": "Pink",
+  "corkboardPaperGreen": "Green",
+  "notifChannelTasks": "Tasks",
+  "notifChannelMedications": "Medications",
+  "notifChannelAppointments": "Appointments",
+  "notifChannelHabits": "Habits",
+  "notifChannelFocus": "Focus",
+  "notifChannelTeams": "Teams",
+  "notifChannelGeneral": "General",
+  "notifChannelInstant": "Instant Notifications",
+  "notifChannelDailyBriefing": "Daily Briefing",
+  "notifChannelDescription": "{name} reminders",
+  "@MapEntry(notifChannelDescription: {name} reminders).key": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifHabitReminderTitle": "🔥 Habit Reminder",
+  "notifHabitReminderBody": "Don't forget to complete \"{name}\"!",
+  "@MapEntry(notifHabitReminderBody: Don't forget to complete \"{name}\"!).key": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "notifMedicationTitle": "💊 Medication Time",
+  "notifMedicationBody": "Time to take \"{name}\".",
+  "@MapEntry(notifMedicationBody: Time to take \"{name}\".).key": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "aiToolErrorGeneric": "Something went wrong. Please try again.",
+  "aiToolErrorTaskNotFound": "Task not found.",
+  "aiPromptApproveAllTasks": "Do you approve all of them? 🗓️",
+  "aiPromptApproveDayPlan": "Do you approve? 📅",
+  "aiPromptWhatWouldYouLike": "What would you like to do?",
+  "aiTaskOverlapWarning": "Attention! You have \"{title}\" at that time. Free slots:\n{slots}",
+  "@MapEntry(aiTaskOverlapWarning: Attention! You have \"{title}\" at that time. Free slots:\n{slots}).key": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      },
+      "slots": {
+        "type": "String"
+      }
+    }
+  },
+  "aiPromptDeleteTask": "You are about to delete \"{title}\". Approve?",
+  "@MapEntry(aiPromptDeleteTask: You are about to delete \"{title}\". Approve?).key": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "aiPromptUpdateTask": "Update task \"{title}\". Approve?",
+  "@MapEntry(aiPromptUpdateTask: Update task \"{title}\". Approve?).key": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "aiPromptCreateAppointment": "Create appointment. Approve?",
+  "aiPromptMarkMedication": "Mark medication taken. Approve?",
+  "aiPromptAddExpense": "Add expense. Approve?",
+  "aiPromptTeamAnnouncement": "Post team announcement. Approve?",
+  "pushNotificationsSubtitle": "General app notifications",
+  "taskRemindersSubtitle": "Alerts for starting tasks",
+  "teamInvitesSubtitle": "New memberships and projects",
+  "dailyBriefingSubtitle": "Morning briefing from Nova",
+  "emailNotificationsSubtitle": "Don't miss important updates",
+  "passwordSecuritySubtitle": "Update your password",
+  "aboutPhobesVisionSubtitle": "Vision and story",
+  "featureTreeAllModulesSubtitle": "All modules",
+  "contactGetHelpSubtitle": "Get help",
+  "clearLocalDataSubtitle": "Clear local data",
+  "permanentActionSubtitle": "Permanent action",
+  "accountSectionApp": "App",
+  "languageSectionTitle": "Language",
+  "simulateStartTitle": "Start Full Simulation",
+  "simulateStartMessage": "A comprehensive 3-month (90-day) test environment will be created.\n\n• All existing data will be deleted.\n• Teams, projects, and resources\n• 90 days of tasks and notes history\n• Habits, medications, and appointments\n• Budget, accounts, and savings goals\n\nDo you want to continue?",
+  "simulatePreparing": "Preparing simulation...",
+  "allSystemsSynced": "All systems synchronized! 🚀",
+  "noteWorkflowTodo": "Waiting",
+  "noteWorkflowPending": "In progress",
+  "notebooksHeader": "NOTEBOOKS",
+  "noteAllNotes": "All Notes",
+  "editNotebookTitle": "Edit Notebook",
+  "durationMinutesFormat": "{minutes} min",
+  "@MapEntry(durationMinutesFormat: {minutes} min).key": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "aiFieldAppointmentId": "Appointment ID",
+  "aiFieldContent": "Content",
+  "aiFieldHabit": "Habit",
+  "pagePortrait": "Portrait",
+  "pageLandscape": "Landscape",
+  "marginNormal": "Normal",
+  "marginNarrow": "Narrow",
+  "marginMirror": "Mirror",
+  "marginTop": "Top",
+  "marginBottom": "Bottom",
+  "marginLeft": "Left",
+  "marginRight": "Right",
+  "notePageSizeLabel": "Page Size",
+  "statsModuleTasks": "Tasks",
+  "statsModuleHabits": "Habits",
+  "statsModuleBudget": "Budget",
+  "statsModuleNotes": "Notes",
+  "statsModuleAppointments": "Appointments",
+  "statsModuleMedications": "Medications",
+  "statsModuleBooks": "Books",
+  "statsModuleCorkboard": "Planning board",
+  "statsModuleFocus": "Focus",
+  "statsModuleTeams": "Teams",
+  "statsGeneralActivity": "Overall activity",
+  "statsModulePerformance": "Module performance",
+  "statsModulePerformanceHint": "Bar height is a 0–100 normalized score; each module uses different metrics.",
+  "statsHabitLabel": "Habit",
+  "statsCorkboardLabel": "Planning board",
+  "statsSummaryMetrics": "Summary metrics",
+  "statsStatusDistribution": "Status distribution",
+  "statsPriority": "Priority",
+  "statsDailyCompleted": "Daily completed",
+  "statsPeriodTrend": "Period trend",
+  "statsActivityHeatmap": "Activity heatmap",
+  "statsTagDistribution": "Tag distribution",
+  "statsHourlyDensity": "Hourly density",
+  "statsIntradayDistribution": "Intraday distribution",
+  "statsWeekdayDistribution": "By weekday",
+  "statsComplianceRate": "Compliance rate",
+  "statsPeriodCompliance": "Period compliance",
+  "statsActivitySummary": "Activity summary",
+  "statsIncomeExpense": "Income / Expense",
+  "statsExpenseCategories": "Expense categories",
+  "statsTransactionCount": "Transaction count",
+  "statsCashFlow": "Cash flow",
+  "statsDailyExpense": "Daily expense",
+  "statsDailyIncome": "Daily income",
+  "statsCategoryDistribution": "Category distribution",
+  "statsNoteActivity": "Note activity",
+  "statsEngagementDistribution": "Engagement distribution",
+  "statsAppointmentStatuses": "Appointment statuses",
+  "statsAppointmentCounts": "Appointment counts",
+  "statsRevenueSummary": "Revenue summary",
+  "statsFromCompletedAppointments": "from completed appointments",
+  "statsDoseCompliance": "Dose compliance",
+  "statsCompliancePercent": "Compliance %",
+  "statsModuleSummary": "Module summary",
+  "statsDetailedStats": "Detailed statistics",
+  "statsNoDataForPeriod": "No data for this period",
+  "statsBookReading": "Reading",
+  "statsBookFinished": "Finished",
+  "statsBookNew": "Just started",
+  "statsPeriodDay": "Day",
+  "statsPeriodWeek": "Week",
+  "statsPeriodMonth": "Month",
+  "statsPeriodYear": "Year",
+  "landingHome": "Home",
+  "landingAbout": "About",
+  "landingFeatures": "Features",
+  "landingContact": "Contact",
+  "landingThemeLight": "Light theme",
+  "landingThemeDark": "Dark theme",
+  "landingAiProductivity": "AI-POWERED PRODUCTIVITY",
+  "landingHeroHeadline": "Don't just live.\nManage your time.",
+  "landingHeroSub": "Tasks, calendar, teams, budget, and Nova AI in one app.",
+  "landingCtaStart": "GET STARTED",
+  "landingCtaFree": "START FREE",
+  "landingFeatCalendarTitle": "Master of Time",
+  "landingFeatCalendarBadge": "SMART CALENDAR",
+  "landingFeatCalendarDesc": "See your whole plan in weekly, monthly, and daily views. Tasks, appointments, and notes in one calendar.",
+  "landingFeatTeamsTitle": "Team Power",
+  "landingFeatTeamsBadge": "PROJECT MANAGEMENT",
+  "landingFeatTeamsDesc": "Manage your team with kanban, projects, and leaderboards.",
+  "landingFeatNovaTitle": "AI Assistant",
+  "landingFeatNovaBadge": "PHOBES NOVA",
+  "landingFeatNovaDesc": "Nova analyzes productivity, prioritizes tasks, and suggests what to do next.",
+  "landingFeatBudgetTitle": "Financial Control",
+  "landingFeatBudgetBadge": "SMART BUDGET",
+  "landingFeatBudgetDesc": "Categorize spending, set limits, and see where your money goes.",
+  "noteSlashCommands": "Commands",
+  "noteSlashHeading1Label": "Heading 1",
+  "noteSlashHeading1Desc": "Large heading",
+  "noteSlashHeading2Label": "Heading 2",
+  "noteSlashHeading2Desc": "Medium heading",
+  "noteSlashHeading3Label": "Heading 3",
+  "noteSlashHeading3Desc": "Small heading",
+  "noteSlashBulletLabel": "Bullet List",
+  "noteSlashBulletDesc": "Unordered list",
+  "noteSlashNumberedLabel": "Numbered List",
+  "noteSlashNumberedDesc": "Ordered list",
+  "noteSlashChecklistLabel": "Checklist",
+  "noteSlashChecklistDesc": "To-do items",
+  "noteSlashTableLabel": "Table",
+  "noteSlashTableDesc": "Insert a table",
+  "noteSlashCalloutLabel": "Callout",
+  "noteSlashCalloutDesc": "Info / warning box",
+  "noteSlashDividerLabel": "Divider",
+  "noteSlashDividerDesc": "Horizontal separator",
+  "noteSlashQuoteLabel": "Quote",
+  "noteSlashQuoteDesc": "Block quote",
+  "noteSlashCodeLabel": "Code Block",
+  "noteSlashCodeDesc": "Code snippet",
+  "noteSlashTaskCardLabel": "Task Card",
+  "noteSlashTaskCardDesc": "Embed a task",
+  "noteSlashWorkflowLabel": "Workflow",
+  "noteSlashWorkflowDesc": "Process pipeline",
+  "noteSlashTable2Label": "2×3 Table",
+  "noteSlashTable2Desc": "Quick 2-column table",
+  "noteSlashTable3Label": "3×3 Table",
+  "noteSlashTable3Desc": "Quick 3-column table",
+  "noteSlashPageBreakLabel": "Page Break",
+  "noteSlashPageBreakDesc": "Start a new page",
+  "noteSlashInsertHint": "Type / to insert a block",
+  "notePageNumber": "Page {number}",
+  "@MapEntry(notePageNumber: Page {number}).key": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "noteTableThemeClassic": "Classic",
+  "noteTableThemeOcean": "Ocean",
+  "noteTableThemeForest": "Forest",
+  "noteTableThemeRose": "Rose",
+  "noteTableThemeSunset": "Sunset",
+  "noteTableThemeMidnight": "Midnight",
+  "noteTableThemeCoffee": "Coffee",
+  "noteTableThemeSlate": "Slate",
+  "noteTableAlignLeft": "Align left",
+  "noteTableAlignCenter": "Center",
+  "noteTableAlignFullWidth": "Full width",
+  "noteTableDensityCompact": "Compact",
+  "noteTableDensityNormal": "Normal",
+  "noteTableDensityComfortable": "Comfortable",
+  "noteTableHeaderRowTooltip": "Header row",
+  "noteTableHeaderColTooltip": "Header column",
+  "noteTableHeaderRowShort": "H.Row",
+  "noteTableHeaderColShort": "H.Col",
+  "noteTableAddRow": "+Row",
+  "noteTableAddColumn": "+Col",
+  "noteTableHeaderPlaceholder": "Header",
+  "noteTableHeaderPlaceholderN": "Header {n}",
+  "@MapEntry(noteTableHeaderPlaceholderN: Header {n}).key": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "noteTableCellPosition": "Row {row} · Col {col}",
+  "@MapEntry(noteTableCellPosition: Row {row} · Col {col}).key": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      },
+      "col": {
+        "type": "int"
+      }
+    }
+  },
+  "noteTableCellBackground": "CELL BACKGROUND",
+  "noteTableChooseThemeSize": "Choose theme and size",
+  "noteTableSectionTheme": "THEME",
+  "noteTableSectionSize": "SIZE",
+  "noteTableSectionPreview": "PREVIEW",
+  "noteTableRowLabel": "Rows",
+  "noteTableColLabel": "Columns",
+  "notifPrefsTitle": "Notification Settings",
+  "notifPrefsSubtitle": "Manage which notifications you receive",
+  "notifPrefsSectionGeneralMaster": "General",
+  "notifPrefsAllOn": "All on",
+  "notifPrefsAllOff": "All off",
+  "accountNotificationSettings": "Notification settings",
+  "accountNotificationSettingsSubtitle": "Manage push, email and per-module alerts",
+  "notifPrefsSectionTasks": "Tasks",
+  "notifPrefsTaskDeadline": "Task deadline",
+  "notifPrefsTaskDeadlineDesc": "Remind when a due date is approaching",
+  "notifPrefsTaskOverdue": "Overdue tasks",
+  "notifPrefsTaskOverdueDesc": "Tasks past their due date",
+  "notifPrefsSectionHabits": "Habits",
+  "notifPrefsHabitStreak": "Streak at risk",
+  "notifPrefsHabitStreakDesc": "Evening alert at 8 PM for habits not completed today",
+  "notifPrefsHabitMilestone": "Streak celebration",
+  "notifPrefsHabitMilestoneDesc": "Celebrate 7, 30, and 100-day streaks",
+  "notifPrefsSectionMeds": "Medications",
+  "notifPrefsMedDose": "Dose time",
+  "notifPrefsMedDoseDesc": "Notify at medication time",
+  "notifPrefsMedMissed": "Missed dose",
+  "notifPrefsMedMissedDesc": "Alert for doses not taken",
+  "notifPrefsMedRefill": "Low stock",
+  "notifPrefsMedRefillDesc": "Medication refill reminder",
+  "notifPrefsSectionAppointments": "Appointments",
+  "notifPrefsApptReminder": "Appointment reminder",
+  "notifPrefsApptReminderDesc": "Remind before appointments",
+  "notifPrefsApptStatus": "Status changes",
+  "notifPrefsApptStatusDesc": "Confirmations, cancellations, and updates",
+  "notifPrefsSectionFocus": "Focus",
+  "notifPrefsFocusBreak": "Break ended",
+  "notifPrefsFocusBreakDesc": "Remind when a break timer ends",
+  "notifPrefsSectionBudget": "Budget",
+  "notifPrefsBudgetLimit": "Limit alert",
+  "notifPrefsBudgetLimitDesc": "When a budget limit is exceeded",
+  "notifPrefsBudgetGoal": "Savings goal",
+  "notifPrefsBudgetGoalDesc": "Celebrate when a goal is reached",
+  "notifPrefsBudgetInsight": "Budget insights",
+  "notifPrefsBudgetInsightDesc": "Weekly spending analysis (off by default)",
+  "notifPrefsSectionTeams": "Teams",
+  "notifPrefsTeamAssign": "Task assignment",
+  "notifPrefsTeamAssignDesc": "When a task is assigned to you",
+  "notifPrefsTeamAnnounce": "Announcements",
+  "notifPrefsTeamAnnounceDesc": "Team announcements",
+  "notifPrefsTeamDeadline": "Team deadlines",
+  "notifPrefsTeamDeadlineDesc": "Due dates for team tasks",
+  "notifPrefsSectionXp": "XP & Level",
+  "notifPrefsLevelUp": "Level up",
+  "notifPrefsLevelUpDesc": "Celebrate reaching a new level",
+  "notifPrefsMilestones": "Special celebrations",
+  "notifPrefsMilestonesDesc": "Birthdays, app anniversaries, and more",
+  "notifPrefsSectionGeneral": "General",
+  "notifPrefsMorningBrief": "Morning brief",
+  "notifPrefsMorningBriefDesc": "Start the day with pending task count (9:00 AM)",
+  "notifPrefsWeeklyDigest": "Weekly digest",
+  "notifPrefsWeeklyDigestDesc": "Sunday morning performance report (10:00 AM)",
+  "accountBannedTitle": "Account Suspended",
+  "accountBannedReasonLabel": "Reason:",
+  "accountBannedDefaultReason": "Your account has been suspended due to a policy violation.",
+  "accountBannedSupportMessage": "If you believe this suspension is a mistake, please contact our support team.",
+  "maintenanceTitle": "Maintenance",
+  "maintenanceDefaultMessage": "The system is under maintenance. Please try again later.",
+  "surveyDefaultTitle": "Survey",
+  "surveyNotFound": "Survey not found or has ended.",
+  "surveyAlreadyResponded": "You have already completed this survey.",
+  "surveyAnswerAll": "Please answer all questions: {question}",
+  "@MapEntry(surveyAnswerAll: Please answer all questions: {question}).key": {
+    "placeholders": {
+      "question": {
+        "type": "String"
+      }
+    }
+  },
+  "surveySubmitFailed": "Could not submit: {error}",
+  "@MapEntry(surveySubmitFailed: Could not submit: {error}).key": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "surveySubmitting": "Submitting…",
+  "surveySubmit": "Submit",
+  "surveyAnswerHint": "Your answer",
+  "broadcastDefaultTitle": "Announcement",
+  "notificationsEmptyTitle": "No notifications yet",
+  "notificationsEmptyDesc": "Notifications about tasks, medications, and other activity will appear here.",
+  "notificationsTimeNow": "Now",
+  "notificationsTimeMinutes": "{n}m",
+  "@MapEntry(notificationsTimeMinutes: {n}m).key": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsTimeHours": "{n}h",
+  "@MapEntry(notificationsTimeHours: {n}h).key": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notificationsTimeDays": "{n}d",
+  "@MapEntry(notificationsTimeDays: {n}d).key": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "notePermissionSelectMembers": "Select members",
+  "landingTrustFast": "Fast",
+  "landingTrustSecure": "Secure",
+  "landingTrustSync": "Synced",
+  "landingTrustPremium": "Premium",
+  "landingMockWeeklyView": "Weekly view",
+  "landingMockTasksCount": "{count} tasks",
+  "@MapEntry(landingMockTasksCount: {count} tasks).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "landingMockAppointmentsCount": "{count} appointments",
+  "@MapEntry(landingMockAppointmentsCount: {count} appointments).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "landingMockNotesCount": "{count} notes",
+  "@MapEntry(landingMockNotesCount: {count} notes).key": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "landingMockTaskPlan": "Plan",
+  "landingMockTaskSport": "Workout",
+  "landingMockTaskPresentation": "Presentation",
+  "landingMockAppointment": "Appointment",
+  "landingMockNoteTitle": "Note",
+  "landingMockNoteContent": "Notes for new features",
+  "landingMockTeamBoard": "Team board",
+  "landingMockOverallProgress": "Overall progress",
+  "landingMockMembers": "Members",
+  "landingMockProjects": "Projects",
+  "landingMockWeeklyActivity": "Weekly activity",
+  "landingMockBudgetSummary": "Budget summary",
+  "landingMockAvailableBudget": "Available budget",
+  "landingMockIncome": "Income",
+  "landingMockExpense": "Expense",
+  "landingMockCategoryGroceries": "Groceries",
+  "landingMockCategoryTech": "Technology",
+  "landingMockCategoryEntertainment": "Entertainment",
+  "landingMockNovaSender": "Nova",
+  "landingMockYouSender": "You",
+  "landingMockNovaMessage": "Your calendar looks busy next week. Would you like to review the summary I prepared for Monday morning?",
+  "landingMockYouMessage": "Yes please — especially highlight any meeting conflicts.",
+  "landingMockProductivityInsight": "Productivity insight: You're up 15% compared to yesterday!",
+  "budgetDeleteGoalTitle": "Delete goal",
+  "budgetDeleteGoalMessage": "Delete the goal \"{title}\"?",
+  "@MapEntry(budgetDeleteGoalMessage: Delete the goal \"{title}\"?).key": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "statsPeriodDaily": "Daily",
+  "statsPeriodQuarter": "Quarter",
+  "statsPeriodToday": "Today",
+  "statsPeriod7Days": "7 days",
+  "statsPeriod30Days": "30 days",
+  "statsPeriod90Days": "90 days",
+  "statsPeriodSummarySubtitle": "{period} summary · {count} actions",
+  "@MapEntry(statsPeriodSummarySubtitle: {period} summary · {count} actions).key": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "statsAllModulesPeriod": "All modules · {period} period",
+  "@MapEntry(statsAllModulesPeriod: All modules · {period} period).key": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "statsCompleted": "Completed",
+  "statsPendingLabel": "Pending",
+  "statsOverdue": "Overdue",
+  "statsCompletionRate": "Completion rate",
+  "statsStreak": "Streak",
+  "statsFocusDuration": "Focus time",
+  "statsProductivity": "Productivity",
+  "statsCreatedLabel": "Created",
+  "statsPostponed": "Postponed",
+  "statsAvgDuration": "Avg. duration",
+  "statsBusiestDay": "Busiest day",
+  "statsPeakHour": "Peak hour",
+  "statsWithSubtasks": "With subtasks",
+  "statsRecurring": "Recurring",
+  "statsPriorityHigh": "High",
+  "statsPriorityMedium": "Medium",
+  "statsPriorityLow": "Low",
+  "statsMinutesShort": "{n} min",
+  "@MapEntry(statsMinutesShort: {n} min).key": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "statsHoursMinutesShort": "{hours} h {minutes} min",
+  "@MapEntry(statsHoursMinutesShort: {hours} h {minutes} min).key": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "statsDaysUnit": "{n} days",
+  "@MapEntry(statsDaysUnit: {n} days).key": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "statsWeekdayMon": "Mon",
+  "statsWeekdayTue": "Tue",
+  "statsWeekdayWed": "Wed",
+  "statsWeekdayThu": "Thu",
+  "statsWeekdayFri": "Fri",
+  "statsWeekdaySat": "Sat",
+  "statsWeekdaySun": "Sun",
+  "statsTotalHabits": "Total habits",
+  "statsCompletedInPeriod": "Completed in period",
+  "statsPeriodAdherence": "Period adherence",
+  "statsLongestStreak": "Longest streak",
+  "statsActiveToday": "Active today",
+  "statsMissing": "Missing",
+  "statsIncomeLabel": "Income",
+  "statsExpenseLabel": "Expense",
+  "statsNetLabel": "Net",
+  "statsTxnCount": "Transaction count",
+  "statsIncomeTxn": "Income transactions",
+  "statsExpenseTxn": "Expense transactions",
+  "statsTotalBalance": "Total balance",
+  "statsAccountLabel": "Accounts",
+  "statsTopSpending": "Top spending",
+  "statsCategoryGeneral": "General",
+  "statsNewLabel": "New",
+  "statsUpdatedLabel": "Updated",
+  "statsFavoriteLabel": "Favorite",
+  "statsPinnedLabel": "Pinned",
+  "statsArchivedLabel": "Archived",
+  "statsTaskLinked": "Task linked",
+  "statsTeamNote": "Team note",
+  "statsScheduled": "Scheduled",
+  "statsCancelled": "Cancelled",
+  "statsActiveMeds": "Active medications",
+  "statsDosesScheduled": "Doses scheduled",
+  "statsDosesTaken": "Doses taken",
+  "statsAdherence": "Adherence",
+  "statsLowStock": "Low stock",
+  "statsSufficientStock": "Sufficient stock",
+  "statsTaken": "Taken",
+  "statsMissed": "Missed",
+  "statsInLibrary": "In library",
+  "statsFinishedInPeriod": "Finished in period",
+  "statsStartedInPeriod": "Started in period",
+  "statsPagesRead": "Pages read",
+  "statsAvgRating": "Avg. rating",
+  "statsTeamCount": "Team count",
+  "statsTotalMembers": "Total members",
+  "statsOwnedTeams": "Teams you manage",
+  "statsTotalCards": "Total cards",
+  "statsConnections": "Connections",
+  "statsAddedInPeriod": "Added in period",
+  "statsCardsLabel": "Cards",
+  "statsLinksLabel": "Links",
+  "statsModuleTaskHint": "Completion + streak + volume",
+  "statsModuleHabitHint": "Daily adherence rate",
+  "statsNetPositive": "Net positive",
+  "statsNetNegative": "Net negative",
+  "statsModuleNotesHint": "Created in period",
+  "statsModuleApptHint": "Completed / scheduled",
+  "statsModuleMedHint": "Dose adherence",
+  "statsModuleBookHint": "Finished / library"
 }

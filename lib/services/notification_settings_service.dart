@@ -13,7 +13,6 @@ class NotificationSettingsService {
 
   late SharedPreferences _prefs;
 
-  // Notification types
   final ValueNotifier<bool> pushEnabled = ValueNotifier<bool>(true);
   final ValueNotifier<bool> emailEnabled = ValueNotifier<bool>(false);
   final ValueNotifier<bool> teamInvitesEnabled = ValueNotifier<bool>(true);

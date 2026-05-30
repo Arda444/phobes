@@ -1,0 +1,129 @@
+workflows:
+
+  # ── Tests (analyze + Flutter + Firestore rules) ───────────────────────────
+  test-workflow:
+    name: Phobes Tests
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      node: latest
+      java: 21
+    scripts:
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Flutter analyze
+        script: flutter analyze
+      - name: Flutter unit & widget tests
+        script: flutter test
+      - name: Firestore rules tests
+        script: |
+          cd rules_test
+          npm ci
+          npm test
+
+  # ── iOS (side-loading, no Apple account needed) ───────────────────────────
+  ios-workflow:
+    name: Phobes iOS (No-codesign IPA)
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Flutter packages
+        script: flutter pub get
+      - name: CocoaPods
+        script: cd ios && pod install
+      - name: Build IPA
+        script: flutter build ipa --release --no-codesign
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients: [ardakocaoglu44@gmail.com]
+        on_success: true
+        on_failure: true
+
+  # ── Android (signed APK + AAB for Play Store) ─────────────────────────────
+  # Required Codemagic environment variables (Settings → Environment variables):
+  #   CM_KEYSTORE          – base64-encoded .jks file   (Binary, Protected)
+  #   CM_KEYSTORE_PASSWORD – keystore password           (Protected)
+  #   CM_KEY_ALIAS         – key alias                   (e.g. phobes-key)
+  #   CM_KEY_PASSWORD      – key password                (Protected)
+  android-workflow:
+    name: Phobes Android (APK + AAB)
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      java: 21
+    scripts:
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Restore keystore
+        script: |
+          echo "$CM_KEYSTORE" | base64 --decode > android/app/release.jks
+          cat > android/key.properties <<EOF
+          storePassword=$CM_KEYSTORE_PASSWORD
+          keyPassword=$CM_KEY_PASSWORD
+          keyAlias=$CM_KEY_ALIAS
+          storeFile=release.jks
+          EOF
+      - name: Flutter analyze
+        script: flutter analyze
+      - name: Flutter tests
+        script: flutter test
+      - name: Build APK
+        script: flutter build apk --release
+      - name: Build AAB (Play Store)
+        script: flutter build appbundle --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/app/outputs/bundle/release/app-release.aab
+    publishing:
+      email:
+        recipients: [ardakocaoglu44@gmail.com]
+        on_success: true
+        on_failure: true
+
+  # ── Web (Firebase Hosting deploy) ─────────────────────────────────────────
+  # Required Codemagic environment variables:
+  #   FIREBASE_TOKEN – get with: firebase login:ci   (Protected)
+  web-workflow:
+    name: Phobes Web (Firebase Hosting)
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+    scripts:
+      - name: Flutter packages
+        script: flutter pub get
+      - name: Flutter analyze
+        script: flutter analyze
+      - name: Flutter tests
+        script: flutter test
+      - name: Build web
+        # RECAPTCHA_SITE_KEY must be set in Codemagic environment variables (Protected).
+        script: |
+          dart run tool/generate_icon_manifest.dart
+          flutter build web --release --no-wasm-dry-run --dart-define=RECAPTCHA_SITE_KEY="$RECAPTCHA_SITE_KEY"
+      - name: Install Firebase CLI
+        script: npm install -g firebase-tools
+      - name: Build Cloud Functions
+        script: |
+          cd functions
+          npm ci
+          npm run build
+          cd ..
+      - name: Deploy Firebase (hosting, rules, indexes, functions)
+        script: |
+          firebase deploy --only hosting,firestore:rules,firestore:indexes,functions --token "$FIREBASE_TOKEN" --non-interactive
+    artifacts:
+      - build/web/**
+    publishing:
+      email:
+        recipients: [ardakocaoglu44@gmail.com]
+        on_success: true
+        on_failure: true

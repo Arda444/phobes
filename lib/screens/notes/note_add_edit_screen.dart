@@ -1,1168 +1,1740 @@
-﻿import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'dart:convert';
 import 'dart:async';
-import 'package:intl/intl.dart';
-import '../../models/note_model.dart';
-import '../../services/firebase_service.dart';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../core/phobes_theme.dart';
-import '../../services/nova_service.dart';
-import '../../widgets/phobes_widgets.dart';
+import '../../l10n/app_localizations.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/note_model.dart';
+import '../../models/team_model.dart';
+import '../../models/note_history_model.dart';
+import '../../services/firebase_service.dart';
+import 'table_embed.dart';
+import 'callout_embed.dart';
+import 'divider_embed.dart';
+import 'note_toolbar.dart';
+import 'slash_command_overlay.dart';
+import 'note_templates.dart';
+import 'note_link_tasks_sheet.dart';
+import 'note_permission_sheet.dart';
+import 'task_card_embed.dart';
+import 'workflow_embed.dart';
+import 'page_canvas.dart';
+import 'page_settings_panel.dart';
+import 'page_break_embed.dart';
 
 class NoteAddEditScreen extends StatefulWidget {
-  final DateTime selectedDate;
-  final Note? note;
-  final String? preselectedCategory;
-  final String? preselectedProjectId;
-  final String? preselectedTeamId;
-  final List<String>? preselectedTags;
+  final Note? existingNote;
+  final String? teamId;
+  final String? projectId;
+  final String? templateKey;
+  final String? notebookId;
 
   const NoteAddEditScreen({
     super.key,
-    required this.selectedDate,
-    this.note,
-    this.preselectedCategory,
-    this.preselectedProjectId,
-    this.preselectedTeamId,
-    this.preselectedTags,
+    this.existingNote,
+    this.teamId,
+    this.projectId,
+    this.templateKey,
+    this.notebookId,
   });
 
   @override
   State<NoteAddEditScreen> createState() => _NoteAddEditScreenState();
 }
 
-class _NoteAddEditScreenState extends State<NoteAddEditScreen>
-    with TickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _titleCtrl;
-  late TextEditingController _tagsCtrl;
-  late quill.QuillController _contentCtrl;
-  final FirebaseService _fb = FirebaseService();
-  final NovaService _novaService = NovaService();
+class _NoteAddEditScreenState extends State<NoteAddEditScreen> {
+  // Multi-page support: each element is one page
+  final List<QuillController> _pageControllers = [];
+  final List<FocusNode> _pageFocusNodes = [];
+  final List<ScrollController> _pageScrollControllers = [];
+  int _activePageIndex = 0;
+
+  // Safe getters — guarded against empty list during hot-reload / early frames
+  QuillController get _quillController {
+    if (_pageControllers.isEmpty) return QuillController.basic();
+    final idx = _activePageIndex.clamp(0, _pageControllers.length - 1);
+    return _pageControllers[idx];
+  }
+
+  FocusNode get _editorFocus {
+    if (_pageFocusNodes.isEmpty) return FocusNode();
+    final idx = _activePageIndex.clamp(0, _pageFocusNodes.length - 1);
+    return _pageFocusNodes[idx];
+  }
+
+  late TextEditingController _titleController;
   final FocusNode _titleFocus = FocusNode();
-  final FocusNode _contentFocus = FocusNode();
-  final ScrollController _scrollCtrl = ScrollController();
+  final ScrollController _scrollController = ScrollController();
+  final LayerLink _slashLayerLink = LayerLink();
+  final TextEditingController _tagController = TextEditingController();
 
-  bool _isSaving = false;
-  bool _isFocusMode = false;
-  bool _hasUnsavedChanges = false;
-  bool _showToolbar = true;
-  late String _category;
-  late int _color;
-  late bool _isPinned;
-  String? _projectId;
-  String? _teamId;
-
-  int _wordCount = 0;
-  int _charCount = 0;
-
-  Timer? _autoSaveTimer;
-  DateTime? _lastSaved;
-
+  String _category = 'general';
+  int _color = 0xFF6C63FF;
+  bool _isPinned = false;
+  bool _isFavorite = false;
   String _emoji = '';
+  String _viewPermission = 'owner';
+  String _editPermission = 'owner';
+  List<String> _allowedUserIds = [];
+  List<String> _linkedTaskIds = [];
+  List<String> _tags = [];
+  String? _teamId;
+  String? _projectId;
+  String? _notebookId;
+  List<String> _headerStyles = ['modern'];
+  List<String> _headerElements = ['main_title', 'meta_info'];
 
-  late AnimationController _focusModeController;
+  String _pageSize = 'a4';
+  String _pageOrientation = 'portrait';
+  PageMargins _pageMargins = PageMargins.normal();
 
-  final List<String> _categories = [
-    'Genel',
-    'Ekip Notları',
-    'İş',
-    'Kişisel',
-    'Fikir',
-    'Toplantı',
-    'Araştırma',
+  bool _saving = false;
+  final ValueNotifier<bool> _hasUnsavedChanges = ValueNotifier(false);
+  Timer? _autoSaveTimer;
+  Timer? _debounceTimer;
+  String? _createdNoteId;
+  DateTime? _lastHistoryAt;
+
+  OverlayEntry? _slashOverlay;
+  int _slashOffset = -1;
+  String _prevText = '';
+  String? _saveError;
+
+  bool get _isEditing => widget.existingNote != null;
+
+  static const _categories = [
+    ('general', Icons.note_rounded, 0xFF6C63FF),
+    ('work', Icons.work_rounded, 0xFF4285F4),
+    ('personal', Icons.person_rounded, 0xFFFF6B6B),
+    ('ideas', Icons.lightbulb_rounded, 0xFFFFB800),
+    ('meeting', Icons.groups_rounded, 0xFF00BFA5),
+    ('research', Icons.science_rounded, 0xFF9C27B0),
+    ('study', Icons.school_rounded, 0xFFFF7043),
   ];
 
-  final List<int> _noteColors = [
+  static const _colorPalette = [
     0xFF6C63FF,
     0xFF4285F4,
-    0xFF00BCD4,
     0xFFFF6B6B,
-    0xFF2ECC71,
-    0xFFFFA726,
-    0xFFE91E63,
+    0xFFFFB800,
+    0xFF00BFA5,
     0xFF9C27B0,
+    0xFFFF7043,
+    0xFF607D8B,
+    0xFFE91E63,
+    0xFF3F51B5,
+    0xFF009688,
+    0xFF795548,
   ];
 
-  final List<String> _emojis = [
-    '',
-    '📝',
-    '💡',
-    '🎯',
-    '🔥',
-    '⭐',
-    '📚',
-    '💼',
-    '🧠',
-    '🎨',
-    '🚀',
-    '🌟',
-    '📌',
-    '✅',
-    '❤️',
-    '🏠',
-  ];
+  String _getCatName(String k, AppLocalizations? l) {
+    switch (k) {
+      case 'general':
+        return l?.noteCatGeneral ?? 'General';
+      case 'work':
+        return l?.noteCatWork ?? 'Work';
+      case 'personal':
+        return l?.noteCatPersonal ?? 'Personal';
+      case 'ideas':
+        return l?.noteCatIdeas ?? 'Ideas';
+      case 'meeting':
+        return l?.noteCatMeeting ?? 'Meeting';
+      case 'research':
+        return l?.noteCatResearch ?? 'Research';
+      case 'study':
+        return l?.noteCatStudy ?? 'Study';
+      default:
+        return k;
+    }
+  }
+
+  /// Creates a QuillController + FocusNode + ScrollController for a new page.
+  void _addPageFromDoc(Document doc) {
+    final idx = _pageControllers.length;
+
+    final ctrl = QuillController(
+      document: doc,
+      selection: const TextSelection.collapsed(offset: 0),
+      readOnly: widget.existingNote?.isLocked ?? false,
+    );
+
+    final fn = FocusNode();
+    fn.addListener(() {
+      if (fn.hasFocus && mounted && _activePageIndex != idx) {
+        setState(() {
+          _activePageIndex = idx;
+          _prevText = _pageControllers[idx].document.toPlainText();
+        });
+        _dismissSlash();
+      }
+    });
+
+    // Add to lists BEFORE registering the listener so the getter is safe if
+    // the controller fires synchronously.
+    _pageControllers.add(ctrl);
+    _pageFocusNodes.add(fn);
+    _pageScrollControllers.add(ScrollController());
+
+    ctrl.addListener(_onChange);
+  }
+
+  /// Parses saved content into one or more Documents (supports old single-page
+  /// and new multi-page JSON formats).
+  static List<Document> _parseContent(String? content) {
+    if (content == null || content.isEmpty) return [Document()];
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is List) {
+        if (decoded.isEmpty) return [Document()];
+        // Multi-page: outer list elements are themselves lists (page op arrays)
+        if (decoded.first is List) {
+          return decoded
+              .map<Document>((ops) => Document.fromJson(ops as List))
+              .toList();
+        }
+        // Single-page ops list (legacy format)
+        return [Document.fromJson(decoded)];
+      }
+    } catch (_) {
+      // fallback: treat content as plain text on a single page
+    }
+    return [Document()..insert(0, content)];
+  }
 
   @override
   void initState() {
     super.initState();
-    _titleCtrl = TextEditingController(text: widget.note?.title ?? '');
+    _titleController = TextEditingController();
+    _teamId = widget.teamId;
+    _projectId = widget.projectId;
 
-    String initialTags = widget.note?.tags.join(', ') ?? '';
-    if (widget.note == null && widget.preselectedTags != null) {
-      initialTags = widget.preselectedTags!.join(', ');
-    }
-    _tagsCtrl = TextEditingController(text: initialTags);
+    if (_isEditing) {
+      final n = widget.existingNote!;
+      _titleController.text = n.title;
+      _tags = List.from(n.tags);
+      _category = n.category;
+      _color = n.color;
+      _isPinned = n.isPinned;
+      _isFavorite = n.isFavorite;
+      _emoji = n.emoji;
+      _viewPermission = n.viewPermission;
+      _editPermission = n.editPermission;
+      _allowedUserIds = List.from(n.allowedUserIds);
+      _linkedTaskIds = List.from(n.linkedTaskIds);
+      _teamId = n.teamId ?? widget.teamId;
+      _projectId = n.projectId ?? widget.projectId;
+      _notebookId = n.notebookId ?? widget.notebookId;
+      _headerStyles = List.from(n.headerStyles);
+      _headerElements = List.from(n.headerElements);
+      _pageSize = n.pageSize;
+      _pageOrientation = n.pageOrientation;
+      _pageMargins = n.pageMargins;
 
-    _category = widget.note?.category ?? widget.preselectedCategory ?? 'Genel';
-    _color = widget.note?.color ?? 0xFF6C63FF;
-    _isPinned = widget.note?.isPinned ?? false;
-    _projectId = widget.note?.projectId ?? widget.preselectedProjectId;
-    _teamId = widget.note?.teamId ?? widget.preselectedTeamId;
-    _loadContent();
-    _updateStats();
-
-    _focusModeController = AnimationController(
-        duration: const Duration(milliseconds: 300), vsync: this);
-
-    _titleCtrl.addListener(_onContentChanged);
-    _contentCtrl.document.changes.listen((_) {
-      _onContentChanged();
-      _updateStats();
-    });
-  }
-
-  void _loadContent() {
-    if (widget.note != null && widget.note!.content.isNotEmpty) {
-      try {
-        final doc = quill.Document.fromJson(jsonDecode(widget.note!.content));
-        _contentCtrl = quill.QuillController(
-            document: doc, selection: const TextSelection.collapsed(offset: 0));
-      } catch (e) {
-        _contentCtrl = quill.QuillController.basic();
+      for (final doc in _parseContent(n.content)) {
+        _addPageFromDoc(doc);
       }
     } else {
-      _contentCtrl = quill.QuillController.basic();
-    }
-  }
-
-  void _onContentChanged() {
-    if (!_hasUnsavedChanges) {
-      setState(() => _hasUnsavedChanges = true);
-    }
-    _autoSaveTimer?.cancel();
-    _autoSaveTimer = Timer(const Duration(seconds: 30), () {
-      if (_hasUnsavedChanges && widget.note != null) {
-        _saveNote(silent: true);
+      Document doc;
+      if (widget.templateKey != null) {
+        final t = noteTemplates.firstWhere(
+          (t) => t.key == widget.templateKey,
+          orElse: () => noteTemplates.first,
+        );
+        doc = t.toDocument();
+        _category = t.category;
+        _color = t.color;
+      } else {
+        doc = Document();
       }
+      _notebookId = widget.notebookId;
+      _addPageFromDoc(doc);
+    }
+
+    _prevText = _quillController.document.toPlainText();
+
+    _autoSaveTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_hasUnsavedChanges.value) _saveNote(silent: true);
     });
   }
 
-  void _updateStats() {
-    final text = _contentCtrl.document.toPlainText().trim();
-    setState(() {
-      _charCount = text.length;
-      _wordCount = text.isEmpty
-          ? 0
-          : text.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+  void _onChange() {
+    if (!_hasUnsavedChanges.value) {
+      _hasUnsavedChanges.value = true;
+    }
+    _detectSlashCommand();
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(seconds: 2), () {
+      if (_hasUnsavedChanges.value && mounted) _saveNote(silent: true);
     });
+  }
+
+  void _markDirty() {
+    _hasUnsavedChanges.value = true;
   }
 
   @override
   void dispose() {
-    _titleCtrl.dispose();
-    _tagsCtrl.dispose();
-    _contentCtrl.dispose();
+    _hasUnsavedChanges.dispose();
+    _dismissSlash();
+    for (final ctrl in _pageControllers) {
+      ctrl.removeListener(_onChange);
+      ctrl.dispose();
+    }
+    for (final fn in _pageFocusNodes) {
+      fn.dispose();
+    }
+    for (final sc in _pageScrollControllers) {
+      sc.dispose();
+    }
+    _titleController.dispose();
     _titleFocus.dispose();
-    _contentFocus.dispose();
-    _scrollCtrl.dispose();
+    _scrollController.dispose();
+    _tagController.dispose();
     _autoSaveTimer?.cancel();
-    _focusModeController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
-  void _toggleFocusMode() {
-    setState(() {
-      _isFocusMode = !_isFocusMode;
-      if (_isFocusMode) {
-        _focusModeController.forward();
-        _contentFocus.requestFocus();
-      } else {
-        _focusModeController.reverse();
+  void _detectSlashCommand() {
+    final text = _quillController.document.toPlainText();
+    final cursor = _quillController.selection.baseOffset;
+
+    if (text.length > _prevText.length && cursor > 0) {
+      final newChar = text.substring(cursor - 1, cursor);
+      if (newChar == '/' && _slashOverlay == null) {
+        final lineStart = text.lastIndexOf('\n', cursor - 2) + 1;
+        final lineContent = text.substring(lineStart, cursor - 1).trim();
+        if (lineContent.isEmpty) {
+          _showSlashOverlay(cursor - 1);
+        }
       }
-    });
+    }
+    _prevText = text;
   }
 
-  Future<void> _analyzeNoteWithNova() async {
-    final text = _contentCtrl.document.toPlainText();
-    if (text.trim().isEmpty) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Nova notlarını inceliyor... 🧠")));
-
-    final tasks = await _novaService.extractTasksFromNote(text);
-    if (!mounted) return;
-
-    if (tasks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text("Göreve dönüştürülecek bir şey bulamadım.")));
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: PhobesTheme.surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.teal.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.auto_fix_high,
-                  color: Colors.tealAccent, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Text("${tasks.length} Görev Bulundu",
-                style: GoogleFonts.outfit(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: tasks.length,
-            itemBuilder: (c, i) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: Colors.tealAccent, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(tasks[i].title,
-                            style: GoogleFonts.outfit(
-                                color: Colors.white, fontSize: 13)),
-                        Text(
-                          DateFormat('dd MMM HH:mm').format(tasks[i].startTime),
-                          style: GoogleFonts.outfit(
-                              color: Colors.white38, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  void _showSlashOverlay(int offset) {
+    _slashOffset = offset;
+    _slashOverlay = OverlayEntry(
+      builder: (ctx) => Positioned(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(ctx).viewInsets.bottom + 60,
+        child: SlashCommandOverlay(
+          controller: _quillController,
+          layerLink: _slashLayerLink,
+          slashOffset: _slashOffset,
+          onDismiss: _dismissSlash,
+          commands: buildSlashCommands(
+            l10n: AppLocalizations.of(context)!,
+            onInsertTable: _insertTable,
+            onInsertCallout: _insertCallout,
+            onInsertDivider: _insertDivider,
+            onInsertTask: _insertTask,
+            onInsertWorkflow: _insertWorkflow,
+            onInsertTable2: _insertTable2,
+            onInsertTable3: _insertTable3,
+            onInsertPageBreak: _insertPageBreak,
           ),
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text("İptal",
-                  style: GoogleFonts.outfit(color: Colors.white54))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.teal,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12))),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              for (var t in tasks) {
-                await _fb.addTask(t);
-              }
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text("Görevler takvimine eklendi! 🎉")));
-              }
-            },
-            child: Text("Hepsini Ekle",
-                style: GoogleFonts.outfit(color: Colors.white)),
-          ),
-        ],
       ),
     );
+    Overlay.of(context).insert(_slashOverlay!);
   }
 
-  Future<void> _saveNote({bool silent = false}) async {
-    if (_isSaving) return;
-    if (!silent && !_formKey.currentState!.validate()) return;
-
-    setState(() => _isSaving = true);
-
-    final List<String> tags = _tagsCtrl.text
-        .split(',')
-        .map((t) => t.trim())
-        .where((t) => t.isNotEmpty)
-        .toList();
-
-    final note = Note(
-      id: widget.note?.id,
-      userId: widget.note?.userId ?? '',
-      title: _titleCtrl.text.isEmpty ? 'Başlıksız' : _titleCtrl.text,
-      content: jsonEncode(_contentCtrl.document.toDelta().toJson()),
-      date: widget.selectedDate,
-      category: _category,
-      color: _color,
-      isPinned: _isPinned,
-      projectId: _projectId,
-      teamId: _teamId,
-      tags: tags,
-    );
-
-    try {
-      if (widget.note == null) {
-        await _fb.addNote(note);
-      } else {
-        await _fb.updateNote(note);
-      }
-      _hasUnsavedChanges = false;
-      _lastSaved = DateTime.now();
-
-      if (silent) {
-        if (mounted) setState(() => _isSaving = false);
-      } else {
-        if (mounted) Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text("Hata: $e")));
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _deleteNote() async {
-    if (widget.note?.id == null) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: PhobesTheme.surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Notu Sil',
-            style: GoogleFonts.outfit(
-                color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text('Bu notu silmek istediğinize emin misiniz?',
-            style: GoogleFonts.outfit(color: Colors.white70)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('İptal',
-                  style: GoogleFonts.outfit(color: Colors.white54))),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10))),
-            child: Text('Sil', style: GoogleFonts.outfit(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true) {
-      await _fb.deleteNote(widget.note!.id!);
-      if (mounted) Navigator.pop(context, true);
-    }
+  void _dismissSlash() {
+    _slashOverlay?.remove();
+    _slashOverlay = null;
+    _slashOffset = -1;
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final noteColor = Color(_color);
+    final isAmoled = PhobesTheme.amoledMode.value;
+    final l = AppLocalizations.of(context);
+    final compact = MediaQuery.of(context).size.width < 600;
 
-    return PopScope(
-      canPop: !_hasUnsavedChanges,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop) return;
-        final save = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: PhobesTheme.surfaceColor,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text('Kaydedilmemiş Değişiklikler',
-                style: GoogleFonts.outfit(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
-            content: Text('Değişiklikleri kaydetmek ister misiniz?',
-                style: GoogleFonts.outfit(color: Colors.white70)),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text('Kaydetme',
-                      style: GoogleFonts.outfit(color: Colors.redAccent))),
-              ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: PhobesTheme.kPrimaryColor),
-                  child: Text('Kaydet',
-                      style: GoogleFonts.outfit(color: Colors.white))),
-            ],
-          ),
-        );
-        if (!context.mounted) return;
-        if (save == true) {
-          await _saveNote();
-        } else {
-          Navigator.pop(context);
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: _isFocusMode ? null : _buildAppBar(isDark, noteColor),
-        body: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              if (!_isFocusMode) _buildMetaBar(isDark, noteColor),
-              AnimatedPadding(
-                duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.fromLTRB(_isFocusMode ? 32 : 24,
-                    _isFocusMode ? 40 : 12, _isFocusMode ? 32 : 24, 4),
+    return Scaffold(
+      backgroundColor: isDark
+          ? (isAmoled ? Colors.black : cs.surfaceContainerHighest)
+          : cs.surfaceContainerLow,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _header(cs, isDark, l),
+            Expanded(
+              child: CompositedTransformTarget(
+                link: _slashLayerLink,
+                child: ColoredBox(
+                  color: _pageSize == 'free'
+                      ? cs.surface
+                      : (isDark ? cs.surfaceContainerHigh : cs.surface),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (mounted) _editorFocus.requestFocus();
+                    },
+                    child: SingleChildScrollView(
+                      controller: _scrollController,
+                      padding: _pageSize == 'free'
+                          ? EdgeInsets.symmetric(
+                              horizontal: compact ? 16 : 32, vertical: 16,)
+                          : const EdgeInsets.symmetric(
+                              vertical: 32, horizontal: 20,),
+                      child: Column(
+                        children: [
+                          // First page (title + editor)
+                          RepaintBoundary(
+                            child: _buildPage(0, cs, isDark, l, compact),
+                          ),
+
+                          // Additional pages
+                          for (int pi = 1;
+                              pi < _pageControllers.length;
+                              pi++) ...[
+                            const SizedBox(height: 24),
+                            RepaintBoundary(
+                              child: _buildPage(pi, cs, isDark, l, compact),
+                            ),
+                          ],
+
+                          if (_pageSize != 'free') ...[
+                            const SizedBox(height: 16),
+                            _addPageButton(cs),
+                            const SizedBox(height: 32),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (widget.existingNote?.isLocked ?? false)
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: cs.errorContainer.withOpacity(0.6),
                 child: Row(
                   children: [
-                    if (!_isFocusMode)
-                      GestureDetector(
-                        onTap: () => _showEmojiPicker(isDark),
-                        child: Container(
-                          width: 38,
-                          height: 38,
-                          margin: const EdgeInsets.only(right: 10),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: isDark
-                                    ? Colors.white10
-                                    : Colors.black.withValues(alpha: 0.06)),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _emoji.isEmpty ? '😀' : _emoji,
-                              style: const TextStyle(fontSize: 18),
-                            ),
-                          ),
+                    Icon(Icons.lock_rounded,
+                        size: 15, color: cs.onErrorContainer,),
+                    const SizedBox(width: 8),
+                    Text(
+                      l?.noteLockedMessage ??
+                          'This note is locked — editing disabled.',
+                      style:
+                          TextStyle(fontSize: 12, color: cs.onErrorContainer),
+                    ),
+                    const Spacer(),
+                    InkWell(
+                      onTap: () {
+                        if (widget.existingNote?.id != null) {
+                          FirebaseService()
+                              .toggleNoteLock(widget.existingNote!.id!, false);
+                        }
+                      },
+                      child: Text(
+                        l?.noteUnlock ?? 'Unlock',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onErrorContainer,
+                          decoration: TextDecoration.underline,
                         ),
-                      ),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _titleCtrl,
-                        focusNode: _titleFocus,
-                        style: GoogleFonts.outfit(
-                          color: isDark ? Colors.white : Colors.black87,
-                          fontSize: _isFocusMode ? 30 : 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: 'Başlık',
-                          hintStyle: GoogleFonts.outfit(
-                              color: isDark ? Colors.white12 : Colors.black12,
-                              fontSize: _isFocusMode ? 30 : 24,
-                              fontWeight: FontWeight.bold),
-                          border: InputBorder.none,
-                        ),
-                        onFieldSubmitted: (_) => _contentFocus.requestFocus(),
                       ),
                     ),
                   ],
                 ),
+              )
+            else
+              NoteToolbar(
+                controller: _quillController,
+                isCompact: compact,
+                onInsertTable: _insertTable,
+                onInsertCallout: _insertCallout,
+                onInsertDivider: _insertDivider,
+                onInsertTask: _insertTask,
+                onInsertWorkflow: _insertWorkflow,
               ),
-              Padding(
-                padding:
-                    EdgeInsets.symmetric(horizontal: _isFocusMode ? 32 : 24),
+            _statusBar(cs, isDark, l),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(ColorScheme cs, bool isDark, AppLocalizations? l) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: isDark ? cs.surface.withOpacity(0.95) : cs.surface,
+        border: Border(bottom: BorderSide(color: cs.outline.withOpacity(0.06))),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: _handleBack,
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: ListenableBuilder(
+              listenable: _titleController,
+              builder: (_, __) => Text(
+                _titleController.text.isEmpty
+                    ? (l?.untitledNote ?? 'Untitled')
+                    : _titleController.text,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: _titleController.text.isEmpty
+                      ? cs.onSurface.withOpacity(0.3)
+                      : cs.onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (_pageSize != 'free')
+            GestureDetector(
+              onTap: _openPageSettings,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cs.primary.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: cs.primary.withOpacity(0.15)),
+                ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (!_isFocusMode && _emoji.isEmpty)
-                      const SizedBox(width: 48),
-                    Icon(Icons.calendar_today_rounded,
-                        size: 11,
-                        color: isDark ? Colors.white24 : Colors.black26),
+                    Icon(Icons.article_outlined,
+                        size: 12, color: cs.primary.withOpacity(0.7),),
                     const SizedBox(width: 4),
                     Text(
-                      DateFormat('dd MMMM yyyy', 'tr')
-                          .format(widget.selectedDate),
+                      '${_pageSize.toUpperCase()} · ${_pageOrientation == 'portrait' ? '↕' : '↔'}',
                       style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          color: isDark ? Colors.white24 : Colors.black26),
-                    ),
-                    const SizedBox(width: 14),
-                    Container(
-                      width: 3,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white12 : Colors.black12,
-                        shape: BoxShape.circle,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: cs.primary.withOpacity(0.7),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '$_wordCount kelime · $_charCount karakter',
-                      style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          color: isDark ? Colors.white12 : Colors.black12),
-                    ),
-                    if (_lastSaved != null) ...[
-                      const Spacer(),
-                      Icon(Icons.cloud_done_rounded,
-                          size: 12, color: Colors.green.withValues(alpha: 0.5)),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Kaydedildi',
-                        style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            color: Colors.green.withValues(alpha: 0.5)),
-                      ),
-                    ],
-                    if (_hasUnsavedChanges && _lastSaved == null) ...[
-                      const Spacer(),
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.6),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Kaydedilmedi',
-                        style: GoogleFonts.outfit(
-                            fontSize: 10,
-                            color: Colors.orange.withValues(alpha: 0.6)),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              if (!_isFocusMode)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Row(
-                    children: [
-                      Icon(Icons.sell_outlined,
-                          size: 13,
-                          color: isDark ? Colors.white24 : Colors.black26),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: SizedBox(
-                          height: 28,
-                          child: TextField(
-                            controller: _tagsCtrl,
-                            style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color:
-                                    isDark ? Colors.white38 : Colors.black45),
-                            decoration: InputDecoration(
-                              hintText: 'Etiketler (virgülle ayır)',
-                              hintStyle: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color:
-                                      isDark ? Colors.white12 : Colors.black12),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                              isDense: true,
-                            ),
-                            onChanged: (_) => _onContentChanged(),
-                          ),
-                        ),
+            ),
+          const SizedBox(width: 8),
+          ValueListenableBuilder<bool>(
+            valueListenable: _hasUnsavedChanges,
+            builder: (context, hasUnsaved, _) => AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _saving
+                  ? SizedBox(
+                      key: const ValueKey('saving'),
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: cs.primary,
                       ),
+                    )
+                  : Icon(
+                      key: ValueKey(hasUnsaved ? 'unsaved' : 'saved'),
+                      hasUnsaved
+                          ? Icons.circle_outlined
+                          : Icons.check_circle_rounded,
+                      size: 16,
+                      color: hasUnsaved
+                          ? cs.onSurface.withOpacity(0.3)
+                          : Colors.green.withOpacity(0.7),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.more_horiz_rounded, size: 20),
+            onPressed: () => _showSettings(cs, isDark, l),
+            padding: const EdgeInsets.all(8),
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusBar(ColorScheme cs, bool isDark, AppLocalizations? l) {
+    final allText =
+        _pageControllers.map((c) => c.document.toPlainText().trim()).join(' ');
+    final wordCount =
+        allText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+    final charCount = allText.replaceAll(RegExp(r'\s'), '').length;
+
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: isDark ? cs.surface : cs.surfaceVariant.withOpacity(0.3),
+        border: Border(top: BorderSide(color: cs.outline.withOpacity(0.06))),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.text_fields_rounded,
+              size: 11, color: cs.onSurface.withOpacity(0.4),),
+          const SizedBox(width: 4),
+          Text(
+            '$wordCount kelime · $charCount karakter',
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              color: cs.onSurface.withOpacity(0.5),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          if (_saveError != null)
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.error_outline_rounded, size: 11, color: cs.error),
+              const SizedBox(width: 4),
+              Text(
+                'Kaydedilemedi',
+                style: GoogleFonts.outfit(
+                    fontSize: 11, color: cs.error, fontWeight: FontWeight.w600,),
+              ),
+            ],)
+          else if (_saving)
+            Text(
+              'Kaydediliyor...',
+              style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: cs.primary.withOpacity(0.6),
+                  fontWeight: FontWeight.w500,),
+            )
+          else if (!_hasUnsavedChanges.value)
+            Text(
+              'Kaydedildi',
+              style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: Colors.green.withOpacity(0.7),
+                  fontWeight: FontWeight.w500,),
+            ),
+        ],
+      ),
+    );
+  }
+
+  DefaultStyles _quillStyles(ColorScheme cs, bool isDark) {
+    const textColor = Color(0xFF1A1A1A);
+    final mutedColor = const Color(0xFF1A1A1A).withOpacity(0.5);
+
+    return DefaultStyles(
+      h1: DefaultTextBlockStyle(
+        GoogleFonts.outfit(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+            height: 1.3,),
+        const VerticalSpacing(16, 8),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      h2: DefaultTextBlockStyle(
+        GoogleFonts.outfit(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+            height: 1.3,),
+        const VerticalSpacing(14, 6),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      h3: DefaultTextBlockStyle(
+        GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+            height: 1.3,),
+        const VerticalSpacing(12, 4),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      paragraph: DefaultTextBlockStyle(
+        GoogleFonts.outfit(fontSize: 15, color: textColor, height: 1.6),
+        const VerticalSpacing(0, 0),
+        const VerticalSpacing(0, 0),
+        null,
+      ),
+      bold: GoogleFonts.outfit(fontWeight: FontWeight.w700, color: textColor),
+      italic: GoogleFonts.outfit(fontStyle: FontStyle.italic, color: textColor),
+      underline: GoogleFonts.outfit(
+          decoration: TextDecoration.underline, color: textColor,),
+      strikeThrough: GoogleFonts.outfit(
+          decoration: TextDecoration.lineThrough, color: mutedColor,),
+      lists: DefaultListBlockStyle(
+        GoogleFonts.outfit(fontSize: 15, color: textColor, height: 1.6),
+        const VerticalSpacing(0, 0),
+        const VerticalSpacing(0, 0),
+        null,
+        null,
+      ),
+      code: DefaultTextBlockStyle(
+        TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 13,
+            color: isDark ? const Color(0xFFCE9178) : const Color(0xFFFFB86C),),
+        const VerticalSpacing(8, 8),
+        const VerticalSpacing(0, 0),
+        BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E2E) : const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+      quote: DefaultTextBlockStyle(
+        GoogleFonts.outfit(
+            fontSize: 15,
+            color: textColor.withOpacity(0.6),
+            fontStyle: FontStyle.italic,
+            height: 1.5,),
+        const VerticalSpacing(8, 8),
+        const VerticalSpacing(0, 0),
+        BoxDecoration(
+          border: Border(
+              left: BorderSide(color: cs.primary.withOpacity(0.4), width: 3),),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _insertTable() async {
+    _dismissSlash();
+    // 1. Capture the exact state BEFORE the dialog takes focus
+    final doc = _quillController.document;
+    final selection = _quillController.selection;
+    int savedOffset = selection.baseOffset;
+
+    // 2. Fallback if selection is invalid or at the absolute end
+    if (savedOffset < 0) {
+      savedOffset = doc.length > 0 ? doc.length - 1 : 0;
+    }
+
+    final data = await showInsertTableDialog(context);
+    if (!mounted || data == null) return;
+
+    // 3. Robust refocusing before modification (crucial for Web)
+    _editorFocus.requestFocus();
+    await Future.delayed(Duration.zero); // Let focus settle
+
+    // 4. Re-verify the offset against the current document state
+    final insertAt = savedOffset.clamp(0, doc.length);
+
+    // 5. Perform the insertion
+    doc.insert(insertAt, TableBlockEmbed.fromTableData(data));
+
+    // 6. Restore focus and place cursor after the table
+    _quillController.updateSelection(
+        TextSelection.collapsed(offset: (insertAt + 1).clamp(0, doc.length)),
+        ChangeSource.local,);
+
+    _markDirty();
+  }
+
+  Future<void> _insertCallout() async {
+    _dismissSlash();
+    final savedOffset = (_quillController.selection.baseOffset)
+        .clamp(0, _quillController.document.length - 1);
+    final data = await showInsertCalloutDialog(context);
+    if (!mounted) return;
+    if (data != null) {
+      _quillController.document
+          .insert(savedOffset, CalloutBlockEmbed.fromData(data));
+      _quillController.updateSelection(
+          TextSelection.collapsed(offset: savedOffset + 1), ChangeSource.local,);
+      _markDirty();
+    }
+  }
+
+  void _insertDivider() {
+    _dismissSlash();
+    final idx = _quillController.selection.baseOffset;
+    _quillController.document.insert(idx, const DividerBlockEmbed());
+    _quillController.updateSelection(
+        TextSelection.collapsed(offset: idx + 1), ChangeSource.local,);
+    _markDirty();
+  }
+
+  Widget _buildPage(int index, ColorScheme cs, bool isDark, AppLocalizations? l,
+      bool compact,) {
+    final ctrl = _pageControllers[index];
+    final fn = _pageFocusNodes[index];
+    final isFirstPage = index == 0;
+
+    return PageCanvas(
+      pageSize: _pageSize,
+      pageOrientation: _pageOrientation,
+      margins: _pageMargins,
+      isEditMode: true,
+      child: GestureDetector(
+        onTap: () {
+          setState(() => _activePageIndex = index);
+          fn.requestFocus();
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 20),
+            if (isFirstPage) ...[
+              Row(
+                children: [
+                  if (_emoji.isNotEmpty) ...[
+                    GestureDetector(
+                      onTap: () => _showSettings(cs, isDark, l),
+                      child: Text(_emoji,
+                          style: TextStyle(fontSize: compact ? 28 : 34),),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    child: TextField(
+                      controller: _titleController,
+                      focusNode: _titleFocus,
+                      style: TextStyle(
+                        fontSize: compact ? 22 : 26,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1A1A1A),
+                        height: 1.3,
+                        fontFamily: 'Outfit',
+                      ),
+                      decoration: InputDecoration(
+                        hintText: l?.untitledNote ?? 'Başlıksız Not',
+                        hintStyle: TextStyle(
+                          fontSize: compact ? 22 : 26,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1A1A1A).withOpacity(0.35),
+                          height: 1.3,
+                          fontFamily: 'Outfit',
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        isCollapsed: true,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) {
+                        _markDirty();
+                        _debounceTimer?.cancel();
+                        _debounceTimer = Timer(const Duration(seconds: 2), () {
+                          if (_hasUnsavedChanges.value && mounted) {
+                            _saveNote(silent: true);
+                          }
+                        });
+                      },
+                      onSubmitted: (_) => fn.requestFocus(),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Divider(color: cs.outline.withOpacity(0.1), height: 1),
+              const SizedBox(height: 12),
+              if (!_isEditing && ctrl.document.length <= 1)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bolt_rounded,
+                          size: 12, color: cs.primary.withOpacity(0.3),),
+                      const SizedBox(width: 4),
+                      Text(AppLocalizations.of(context)!.noteSlashInsertHint,
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: cs.onSurface.withOpacity(0.28),
+                              fontFamily: 'Outfit',),),
                     ],
                   ),
                 ),
+            ] else ...[
+              // Continuation page header
               Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: _isFocusMode ? 32 : 24, vertical: 8),
-                child: Divider(
-                    height: 1,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .outline
-                        .withValues(alpha: 0.1)),
-              ),
-              if (_showToolbar && !_isFocusMode) _buildEditorToolbar(isDark),
-              Expanded(
-                child: Container(
-                  margin: EdgeInsets.fromLTRB(
-                    _isFocusMode ? 24 : 12,
-                    0,
-                    _isFocusMode ? 24 : 12,
-                    12,
-                  ),
-                  decoration: !_isFocusMode
-                      ? BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainer
-                              .withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outline
-                                  .withValues(alpha: 0.1)),
-                        )
-                      : null,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: _isFocusMode ? 8 : 20,
-                    vertical: _isFocusMode ? 0 : 14,
-                  ),
-                  child: quill.QuillEditor.basic(
-                    focusNode: _contentFocus,
-                    configurations: quill.QuillEditorConfigurations(
-                      controller: _contentCtrl,
-                      placeholder: 'Yazmaya başla...',
-                      sharedConfigurations:
-                          const quill.QuillSharedConfigurations(
-                              locale: Locale('tr')),
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Text(
+                      'Sayfa ${index + 1}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurface.withOpacity(0.3),
+                        fontFamily: 'Outfit',
+                        letterSpacing: 0.8,
+                      ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                        child: Divider(
+                            color: cs.outline.withOpacity(0.08), height: 1,),),
+                  ],
+                ),
+              ),
+            ],
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 200),
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  textSelectionTheme: const TextSelectionThemeData(
+                    cursorColor: Color(0xFF1A1A1A),
+                    selectionColor: Color(0x331A1A1A),
+                    selectionHandleColor: Color(0xFF1A1A1A),
+                  ),
+                ),
+                child: QuillEditor(
+                  focusNode: fn,
+                  scrollController: _pageScrollControllers[index],
+                  configurations: QuillEditorConfigurations(
+                    controller: ctrl,
+                    placeholder: isFirstPage
+                        ? (l?.writeYourNotes ?? 'Yazmaya başla...')
+                        : '',
+                    scrollable: false,
+                    embedBuilders: [
+                      TableEmbedBuilder(
+                          onTableUpdated: (_) =>
+                              _markDirty(),),
+                      CalloutEmbedBuilder(),
+                      DividerEmbedBuilder(),
+                      TaskCardEmbedBuilder(),
+                      WorkflowEmbedBuilder(),
+                      PageBreakEmbedBuilder(),
+                    ],
+                    customStyles: _quillStyles(cs, isDark),
                   ),
                 ),
               ),
-              if (_isFocusMode) _buildFocusModeBar(isDark),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(bool isDark, Color noteColor) {
-    final cs = Theme.of(context).colorScheme;
-    return PhobesPremiumAppBar(
-      title: widget.note != null ? 'Düzenle' : 'Yeni Not',
-      onBackPressed: () => Navigator.maybePop(context),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PhobesIconButton(
-            icon: _isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-            iconSize: 19,
-            padding: 6,
-            color: _isPinned
-                ? Colors.amberAccent
-                : cs.onSurface.withValues(alpha: 0.3),
-            onTap: () => setState(() => _isPinned = !_isPinned),
-          ),
-          const SizedBox(width: 4),
-          PhobesIconButton(
-            icon: Icons.center_focus_strong_rounded,
-            iconSize: 19,
-            padding: 6,
-            color: cs.onSurface.withValues(alpha: 0.3),
-            onTap: _toggleFocusMode,
-          ),
-          const SizedBox(width: 4),
-          PhobesIconButton(
-            icon: Icons.auto_fix_high_rounded,
-            iconSize: 19,
-            padding: 6,
-            color: Colors.tealAccent,
-            onTap: _analyzeNoteWithNova,
-          ),
-          const SizedBox(width: 4),
-          PopupMenuButton<String>(
-            offset: const Offset(0, 48),
-            position: PopupMenuPosition.under,
-            icon: PhobesIconButton(
-              icon: Icons.more_vert_rounded,
-              iconSize: 19,
-              padding: 6,
-              onTap: () {},
             ),
-            color: cs.surfaceContainerHigh,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            onSelected: (value) async {
-              switch (value) {
-                case 'save':
-                  _saveNote();
-                  break;
-                case 'delete':
-                  _deleteNote();
-                  break;
-                case 'share':
-                  _shareNote();
-                  break;
-                case 'toggle_toolbar':
-                  setState(() => _showToolbar = !_showToolbar);
-                  break;
-              }
-            },
-            itemBuilder: (_) => [
-              _buildPopupItem('save', Icons.save_rounded, 'Kaydet',
-                  PhobesTheme.kPrimaryColor, isDark),
-              _buildPopupItem(
-                  'toggle_toolbar',
-                  _showToolbar
-                      ? Icons.keyboard_hide_rounded
-                      : Icons.keyboard_rounded,
-                  _showToolbar ? 'Araç Çubuğunu Gizle' : 'Araç Çubuğunu Göster',
-                  Colors.blueAccent,
-                  isDark),
-              _buildPopupItem(
-                  'share', Icons.share_rounded, 'Paylaş', Colors.cyan, isDark),
-              if (widget.note != null)
-                _buildPopupItem('delete', Icons.delete_rounded, 'Sil',
-                    Colors.redAccent, isDark),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildPopupItem(
-      String value, IconData icon, String label, Color color, bool isDark) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 10),
-          Text(label,
-              style: GoogleFonts.outfit(
-                  fontSize: 14, color: isDark ? Colors.white : Colors.black87)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetaBar(bool isDark, Color noteColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => _showCategoryPicker(isDark),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: noteColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: noteColor.withValues(alpha: 0.2)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(_getCategoryIcon(_category), size: 12, color: noteColor),
-                  const SizedBox(width: 5),
-                  Text(_category,
-                      style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: noteColor)),
-                  const SizedBox(width: 2),
-                  Icon(Icons.arrow_drop_down, size: 14, color: noteColor),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 22,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              shrinkWrap: true,
-              itemCount: _noteColors.length,
-              itemBuilder: (_, i) {
-                final c = _noteColors[i];
-                final isSelected = _color == c;
-                return GestureDetector(
-                  onTap: () => setState(() => _color = c),
-                  child: Container(
-                    width: 22,
-                    height: 22,
-                    margin: const EdgeInsets.only(right: 4),
-                    decoration: BoxDecoration(
-                      color: Color(c),
-                      shape: BoxShape.circle,
-                      border: isSelected
-                          ? Border.all(color: Colors.white, width: 2)
-                          : null,
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                  color: Color(c).withValues(alpha: 0.4),
-                                  blurRadius: 6)
-                            ]
-                          : [],
-                    ),
-                    child: isSelected
-                        ? const Icon(Icons.check, size: 10, color: Colors.white)
-                        : null,
-                  ),
-                );
-              },
-            ),
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => _saveNote(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                gradient:
-                    _hasUnsavedChanges ? PhobesTheme.primaryGradient : null,
-                color: _hasUnsavedChanges
-                    ? null
-                    : (isDark
-                        ? Colors.white.withValues(alpha: 0.06)
-                        : Colors.grey.shade100),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _isSaving
-                      ? const SizedBox(
-                          width: 12,
-                          height: 12,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 1.5, color: Colors.white))
-                      : Icon(Icons.check_rounded,
-                          size: 14,
-                          color: _hasUnsavedChanges
-                              ? Colors.white
-                              : (isDark ? Colors.white30 : Colors.black26)),
-                  const SizedBox(width: 4),
-                  Text('Kaydet',
-                      style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _hasUnsavedChanges
-                              ? Colors.white
-                              : (isDark ? Colors.white30 : Colors.black26))),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEditorToolbar(bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark
-            ? PhobesTheme.surfaceColor.withValues(alpha: 0.5)
-            : Colors.grey.shade100,
-        border: Border(
-          top: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.04)),
-          bottom: BorderSide(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.black.withValues(alpha: 0.04)),
-        ),
-      ),
-      child: quill.QuillToolbar.simple(
-        configurations: quill.QuillSimpleToolbarConfigurations(
-          controller: _contentCtrl,
-          showFontFamily: false,
-          showFontSize: false,
-          showSearchButton: false,
-          showInlineCode: true,
-          showCodeBlock: true,
-          showListCheck: true,
-          showSubscript: false,
-          showSuperscript: false,
-          multiRowsDisplay: false,
-          toolbarSize: 38,
-          dialogTheme: quill.QuillDialogTheme(
-            dialogBackgroundColor: PhobesTheme.surfaceColor,
-            inputTextStyle: GoogleFonts.outfit(color: Colors.white),
-            labelTextStyle: GoogleFonts.outfit(color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFocusModeBar(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark
-            ? PhobesTheme.surfaceColor.withValues(alpha: 0.6)
-            : Colors.grey.shade50,
-        border: Border(
-            top: BorderSide(
-                color: isDark
-                    ? Colors.white10
-                    : Colors.black.withValues(alpha: 0.06))),
-      ),
-      child: Row(
-        children: [
-          Text('$_wordCount kelime',
-              style: GoogleFonts.outfit(
-                  fontSize: 12,
-                  color: isDark ? Colors.white30 : Colors.black26)),
-          const Spacer(),
-          GestureDetector(
-            onTap: _toggleFocusMode,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: PhobesTheme.kPrimaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.fullscreen_exit_rounded,
-                      size: 16, color: PhobesTheme.kPrimaryColor),
-                  const SizedBox(width: 6),
-                  Text('Çık',
-                      style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: PhobesTheme.kPrimaryColor)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => _saveNote(),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: PhobesTheme.primaryGradient,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.check_rounded,
-                      size: 16, color: Colors.white),
-                  const SizedBox(width: 6),
-                  Text('Kaydet',
-                      style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white)),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _shareNote() {
-    final text = _contentCtrl.document.toPlainText().trim();
-    final title = _titleCtrl.text.isEmpty ? 'Başlıksız' : _titleCtrl.text;
-    Clipboard.setData(ClipboardData(text: '$title\n\n$text'));
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Not panoya kopyalandı 📋')));
-  }
-
-  void _showEmojiPicker(bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isDark ? PhobesTheme.surfaceColor : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black26,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('İkon Seç',
-                style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _emojis.map((e) {
-                final isSelected = _emoji == e;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _emoji = e);
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? PhobesTheme.kPrimaryColor.withValues(alpha: 0.2)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.grey.shade50),
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected
-                          ? Border.all(
-                              color: PhobesTheme.kPrimaryColor
-                                  .withValues(alpha: 0.5))
-                          : Border.all(
-                              color: isDark
-                                  ? Colors.white10
-                                  : Colors.black.withValues(alpha: 0.06)),
-                    ),
-                    child: Center(
-                      child: e.isEmpty
-                          ? Icon(Icons.block_rounded,
-                              size: 18,
-                              color: isDark ? Colors.white30 : Colors.black26)
-                          : Text(e, style: const TextStyle(fontSize: 22)),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
     );
   }
 
-  void _showCategoryPicker(bool isDark) {
+  Widget _addPageButton(ColorScheme cs) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: _appendNewPage,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: cs.primary.withOpacity(0.2),
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(10),
+          color: isDark
+              ? cs.primary.withOpacity(0.06)
+              : cs.primary.withOpacity(0.04),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: cs.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.add_rounded,
+                  size: 14, color: cs.primary.withOpacity(0.7),),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Yeni Sayfa Ekle',
+              style: TextStyle(
+                fontSize: 12,
+                color: cs.primary.withOpacity(0.7),
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Outfit',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Adds a fresh A4 page (new QuillController) below the existing pages.
+  void _appendNewPage() {
+    _dismissSlash();
+    _addPageFromDoc(Document());
+    setState(() {
+      _activePageIndex = _pageControllers.length - 1;
+      _markDirty();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+      _pageFocusNodes.last.requestFocus();
+    });
+  }
+
+  void _insertTable2() {
+    _dismissSlash();
+    final data = TableData.empty(3, 2);
+    final idx = _quillController.selection.baseOffset;
+    _quillController.document.insert(idx, TableBlockEmbed.fromTableData(data));
+    _quillController.updateSelection(
+        TextSelection.collapsed(offset: idx + 1), ChangeSource.local,);
+    _markDirty();
+  }
+
+  void _insertTable3() {
+    _dismissSlash();
+    final data = TableData.empty(3, 3);
+    final idx = _quillController.selection.baseOffset;
+    _quillController.document.insert(idx, TableBlockEmbed.fromTableData(data));
+    _quillController.updateSelection(
+        TextSelection.collapsed(offset: idx + 1), ChangeSource.local,);
+    _markDirty();
+  }
+
+  void _insertPageBreak() {
+    _dismissSlash();
+    final idx = _quillController.selection.baseOffset;
+    _quillController.document.insert(idx, const PageBreakBlockEmbed());
+    _quillController.updateSelection(
+        TextSelection.collapsed(offset: idx + 1), ChangeSource.local,);
+    _markDirty();
+  }
+
+  Future<void> _insertTask() async {
+    _dismissSlash();
+    final data = await showInsertTaskDialog(context);
+    if (data != null) {
+      final idx = _quillController.selection.baseOffset;
+      _quillController.document.insert(idx, TaskCardBlockEmbed.fromData(data));
+      _quillController.updateSelection(
+          TextSelection.collapsed(offset: idx + 1), ChangeSource.local,);
+      _markDirty();
+    }
+  }
+
+  Future<void> _insertWorkflow() async {
+    _dismissSlash();
+    final data = WorkflowData(
+      name: 'Yeni İş Akışı',
+      steps: [
+        WorkflowStep(title: 'Hazırlık'),
+        WorkflowStep(title: 'Uygulama'),
+        WorkflowStep(title: 'Bitiş'),
+      ],
+    );
+    final idx = _quillController.selection.baseOffset;
+    _quillController.document.insert(idx, WorkflowBlockEmbed.fromData(data));
+    _quillController.updateSelection(
+        TextSelection.collapsed(offset: idx + 1), ChangeSource.local,);
+    _markDirty();
+  }
+
+  void _showSettings(ColorScheme cs, bool isDark, AppLocalizations? l) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isDark ? PhobesTheme.surfaceColor : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black26,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setBS) {
+            return Container(
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text('Kategori Seç',
-                style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _categories.map((cat) {
-                final isSelected = _category == cat;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() => _category = cat);
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Color(_color).withValues(alpha: 0.2)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.grey.shade50),
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected
-                          ? Border.all(
-                              color: Color(_color).withValues(alpha: 0.5))
-                          : Border.all(
-                              color: isDark ? Colors.white10 : Colors.black12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_getCategoryIcon(cat),
-                            size: 16,
-                            color: isSelected
-                                ? Color(_color)
-                                : (isDark ? Colors.white54 : Colors.black54)),
-                        const SizedBox(width: 8),
-                        Text(cat,
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.55,
+                minChildSize: 0.3,
+                maxChildSize: 0.9,
+                expand: false,
+                builder: (_, sc) {
+                  return ListView(
+                    controller: sc,
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                    children: [
+                      Center(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 12, bottom: 16),
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: cs.onSurface.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.article_outlined,
+                            color: cs.primary, size: 20,),
+                        title: Text(l?.notePageLayout ?? 'Page Layout',
                             style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? Color(_color)
-                                    : (isDark
-                                        ? Colors.white70
-                                        : Colors.black87))),
+                                fontSize: 14, fontWeight: FontWeight.w600,),),
+                        subtitle: Text(
+                            '${_pageSize.toUpperCase()} · ${_pageOrientation == 'portrait' ? 'Dikey' : 'Yatay'}',
+                            style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: cs.onSurface.withOpacity(0.5),),),
+                        trailing: Icon(Icons.chevron_right_rounded,
+                            color: cs.onSurface.withOpacity(0.3),),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          _openPageSettings();
+                        },
+                      ),
+                      const Divider(height: 8),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _sAction(
+                            icon: _isPinned
+                                ? Icons.push_pin_rounded
+                                : Icons.push_pin_outlined,
+                            label: _isPinned
+                                ? (l?.noteUnpin ?? 'Unpin')
+                                : (l?.notePin ?? 'Pin'),
+                            active: _isPinned,
+                            color: cs.primary,
+                            cs: cs,
+                            isDark: isDark,
+                            onTap: () {
+                              setState(() => _isPinned = !_isPinned);
+                              setBS(() {});
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _sAction(
+                            icon: _isFavorite
+                                ? Icons.star_rounded
+                                : Icons.star_outline_rounded,
+                            label: l?.noteFavorite ?? 'Favorite',
+                            active: _isFavorite,
+                            color: Colors.amber,
+                            cs: cs,
+                            isDark: isDark,
+                            onTap: () {
+                              setState(() => _isFavorite = !_isFavorite);
+                              setBS(() {});
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          _sAction(
+                            icon: Icons.link_rounded,
+                            label:
+                                '${l?.noteLinkTask ?? 'Tasks'}${_linkedTaskIds.isNotEmpty ? ' (${_linkedTaskIds.length})' : ''}',
+                            active: _linkedTaskIds.isNotEmpty,
+                            color: cs.tertiary,
+                            cs: cs,
+                            isDark: isDark,
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _showLinkTasks();
+                            },
+                          ),
+                        ],
+                      ),
+                      if (_teamId != null) ...[
+                        const SizedBox(height: 8),
+                        Row(children: [
+                          _sAction(
+                            icon: Icons.shield_rounded,
+                            label: l?.notePermissions ?? 'Permissions',
+                            active: false,
+                            color: cs.secondary,
+                            cs: cs,
+                            isDark: isDark,
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _showPermissions();
+                            },
+                          ),
+                        ],),
                       ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-          ],
+                      const SizedBox(height: 20),
+                      _label(l?.noteSortCategory ?? 'Category', cs),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _categories.map((cat) {
+                          final (key, icon, clr) = cat;
+                          final sel = _category == key;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() => _category = key);
+                              setBS(() {});
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8,),
+                              decoration: BoxDecoration(
+                                color: sel
+                                    ? Color(clr)
+                                        .withOpacity(isDark ? 0.2 : 0.12)
+                                    : cs.surfaceVariant.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(10),
+                                border: sel
+                                    ? Border.all(
+                                        color: Color(clr).withOpacity(0.4),)
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(icon, size: 16, color: Color(clr)),
+                                  const SizedBox(width: 6),
+                                  Text(_getCatName(key, l),
+                                      style: GoogleFonts.outfit(
+                                          fontSize: 12,
+                                          fontWeight: sel
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: sel
+                                              ? Color(clr)
+                                              : cs.onSurface.withOpacity(0.6),),),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      _label('Color', cs),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: _colorPalette.map((c) {
+                          final sel = _color == c;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() => _color = c);
+                              setBS(() {});
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Color(c),
+                                shape: BoxShape.circle,
+                                border: sel
+                                    ? Border.all(
+                                        color: Colors.white, width: 2.5,)
+                                    : null,
+                                boxShadow: sel
+                                    ? [
+                                        BoxShadow(
+                                            color: Color(c).withOpacity(0.5),
+                                            blurRadius: 8,),
+                                      ]
+                                    : null,
+                              ),
+                              child: sel
+                                  ? const Icon(Icons.check_rounded,
+                                      color: Colors.white, size: 16,)
+                                  : null,
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      _label('Emoji', cs),
+                      const SizedBox(height: 8),
+                      _emojiGrid(cs, isDark, setBS),
+                      const SizedBox(height: 20),
+                      _label('Tags', cs),
+                      const SizedBox(height: 8),
+                      _tagsSection(cs, isDark, l, setBS),
+                      const SizedBox(height: 24),
+                      _label(
+                          'Ba\u015fl\u0131k Stilleri (\u00c7oklu Se\u00e7im)',
+                          cs,),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: ['modern', 'integrated', 'official', 'fun']
+                            .map((style) {
+                          final sel = _headerStyles.contains(style);
+                          return FilterChip(
+                            label: Text(style.toUpperCase(),
+                                style: GoogleFonts.outfit(
+                                    fontSize: 10,
+                                    fontWeight: sel
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: sel
+                                        ? cs.primary
+                                        : cs.onSurface.withOpacity(0.6),),),
+                            selected: sel,
+                            onSelected: (v) {
+                              setState(() {
+                                if (v) {
+                                  _headerStyles.add(style);
+                                } else {
+                                  _headerStyles.remove(style);
+                                }
+                                _markDirty();
+                              });
+                              setBS(() {});
+                            },
+                            selectedColor: cs.primary.withOpacity(0.15),
+                            checkmarkColor: cs.primary,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),),
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 20),
+                      _label('Ba\u015fl\u0131k Bile\u015fenleri', cs),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          (
+                            'giant_title',
+                            'B\u00fcy\u00fck Boy Ba\u015fl\u0131k'
+                          ),
+                          ('main_title', 'Ana Ba\u015fl\u0131k'),
+                          ('subtitle', 'Alt Ba\u015fl\u0131k'),
+                          ('meta_info', 'Meta Bilgiler'),
+                        ].map((el) {
+                          final sel = _headerElements.contains(el.$1);
+                          return FilterChip(
+                            label: Text(el.$2,
+                                style: GoogleFonts.outfit(
+                                    fontSize: 10,
+                                    fontWeight: sel
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: sel
+                                        ? cs.secondary
+                                        : cs.onSurface.withOpacity(0.6),),),
+                            selected: sel,
+                            onSelected: (v) {
+                              setState(() {
+                                if (v) {
+                                  _headerElements.add(el.$1);
+                                } else {
+                                  _headerElements.remove(el.$1);
+                                }
+                                _markDirty();
+                              });
+                              setBS(() {});
+                            },
+                            selectedColor: cs.secondary.withOpacity(0.15),
+                            checkmarkColor: cs.secondary,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _sAction(
+      {required IconData icon,
+      required String label,
+      required bool active,
+      required Color color,
+      required ColorScheme cs,
+      required bool isDark,
+      required VoidCallback onTap,}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: active
+                ? color.withOpacity(isDark ? 0.15 : 0.08)
+                : cs.surfaceVariant.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(12),
+            border: active ? Border.all(color: color.withOpacity(0.3)) : null,
+          ),
+          child: Column(children: [
+            Icon(icon,
+                size: 20,
+                color: active ? color : cs.onSurface.withOpacity(0.4),),
+            const SizedBox(height: 4),
+            Text(label,
+                style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active ? color : cs.onSurface.withOpacity(0.45),),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,),
+          ],),
         ),
       ),
     );
   }
 
-  IconData _getCategoryIcon(String cat) {
-    switch (cat) {
-      case 'İş':
-        return Icons.work_rounded;
-      case 'Kişisel':
-        return Icons.person_rounded;
-      case 'Fikir':
-        return Icons.lightbulb_rounded;
-      case 'Toplantı':
-        return Icons.groups_rounded;
-      case 'Araştırma':
-        return Icons.science_rounded;
-      default:
-        return Icons.note_rounded;
+  Widget _label(String t, ColorScheme cs) => Text(t,
+      style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: cs.onSurface.withOpacity(0.4),
+          letterSpacing: 0.5,),);
+
+  Widget _emojiGrid(ColorScheme cs, bool isDark, StateSetter setBS) {
+    final emojis = [
+      '',
+      '\u{1F4CC}',
+      '\u{1F4A1}',
+      '\u{1F680}',
+      '\u{1F4BC}',
+      '\u{1F4DA}',
+      '\u{1F3A8}',
+      '\u{1F52C}',
+      '\u{1F4CA}',
+      '\u{1F4BB}',
+      '\u2764',
+      '\u2B50',
+      '\u{1F525}',
+      '\u{1F30D}',
+      '\u2728',
+      '\u{1F9E0}',
+      '\u{1F4DD}',
+      '\u{1F3AF}',
+      '\u{1F4C5}',
+      '\u{1F511}',
+      '\u{1F4B0}',
+    ];
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: emojis.map((e) {
+        final sel = _emoji == e;
+        return GestureDetector(
+          onTap: () {
+            setState(() => _emoji = e);
+            setBS(() {});
+          },
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: sel
+                  ? cs.primary.withOpacity(0.12)
+                  : cs.surfaceVariant.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(10),
+              border:
+                  sel ? Border.all(color: cs.primary.withOpacity(0.4)) : null,
+            ),
+            alignment: Alignment.center,
+            child: e.isEmpty
+                ? Icon(Icons.close_rounded,
+                    size: 14, color: cs.onSurface.withOpacity(0.3),)
+                : Text(e, style: const TextStyle(fontSize: 18)),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _tagsSection(
+      ColorScheme cs, bool isDark, AppLocalizations? l, StateSetter setBS,) {
+    final tagCtrl = _tagController;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_tags.isNotEmpty)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _tags
+                .map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5,),
+                      decoration: BoxDecoration(
+                        color: Color(_color).withOpacity(isDark ? 0.12 : 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text('#$tag',
+                            style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: Color(_color),
+                                fontWeight: FontWeight.w600,),),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() => _tags.remove(tag));
+                            setBS(() {});
+                          },
+                          child: Icon(Icons.close_rounded,
+                              size: 14, color: Color(_color),),
+                        ),
+                      ],),
+                    ),)
+                .toList(),
+          ),
+        if (_tags.isNotEmpty) const SizedBox(height: 8),
+        TextField(
+          controller: tagCtrl,
+          style: GoogleFonts.outfit(fontSize: 13),
+          decoration: InputDecoration(
+            hintText: l?.tagsHint ?? 'Add tag...',
+            hintStyle: GoogleFonts.outfit(
+                fontSize: 13, color: cs.onSurface.withOpacity(0.25),),
+            prefixIcon: Icon(Icons.tag_rounded,
+                size: 16, color: cs.onSurface.withOpacity(0.3),),
+            prefixIconConstraints: const BoxConstraints(minWidth: 36),
+            filled: true,
+            fillColor: cs.surfaceVariant.withOpacity(0.2),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,),
+            contentPadding:
+                const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+            isDense: true,
+          ),
+          onSubmitted: (v) {
+            final t = v.trim();
+            if (t.isNotEmpty && !_tags.contains(t)) {
+              setState(() => _tags.add(t));
+              setBS(() {});
+            }
+            tagCtrl.clear();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _openPageSettings() {
+    PageSettingsPanel.show(
+      context,
+      pageSize: _pageSize,
+      pageOrientation: _pageOrientation,
+      pageMargins: _pageMargins,
+      onChanged: (size, orientation, margins) {
+        setState(() {
+          _pageSize = size;
+          _pageOrientation = orientation;
+          _pageMargins = margins;
+          _markDirty();
+        });
+      },
+    );
+  }
+
+  Future<void> _showLinkTasks() async {
+    // For new notes without an ID yet, save first to obtain a Firestore document ID
+    if (widget.existingNote?.id == null && _createdNoteId == null) {
+      await _saveNote(silent: true);
+    }
+    final noteId = widget.existingNote?.id ?? _createdNoteId ?? '';
+    if (noteId.isEmpty || !mounted) return;
+    final result = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) =>
+          NoteLinkTasksSheet(noteId: noteId, linkedTaskIds: _linkedTaskIds),
+    );
+    if (!mounted) return;
+    if (result != null) {
+      setState(() {
+        _linkedTaskIds = result;
+        _markDirty();
+      });
+    }
+  }
+
+  Future<void> _showPermissions() async {
+    Team? team;
+    if (_teamId != null) {
+      final doc =
+          await FirebaseFirestore.instance.collection('teams').doc(_teamId).get();
+      if (doc.exists) {
+        team = Team.fromFirestore(doc);
+      }
+    }
+    if (!mounted) return;
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => NotePermissionSheet(
+        noteId: widget.existingNote?.id ?? _createdNoteId ?? '',
+        currentViewPerm: _viewPermission,
+        currentEditPerm: _editPermission,
+        currentAllowedUsers: _allowedUserIds,
+        team: team,
+      ),
+    );
+    if (!mounted || result == null) return;
+    setState(() {
+      _viewPermission = result['viewPerm'] as String;
+      _editPermission = result['editPerm'] as String;
+      _allowedUserIds = List<String>.from(result['allowedUsers'] as List);
+      _markDirty();
+    });
+  }
+
+  Future<void> _handleBack() async {
+    if (_hasUnsavedChanges.value) {
+      await _saveNote(silent: true, writeHistory: true);
+    }
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _saveNote(
+      {bool silent = false, bool writeHistory = false,}) async {
+    if (_saving) return;
+    if (mounted) setState(() => _saving = true);
+
+    try {
+      // ── Auth guard ────────────────────────────────────────────────────────
+      final currentUid = FirebaseService().currentUserId;
+      if (currentUid == null) {
+        throw Exception('Oturumunuz sonlanmış. Lütfen yeniden giriş yapın.');
+      }
+
+      final title = _titleController.text.trim();
+      // Serialize all pages; single-page notes use legacy flat format for compatibility
+      final allDeltas =
+          _pageControllers.map((c) => c.document.toDelta().toJson()).toList();
+      final content = allDeltas.length == 1
+          ? jsonEncode(allDeltas.first)
+          : jsonEncode(allDeltas);
+      final l = AppLocalizations.of(context);
+
+      final effectiveId = widget.existingNote?.id ?? _createdNoteId;
+      final ownerId = widget.existingNote?.userId ?? currentUid;
+      final note = Note(
+        id: effectiveId,
+        userId: ownerId,
+        title: title.isEmpty ? (l?.untitledNote ?? 'Untitled Note') : title,
+        date: widget.existingNote?.date ?? DateTime.now(),
+        content: content,
+        category: _category,
+        color: _color,
+        isPinned: _isPinned,
+        isFavorite: _isFavorite,
+        emoji: _emoji,
+        tags: _tags,
+        teamId: _teamId,
+        projectId: _projectId,
+        notebookId: _notebookId,
+        linkedTaskIds: _linkedTaskIds,
+        viewPermission: _viewPermission,
+        editPermission: _editPermission,
+        allowedUserIds: _allowedUserIds,
+        lastEditedBy: currentUid,
+        headerStyles: _headerStyles,
+        headerElements: _headerElements,
+        pageSize: _pageSize,
+        pageOrientation: _pageOrientation,
+        pageMargins: _pageMargins,
+      );
+
+      if (_isEditing || _createdNoteId != null) {
+        // ── Update existing note ────────────────────────────────────────────
+        if (effectiveId == null) {
+          // This should never happen; throw so the catch block shows an error.
+          throw StateError('Düzenleme modunda not ID bulunamadı.');
+        }
+        await FirebaseService().updateNote(note);
+
+        final shouldWriteHistory = writeHistory ||
+            _lastHistoryAt == null ||
+            DateTime.now().difference(_lastHistoryAt!) >=
+                const Duration(minutes: 10);
+        if (shouldWriteHistory) {
+          try {
+            final user = FirebaseService().currentUser;
+            await FirebaseService().saveNoteVersion(
+              effectiveId,
+              NoteHistory(
+                editorId: user?.uid ?? currentUid,
+                editorName: user?.displayName ?? 'Düzenleyici',
+                contentSnapshot: content,
+                timestamp: DateTime.now(),
+                editSummary: 'Düzenlendi',
+              ),
+            );
+            _lastHistoryAt = DateTime.now();
+          } catch (e) {
+            // History save is non-fatal; log but don't surface to user.
+            debugPrint('[_saveNote] saveNoteVersion error (non-fatal): $e');
+          }
+        }
+      } else {
+        // ── Create new note ─────────────────────────────────────────────────
+        final newId = await FirebaseService().addNote(note);
+        if (newId == null) {
+          throw Exception('Not oluşturulamadı. Lütfen tekrar deneyin.');
+        }
+        if (mounted) {
+          setState(() => _createdNoteId = newId);
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _hasUnsavedChanges.value = false;
+          _saveError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saveError = 'Kaydedilemedi: $e');
+        if (!silent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)?.errorNoteSave(e.toString()) ??
+                    'Kaydetme hatası: $e',
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } finally {
+      // ── Always reset the saving flag — even on early return or exception ──
+      if (mounted) setState(() => _saving = false);
     }
   }
 }

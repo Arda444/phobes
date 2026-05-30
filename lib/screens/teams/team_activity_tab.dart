@@ -12,7 +12,6 @@ class TeamActivityTab extends StatelessWidget {
   const TeamActivityTab({super.key, required this.team});
 
   @override
-  @override
   Widget build(BuildContext context) {
     final service = FirebaseService();
     final l10n = AppLocalizations.of(context)!;
@@ -33,21 +32,20 @@ class TeamActivityTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.history_rounded,
-                    size: 64, color: cs.onSurface.withValues(alpha: 0.1)),
+                    size: 64, color: cs.onSurface.withOpacity(0.1),),
                 const SizedBox(height: 16),
                 Text(l10n.noData,
                     style: GoogleFonts.outfit(
-                        color: cs.onSurface.withValues(alpha: 0.5),
-                        fontSize: 16)),
+                        color: cs.onSurface.withOpacity(0.5),
+                        fontSize: 16,),),
               ],
             ),
           );
         }
 
-        // Group logs by date
-        Map<String, List<ActivityLog>> groupedLogs = {};
-        for (var log in logs) {
-          String dateKey = _formatDateGroup(log.timestamp);
+        final Map<String, List<ActivityLog>> groupedLogs = {};
+        for (final log in logs) {
+          final String dateKey = _formatDateGroup(log.timestamp, l10n);
           if (!groupedLogs.containsKey(dateKey)) {
             groupedLogs[dateKey] = [];
           }
@@ -55,11 +53,13 @@ class TeamActivityTab extends StatelessWidget {
         }
 
         return ListView.builder(
+          primary: false,
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 80),
           itemCount: groupedLogs.keys.length,
           itemBuilder: (context, groupIndex) {
-            String dateKey = groupedLogs.keys.elementAt(groupIndex);
-            List<ActivityLog> dayLogs = groupedLogs[dateKey]!;
+            final String dateKey = groupedLogs.keys.elementAt(groupIndex);
+            final List<ActivityLog> dayLogs = groupedLogs[dateKey]!;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,7 +70,7 @@ class TeamActivityTab extends StatelessWidget {
                     dateKey,
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
-                      color: cs.onSurface.withValues(alpha: 0.5),
+                      color: cs.onSurface.withOpacity(0.5),
                       fontSize: 14,
                       letterSpacing: 0.5,
                     ),
@@ -83,7 +83,7 @@ class TeamActivityTab extends StatelessWidget {
                       cs,
                       isDark,
                       index == dayLogs.length - 1 &&
-                          groupIndex == groupedLogs.length - 1);
+                          groupIndex == groupedLogs.length - 1,);
                 }),
                 const SizedBox(height: 16),
               ],
@@ -94,23 +94,25 @@ class TeamActivityTab extends StatelessWidget {
     );
   }
 
-  String _formatDateGroup(DateTime date) {
+  String _formatDateGroup(DateTime date, AppLocalizations l10n) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
     final logDate = DateTime(date.year, date.month, date.day);
 
     if (logDate == today) {
-      return "BUGÜN";
+      return l10n.today.toUpperCase();
     } else if (logDate == yesterday) {
-      return "DÜN";
+      return l10n.yesterday;
     } else {
-      return DateFormat('d MMM yyyy').format(date).toUpperCase();
+      return DateFormat('d MMM yyyy', l10n.localeName)
+          .format(date)
+          .toUpperCase();
     }
   }
 
   Widget _buildActivityItem(ActivityLog log, AppLocalizations l10n,
-      ColorScheme cs, bool isDark, bool isLast) {
+      ColorScheme cs, bool isDark, bool isLast,) {
     Color actionColor;
     String actionText;
     IconData smallIcon;
@@ -118,32 +120,32 @@ class TeamActivityTab extends StatelessWidget {
     switch (log.action) {
       case 'task_created':
         actionColor = Colors.blueAccent;
-        actionText = "oluşturdu";
+        actionText = l10n.actTaskCreated;
         smallIcon = Icons.add_rounded;
         break;
       case 'task_completed':
         actionColor = Colors.greenAccent;
-        actionText = "tamamladı";
+        actionText = l10n.actTaskCompleted;
         smallIcon = Icons.check_rounded;
         break;
       case 'moved_to_progress':
         actionColor = Colors.orangeAccent;
-        actionText = "işleme aldı";
+        actionText = l10n.actMovedToProgress;
         smallIcon = Icons.arrow_forward_rounded;
         break;
       case 'moved_to_todo':
-        actionColor = cs.onSurface.withValues(alpha: 0.4);
-        actionText = "yapılacaklara taşıdı";
+        actionColor = cs.onSurface.withOpacity(0.4);
+        actionText = l10n.actMovedToTodo;
         smallIcon = Icons.replay_rounded;
         break;
       case 'member_joined':
         actionColor = Colors.purpleAccent;
-        actionText = "katıldı";
+        actionText = l10n.actMemberJoined;
         smallIcon = Icons.person_add_rounded;
         break;
       default:
-        actionColor = cs.onSurface.withValues(alpha: 0.3);
-        actionText = "güncelledi";
+        actionColor = cs.onSurface.withOpacity(0.3);
+        actionText = l10n.actFinished;
         smallIcon = Icons.edit_rounded;
     }
 
@@ -158,15 +160,15 @@ class TeamActivityTab extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: actionColor.withValues(alpha: 0.1),
+                  color: actionColor.withOpacity(0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: actionColor.withValues(alpha: 0.3)),
+                  border: Border.all(color: actionColor.withOpacity(0.3)),
                 ),
                 child: Center(
                   child: Text(
                     log.userName.isNotEmpty
                         ? log.userName[0].toUpperCase()
-                        : "?",
+                        : '?',
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       color: actionColor,
@@ -180,7 +182,7 @@ class TeamActivityTab extends StatelessWidget {
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    color: cs.outline.withValues(alpha: 0.1),
+                    color: cs.outline.withOpacity(0.1),
                   ),
                 )
               else
@@ -198,16 +200,16 @@ class TeamActivityTab extends StatelessWidget {
                 RichText(
                   text: TextSpan(
                     style: GoogleFonts.outfit(
-                        color: cs.onSurface, fontSize: 14, height: 1.4),
+                        color: cs.onSurface, fontSize: 14, height: 1.4,),
                     children: [
                       TextSpan(
                         text: log.userName,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       TextSpan(
-                        text: " bir görevi $actionText:",
+                        text: ' $actionText:',
                         style: TextStyle(
-                            color: cs.onSurface.withValues(alpha: 0.7)),
+                            color: cs.onSurface.withOpacity(0.7),),
                       ),
                     ],
                   ),
@@ -218,11 +220,11 @@ class TeamActivityTab extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? cs.surfaceContainerHighest.withValues(alpha: 0.3)
-                        : cs.surfaceContainerHigh,
+                        ? cs.surfaceVariant.withOpacity(0.3)
+                        : cs.surfaceVariant,
                     borderRadius: BorderRadius.circular(8),
                     border:
-                        Border.all(color: cs.outline.withValues(alpha: 0.05)),
+                        Border.all(color: cs.outline.withOpacity(0.05)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -235,7 +237,7 @@ class TeamActivityTab extends StatelessWidget {
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.w500,
                             fontSize: 13,
-                            color: cs.onSurface.withValues(alpha: 0.9),
+                            color: cs.onSurface.withOpacity(0.9),
                           ),
                         ),
                       ),
@@ -246,7 +248,7 @@ class TeamActivityTab extends StatelessWidget {
                 Text(
                   DateFormat('HH:mm').format(log.timestamp),
                   style: GoogleFonts.outfit(
-                    color: cs.onSurface.withValues(alpha: 0.4),
+                    color: cs.onSurface.withOpacity(0.4),
                     fontSize: 12,
                   ),
                 ),

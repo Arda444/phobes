@@ -1,4 +1,4 @@
-﻿import 'package:device_calendar/device_calendar.dart';
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/task_model.dart';
@@ -7,7 +7,8 @@ class CalendarSyncService {
   final DeviceCalendarPlugin _deviceCalendarPlugin = DeviceCalendarPlugin();
 
   Future<List<Task>> fetchDeviceEvents() async {
-    List<Task> externalTasks = [];
+    if (kIsWeb) return [];
+    final List<Task> externalTasks = [];
     try {
       var permissionsGranted = await _deviceCalendarPlugin.hasPermissions();
       if (permissionsGranted.isSuccess && !permissionsGranted.data!) {
@@ -24,7 +25,7 @@ class CalendarSyncService {
       final startDate = now.subtract(const Duration(days: 365));
       final endDate = now.add(const Duration(days: 365));
 
-      for (var calendar in calendarsResult.data!) {
+      for (final calendar in calendarsResult.data!) {
         if (calendar.isReadOnly == true) continue;
 
         final eventsResult = await _deviceCalendarPlugin.retrieveEvents(
@@ -33,46 +34,45 @@ class CalendarSyncService {
         );
 
         if (eventsResult.isSuccess && eventsResult.data != null) {
-          for (var event in eventsResult.data!) {
-            bool isMarkedDone = event.title != null &&
-                (event.title!.startsWith("✓") ||
-                    event.title!.contains("[BİTTİ]"));
+          for (final event in eventsResult.data!) {
+            final bool isMarkedDone = event.title != null &&
+                (event.title!.startsWith('✓') ||
+                    event.title!.contains('[BİTTİ]'));
 
-            String displayTitle = event.title ?? "İsimsiz";
-            if (displayTitle.startsWith("✓ ")) {
+            String displayTitle = event.title ?? 'İsimsiz';
+            if (displayTitle.startsWith('✓ ')) {
               displayTitle = displayTitle.substring(2);
             }
 
             externalTasks.add(Task(
               id: event.eventId,
-              userId: "device",
+              userId: 'device',
               groupId:
-                  calendar.id, // Takvim ID'sini 'groupId' alanında saklıyoruz
+                  calendar.id,
               title: displayTitle,
-              description: event.description ?? "",
+              description: event.description ?? '',
               startTime: event.start ?? now,
               endTime: event.end ?? now.add(const Duration(hours: 1)),
               isAllDay: event.allDay ?? false,
               color: 0xFF9E9E9E,
-              tags: [calendar.name ?? "Dış Takvim"],
+              tags: [calendar.name ?? 'Dış Takvim'],
               status: isMarkedDone ? 'done' : 'todo',
               isCompleted: isMarkedDone,
-              priority: 1,
-            ));
+            ),);
           }
         }
       }
       return externalTasks;
     } catch (e) {
-      debugPrint("Takvim okuma hatası: $e");
+      debugPrint('Takvim okuma hatası: $e');
       return [];
     }
   }
 
   Future<bool> updateDeviceEvent(Task task) async {
     try {
-      final String calendarId = task.groupId ?? "";
-      final String eventId = task.id ?? "";
+      final String calendarId = task.groupId ?? '';
+      final String eventId = task.id ?? '';
 
       if (calendarId.isEmpty || eventId.isEmpty) return false;
 
@@ -82,16 +82,16 @@ class CalendarSyncService {
           RetrieveEventsParams(
               eventIds: [eventId],
               startDate: now.subtract(const Duration(days: 365)),
-              endDate: now.add(const Duration(days: 365))));
+              endDate: now.add(const Duration(days: 365)),),);
 
       if (!existingEvents.isSuccess ||
           existingEvents.data == null ||
           existingEvents.data!.isEmpty) {
-        debugPrint("Etkinlik cihazda bulunamadı (ID: $eventId)");
+        debugPrint('Etkinlik cihazda bulunamadı (ID: $eventId)');
         return false;
       }
 
-      Event eventToUpdate = existingEvents.data!.first;
+      final Event eventToUpdate = existingEvents.data!.first;
 
       eventToUpdate.description = task.description;
       eventToUpdate.allDay = task.isAllDay;
@@ -104,17 +104,16 @@ class CalendarSyncService {
         eventToUpdate.end = tz.TZDateTime.from(task.endTime, tz.local);
       }
 
-      String rawTitle = task.title;
-
+      final String rawTitle = task.title;
 
       if (task.isCompleted) {
-        if (!rawTitle.startsWith("✓ ")) {
-          eventToUpdate.title = "✓ $rawTitle";
+        if (!rawTitle.startsWith('✓ ')) {
+          eventToUpdate.title = '✓ $rawTitle';
         } else {
           eventToUpdate.title = rawTitle;
         }
       } else {
-        if (rawTitle.startsWith("✓ ")) {
+        if (rawTitle.startsWith('✓ ')) {
           eventToUpdate.title = rawTitle.substring(2);
         } else {
           eventToUpdate.title = rawTitle;
@@ -125,7 +124,7 @@ class CalendarSyncService {
           await _deviceCalendarPlugin.createOrUpdateEvent(eventToUpdate);
       return result?.isSuccess ?? false;
     } catch (e) {
-      debugPrint("Güncelleme hatası: $e");
+      debugPrint('Güncelleme hatası: $e');
       return false;
     }
   }
@@ -136,7 +135,7 @@ class CalendarSyncService {
           await _deviceCalendarPlugin.deleteEvent(calendarId, eventId);
       return result.isSuccess;
     } catch (e) {
-      debugPrint("Silme hatası: $e");
+      debugPrint('Silme hatası: $e');
       return false;
     }
   }

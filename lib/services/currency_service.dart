@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
@@ -6,6 +6,15 @@ class CurrencyService {
   static final CurrencyService _instance = CurrencyService._internal();
   factory CurrencyService() => _instance;
   CurrencyService._internal();
+
+  final Map<String, double> _cache = {};
+  final Map<String, DateTime> _cacheTime = {};
+  static const _cacheTtl = Duration(minutes: 5);
+
+  bool _isCacheValid(String key) {
+    final t = _cacheTime[key];
+    return t != null && DateTime.now().difference(t) < _cacheTtl;
+  }
 
   final Map<String, String> _cryptoMapping = {
     'BTC': 'bitcoin',
@@ -21,17 +30,24 @@ class CurrencyService {
   };
 
   Future<double?> getLivePrice(String symbol, String type) async {
+    final key = '${type}_$symbol'.toUpperCase();
+    if (_isCacheValid(key)) return _cache[key];
     try {
       final upperSymbol = symbol.toUpperCase();
+      double? price;
       if (type.toLowerCase() == 'crypto') {
-        return await _getCryptoPrice(upperSymbol);
+        price = await _getCryptoPrice(upperSymbol);
       } else if (type.toLowerCase() == 'currency' ||
           type.toLowerCase() == 'gold') {
-        return await _getFiatOrGoldPrice(upperSymbol);
+        price = await _getFiatOrGoldPrice(upperSymbol);
       }
-      return null;
+      if (price != null) {
+        _cache[key] = price;
+        _cacheTime[key] = DateTime.now();
+      }
+      return price;
     } catch (e) {
-      debugPrint("CurrencyService Error ($symbol): $e");
+      debugPrint('CurrencyService Error ($symbol): $e');
       return null;
     }
   }
@@ -51,7 +67,7 @@ class CurrencyService {
         }
       }
     } catch (e) {
-      debugPrint("CoinGecko API Error: $e");
+      debugPrint('CoinGecko API Error: $e');
     }
     return null;
   }
@@ -77,7 +93,7 @@ class CurrencyService {
         }
       }
     } catch (e) {
-      debugPrint("Fiat API Error: $e");
+      debugPrint('Fiat API Error: $e');
     }
     return null;
   }

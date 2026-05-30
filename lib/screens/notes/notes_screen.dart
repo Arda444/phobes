@@ -1,16 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
-import 'dart:convert';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:animate_do/animate_do.dart';
+import '../../core/phobes_theme.dart';
+import '../../core/responsive.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/note_model.dart';
 import '../../services/firebase_service.dart';
-import '../../core/phobes_theme.dart';
-import '../../core/page_transitions.dart';
 import '../../widgets/phobes_widgets.dart';
+import '../../core/module_info_catalog.dart';
+import '../../widgets/phobes_module_header.dart';
 import 'note_add_edit_screen.dart';
+import 'notebook_sidebar.dart';
 
 class NotesScreen extends StatefulWidget {
   final String? teamFilterId;
@@ -28,290 +30,364 @@ class NotesScreen extends StatefulWidget {
 
 class _NotesScreenState extends State<NotesScreen>
     with TickerProviderStateMixin {
-  final FirebaseService _fb = FirebaseService();
-  String _selectedCategory = 'Tümü';
+  late TabController _tabController;
+  int _currentTab = 0;
+  String _selectedCategory = 'all';
   String _searchQuery = '';
-  final TextEditingController _searchCtrl = TextEditingController();
   bool _isSearching = false;
   bool _isGridView = true;
   String _sortBy = 'date';
-  late AnimationController _fabController;
+  final _searchController = TextEditingController();
 
-  final List<Map<String, dynamic>> _categories = [
-    {'name': 'Tümü', 'icon': Icons.layers_rounded, 'color': 0xFF6C63FF},
-    {
-      'name': 'Ekip Notları',
-      'icon': Icons.groups_3_rounded,
-      'color': 0xFF009688
-    },
-    {'name': 'Genel', 'icon': Icons.note_rounded, 'color': 0xFF4285F4},
-    {'name': 'İş', 'icon': Icons.work_rounded, 'color': 0xFFFF6B6B},
-    {'name': 'Kişisel', 'icon': Icons.person_rounded, 'color': 0xFF2ECC71},
-    {'name': 'Fikir', 'icon': Icons.lightbulb_rounded, 'color': 0xFFFFA726},
-    {'name': 'Toplantı', 'icon': Icons.groups_rounded, 'color': 0xFF00BCD4},
-    {'name': 'Araştırma', 'icon': Icons.science_rounded, 'color': 0xFF9C27B0},
+  String? _selectedNotebookId;
+  final bool _isSidebarExpanded = true;
+  Timer? _searchDebounce;
+
+  Stream<List<Note>>? _notesStream;
+  String? _streamCacheKey;
+
+  final List<String> _tabKeys = [
+    'all',
+    'team',
+    'project',
+    'favorites',
+    'archive',
+    'trash'
   ];
+  final List<IconData> _tabIcons = [
+    Icons.note_alt_rounded,
+    Icons.groups_rounded,
+    Icons.folder_rounded,
+    Icons.star_rounded,
+    Icons.archive_rounded,
+    Icons.delete_rounded,
+  ];
+
+  static const _categories = [
+    ('all', Icons.apps_rounded, 0xFF9E9E9E),
+    ('general', Icons.note_rounded, 0xFF6C63FF),
+    ('work', Icons.work_rounded, 0xFF4285F4),
+    ('personal', Icons.person_rounded, 0xFFFF6B6B),
+    ('ideas', Icons.lightbulb_rounded, 0xFFFFB800),
+    ('meeting', Icons.groups_rounded, 0xFF00BFA5),
+    ('research', Icons.science_rounded, 0xFF9C27B0),
+    ('study', Icons.school_rounded, 0xFFFF7043),
+  ];
+
+  Stream<List<Note>> _getStream() {
+    final key = '${widget.teamFilterId}|$_currentTab|$_selectedNotebookId';
+    if (_streamCacheKey == key && _notesStream != null) return _notesStream!;
+    _streamCacheKey = key;
+    if (widget.teamFilterId != null) {
+      _notesStream = FirebaseService().getTeamNotesStream(widget.teamFilterId!);
+    } else if (_currentTab == 4) {
+      _notesStream = FirebaseService().getArchivedNotesStream();
+    } else if (_currentTab == 5) {
+      _notesStream = FirebaseService().getTrashStream();
+    } else if (_selectedNotebookId != null) {
+      _notesStream =
+          FirebaseService().getNotesByNotebookStream(_selectedNotebookId!);
+    } else {
+      _notesStream = FirebaseService().getNotesStream();
+    }
+    return _notesStream!;
+  }
 
   @override
   void initState() {
     super.initState();
-    if (widget.isEmbedded) {
-      _selectedCategory = 'Tümü';
-    }
-    _fabController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+    final tabCount = widget.teamFilterId != null ? 1 : 6;
+    _tabController = TabController(length: tabCount, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging &&
+          _currentTab != _tabController.index) {
+        setState(() => _currentTab = _tabController.index);
+      }
+    });
   }
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
-    _fabController.dispose();
+    _tabController.dispose();
+    _searchController.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
+  }
+
+  String _getTabName(String key, AppLocalizations? l10n) {
+    switch (key) {
+      case 'all':
+        return l10n?.noteAll ?? 'All';
+      case 'team':
+        return l10n?.noteTeamNotes ?? 'Team';
+      case 'project':
+        return l10n?.noteProjectNotes ?? 'Projects';
+      case 'favorites':
+        return l10n?.noteFavorites ?? 'Favorites';
+      case 'archive':
+        return l10n?.noteArchive ?? 'Archive';
+      case 'trash':
+        return l10n?.noteTrash ?? 'Trash';
+      default:
+        return key;
+    }
+  }
+
+  String _getCategoryName(String key, AppLocalizations? l10n) {
+    switch (key) {
+      case 'all':
+        return l10n?.noteAll ?? 'All';
+      case 'general':
+        return l10n?.noteCatGeneral ?? 'General';
+      case 'work':
+        return l10n?.noteCatWork ?? 'Work';
+      case 'personal':
+        return l10n?.noteCatPersonal ?? 'Personal';
+      case 'ideas':
+        return l10n?.noteCatIdeas ?? 'Ideas';
+      case 'meeting':
+        return l10n?.noteCatMeeting ?? 'Meeting';
+      case 'research':
+        return l10n?.noteCatResearch ?? 'Research';
+      case 'study':
+        return l10n?.noteCatStudy ?? 'Study';
+      default:
+        return key;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final Widget bodyContent = Stack(
-      children: [
-        Column(
-          children: [
-            if (widget.isEmbedded) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Ekip Notları',
-                        style: GoogleFonts.outfit(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: cs.onSurface)),
-                    Row(
-                      children: [
-                        PhobesIconButton(
-                          icon: _isSearching
-                              ? Icons.close_rounded
-                              : Icons.search_rounded,
-                          onTap: () => setState(() {
-                            _isSearching = !_isSearching;
-                            if (!_isSearching) {
-                              _searchCtrl.clear();
-                              _searchQuery = '';
-                            }
-                          }),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              _buildSearchBar(cs),
-            ],
-            _buildToolbar(isDark),
-            Expanded(child: _buildNotesList(isDark)),
-          ],
-        ),
-        Positioned(
-          bottom: widget.isEmbedded
-              ? 16
-              : 30, // Adjusted for being inside a Scaffold
-          right: 20,
-          child: _buildFAB(isDark, cs),
-        ),
-      ],
-    );
-
-    if (widget.isEmbedded) return bodyContent;
+    final isAmoled = PhobesTheme.amoledMode.value;
+    final l10n = AppLocalizations.of(context);
+    final isCompact = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
-      backgroundColor: cs.surface,
-      appBar: PhobesPremiumAppBar(
-        title: 'Notlarım',
-        showBackButton: false,
-        trailing: PhobesIconButton(
-          icon: _isSearching ? Icons.close_rounded : Icons.search_rounded,
-          onTap: () => setState(() {
-            _isSearching = !_isSearching;
-            if (!_isSearching) {
-              _searchCtrl.clear();
-              _searchQuery = '';
-            }
-          }),
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Column(
-            children: [
-              if (_isSearching)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Container(
-                    height: 44,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: cs.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.search_rounded,
-                            size: 18,
-                            color: cs.onSurface.withValues(alpha: 0.4)),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchCtrl,
-                            autofocus: true,
-                            style: GoogleFonts.outfit(
-                                color: cs.onSurface, fontSize: 15),
-                            decoration: InputDecoration(
-                              hintText: 'Başlık, içerik veya etiket ara...',
-                              hintStyle: GoogleFonts.outfit(
-                                  color: cs.onSurface.withValues(alpha: 0.3),
-                                  fontSize: 15),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.zero,
-                              isDense: true,
-                            ),
-                            onChanged: (v) =>
-                                setState(() => _searchQuery = v.toLowerCase()),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              _buildCategoryBar(isDark),
-            ],
-          ),
-        ),
-      ),
-      body: bodyContent,
-    );
-  }
-
-  Widget _buildSearchBar(ColorScheme cs) {
-    if (!_isSearching) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      backgroundColor: widget.isEmbedded
+          ? Colors.transparent
+          : (isAmoled && isDark ? Colors.black : cs.surface),
+      drawer: isCompact
+          ? Drawer(
+              child: NotebookSidebar(
+                selectedNotebookId: _selectedNotebookId,
+                onSelected: (id) {
+                  setState(() => _selectedNotebookId = id);
+                  Navigator.pop(context);
+                },
+              ),
+            )
+          : null,
+      body: SafeArea(
+        top: !widget.isEmbedded,
         child: Row(
           children: [
-            Icon(Icons.search_rounded,
-                size: 18, color: cs.onSurface.withValues(alpha: 0.4)),
-            const SizedBox(width: 10),
+            if (!isCompact && !widget.isEmbedded)
+              NotebookSidebar(
+                selectedNotebookId: _selectedNotebookId,
+                onSelected: (id) => setState(() => _selectedNotebookId = id),
+                isExpanded: _isSidebarExpanded,
+              ),
             Expanded(
-              child: TextField(
-                controller: _searchCtrl,
-                autofocus: true,
-                style: GoogleFonts.outfit(color: cs.onSurface, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: 'Başlık, içerik veya etiket ara...',
-                  hintStyle: GoogleFonts.outfit(
-                      color: cs.onSurface.withValues(alpha: 0.3), fontSize: 15),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
-                  isDense: true,
-                ),
-                onChanged: (v) =>
-                    setState(() => _searchQuery = v.toLowerCase()),
-              ),
+              child: widget.isEmbedded ? _buildEmbeddedContent(cs, isDark, l10n, isCompact) : _buildStandardContent(cs, isDark, l10n, isCompact),
             ),
-            if (widget.isEmbedded)
-              GestureDetector(
-                onTap: () => setState(() {
-                  _isSearching = false;
-                  _searchCtrl.clear();
-                  _searchQuery = '';
-                }),
-                child: Icon(Icons.close_rounded,
-                    size: 18, color: cs.onSurface.withValues(alpha: 0.4)),
-              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCategoryBar(bool isDark) {
-    return SizedBox(
-      height: 48,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        itemCount: _categories.length,
-        itemBuilder: (_, i) {
-          final cat = _categories[i];
-          final isSelected = _selectedCategory == cat['name'];
-          final catColor = Color(cat['color'] as int);
+  Widget _buildStandardContent(ColorScheme cs, bool isDark, AppLocalizations? l10n, bool isCompact) {
+     return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        PhobesModuleHeader(
+          title: l10n?.notes ?? 'Notlar',
+            icon: Icons.note_alt_rounded,
+            onClose: () => Navigator.pop(context),
+            info: l10n != null ? ModuleInfoCatalog.forNotes(l10n) : null,
+            extraActions: [
+              if (isCompact)
+                Builder(
+                  builder: (ctx) => IconButton(
+                    icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                    onPressed: () => Scaffold.of(ctx).openDrawer(),
+                  ),
+                ),
+              _headerIcon(
+                _isSearching ? Icons.close_rounded : Icons.search_rounded,
+                () => setState(() {
+                  _isSearching = !_isSearching;
+                  if (!_isSearching) {
+                    _searchController.clear();
+                    _searchQuery = '';
+                  }
+                }),
+              ),
+              _headerIcon(
+                _isGridView ? Icons.view_list_rounded : Icons.grid_view_rounded,
+                () => setState(() => _isGridView = !_isGridView),
+              ),
+              PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                offset: const Offset(0, 45),
+                onSelected: (v) => setState(() => _sortBy = v),
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'date', child: Text(l10n?.noteSortDate ?? 'Tarih')),
+                  PopupMenuItem(value: 'title', child: Text(l10n?.noteSortTitle ?? 'Başlık')),
+                  PopupMenuItem(value: 'category', child: Text(l10n?.noteSortCategory ?? 'Kategori')),
+                ],
+                child: IgnorePointer(
+                  child: PhobesModuleHeaderIconButton(
+                    icon: Icons.sort_rounded,
+                    onTap: () {},
+                  ),
+                ),
+              ),
+            ],
+            onAdd: _navigateToEditor,
+            addTooltip: 'Yeni Not',
+            tabController: widget.teamFilterId == null ? _tabController : null,
+            tabs: widget.teamFilterId == null ? _tabKeys.asMap().entries.map((e) {
+              return PhobesModuleTab(_getTabName(e.value, l10n), _tabIcons[e.key]);
+            }).toList() : null,
+        ),
+      ],
+      body: Builder(
+        builder: (context) => ModuleNestedScroll.scrollView(
+          context: context,
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  if (widget.teamFilterId != null) const SizedBox(height: 16),
+                  _buildSearchBar(cs, isDark, l10n),
+                  if (_currentTab != 4 && _currentTab != 5)
+                    _buildCategoryChips(cs, isDark, l10n),
+                ],
+              ),
+            ),
+            SliverFillRemaining(
+              child: _buildNotesList(cs, isDark, l10n, isCompact),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedCategory = cat['name']),
-              child: AnimatedContainer(
-                duration: PhobesTheme.animFast,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? LinearGradient(colors: [
-                          catColor,
-                          catColor.withValues(alpha: 0.7),
-                        ])
-                      : null,
-                  color: isSelected
-                      ? null
-                      : (isDark
-                          ? Colors.white.withValues(alpha: 0.04)
-                          : Colors.grey.shade50),
-                  borderRadius: BorderRadius.circular(12),
-                  border: isSelected
-                      ? null
-                      : Border.all(
-                          color: isDark ? Colors.white10 : Colors.black12),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                              color: catColor.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2))
-                        ]
-                      : [],
+  Widget _buildEmbeddedContent(ColorScheme cs, bool isDark, AppLocalizations? l10n, bool isCompact) {
+    return Column(
+      children: [
+        _buildSearchBar(cs, isDark, l10n),
+        if (_currentTab != 4 && _currentTab != 5) _buildCategoryChips(cs, isDark, l10n),
+        Expanded(child: _buildNotesList(cs, isDark, l10n, isCompact)),
+      ],
+    );
+  }
+
+  Widget _headerIcon(IconData icon, VoidCallback onTap) {
+    return PhobesModuleHeaderIconButton(icon: icon, onTap: onTap);
+  }
+
+  Widget _buildSearchBar(ColorScheme cs, bool isDark, AppLocalizations? l10n) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      child: _isSearching
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: (v) {
+                  _searchDebounce?.cancel();
+                  _searchDebounce =
+                      Timer(const Duration(milliseconds: 300), () {
+                    if (mounted) setState(() => _searchQuery = v);
+                  });
+                },
+                style: GoogleFonts.outfit(fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: l10n?.noteSearchHint ?? 'Search notes...',
+                  hintStyle: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: cs.onSurface.withOpacity(0.3),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: cs.onSurface.withOpacity(0.4),
+                    size: 20,
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? cs.surfaceVariant.withOpacity(0.3)
+                      : cs.surfaceVariant,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(cat['icon'] as IconData,
-                        size: 14,
-                        color: isSelected
-                            ? Colors.white
-                            : (isDark ? Colors.white54 : Colors.black45)),
-                    const SizedBox(width: 6),
-                    Text(
-                      cat['name'] as String,
-                      style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.w500,
-                          color: isSelected
-                              ? Colors.white
-                              : (isDark ? Colors.white54 : Colors.black54)),
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildCategoryChips(
+      ColorScheme cs, bool isDark, AppLocalizations? l10n) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        itemCount: _categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final (key, icon, colorVal) = _categories[i];
+          final selected = _selectedCategory == key;
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = key),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: EdgeInsets.symmetric(
+                  horizontal: selected ? 14 : 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Color(colorVal).withOpacity(isDark ? 0.15 : 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: selected
+                      ? Color(colorVal).withOpacity(0.4)
+                      : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 14,
+                    color: selected
+                        ? Color(colorVal)
+                        : cs.onSurface.withOpacity(0.4),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getCategoryName(key, l10n),
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected
+                          ? Color(colorVal)
+                          : cs.onSurface.withOpacity(0.5),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );
@@ -320,686 +396,498 @@ class _NotesScreenState extends State<NotesScreen>
     );
   }
 
-  Widget _buildToolbar(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: _showSortOptions,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.04)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+  Widget _buildNotesList(
+      ColorScheme cs, bool isDark, AppLocalizations? l10n, bool isCompact) {
+    return StreamBuilder<List<Note>>(
+      stream: _getStream(),
+      builder: (context, snapshot) {
+        // Show loading only on first load (no cached data yet)
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData) {
+          return const Center(child: PhobesLoadingIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.sort_rounded,
-                      size: 14,
-                      color: isDark ? Colors.white38 : Colors.black38),
-                  const SizedBox(width: 4),
+                  Icon(Icons.error_outline_rounded,
+                      size: 48, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(height: 12),
                   Text(
-                    _sortBy == 'date'
-                        ? 'Tarih'
-                        : _sortBy == 'title'
-                            ? 'İsim'
-                            : 'Kategori',
+                    l10n?.notesLoadFailed ?? 'Notes could not be loaded',
                     style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: isDark ? Colors.white38 : Colors.black38),
+                        fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    snapshot.error.toString(),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.5)),
                   ),
                 ],
               ),
             ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                _buildViewToggle(Icons.grid_view_rounded, true, isDark),
-                _buildViewToggle(Icons.view_list_rounded, false, isDark),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildViewToggle(IconData icon, bool isGrid, bool isDark) {
-    final isActive = _isGridView == isGrid;
-    return GestureDetector(
-      onTap: () => setState(() => _isGridView = isGrid),
-      child: AnimatedContainer(
-        duration: PhobesTheme.animFast,
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? PhobesTheme.kPrimaryColor.withValues(alpha: 0.2)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon,
-            size: 16,
-            color: isActive
-                ? PhobesTheme.kPrimaryColor
-                : (isDark ? Colors.white30 : Colors.black26)),
-      ),
-    );
-  }
-
-  Widget _buildNotesList(bool isDark) {
-    return StreamBuilder<List<Note>>(
-      stream: widget.teamFilterId != null
-          ? _fb.getTeamNotesStream(widget.teamFilterId!)
-          : _fb.getNotesStream(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-              child: Text("Hata: ${snapshot.error}",
-                  style: GoogleFonts.outfit(color: Colors.red)));
-        }
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          final cs = Theme.of(context).colorScheme;
-          return Center(
-              child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: cs.primary, strokeWidth: 2),
-              const SizedBox(height: 12),
-              Text('Notlar yükleniyor...',
-                  style: GoogleFonts.outfit(
-                      color: cs.onSurface.withValues(alpha: 0.3),
-                      fontSize: 13)),
-            ],
-          ));
+          );
         }
 
-        var notes = snapshot.data ?? [];
+        List<Note> notes = snapshot.data ?? [];
 
-        if (widget.teamFilterId != null) {
-          // Additional safety: ensure we only show notes belonging to this team
-          notes = notes.where((n) => n.teamId == widget.teamFilterId).toList();
+        if (widget.teamFilterId == null) {
+          switch (_tabKeys[_currentTab]) {
+            case 'all':
+              notes = notes.where((n) => !n.isArchived).toList();
+              break;
+            case 'team':
+              notes = notes
+                  .where((n) => n.teamId != null && !n.isArchived)
+                  .toList();
+              break;
+            case 'project':
+              notes = notes
+                  .where((n) => n.projectId != null && !n.isArchived)
+                  .toList();
+              break;
+            case 'favorites':
+              notes =
+                  notes.where((n) => n.isFavorite && !n.isArchived).toList();
+              break;
+            case 'archive':
+              break;
+            case 'trash':
+              break;
+          }
         }
 
-        if (_selectedCategory != 'Tümü') {
+        if (_selectedCategory != 'all' &&
+            _currentTab != 4 &&
+            _currentTab != 5) {
           notes = notes.where((n) => n.category == _selectedCategory).toList();
         }
-        if (_searchQuery.isNotEmpty) {
-          notes = notes.where((n) {
-            final titleMatch = n.title.toLowerCase().contains(_searchQuery);
-            final tagMatch =
-                n.tags.any((t) => t.toLowerCase().contains(_searchQuery));
-            if (titleMatch || tagMatch) return true;
 
-            try {
-              // Only attempt parsing if it looks like JSON quill content
-              if (n.content.startsWith('{')) {
-                final doc = quill.Document.fromJson(jsonDecode(n.content));
-                return doc.toPlainText().toLowerCase().contains(_searchQuery);
-              }
-              return n.content.toLowerCase().contains(_searchQuery);
-            } catch (_) {
-              return n.content.toLowerCase().contains(_searchQuery);
-            }
-          }).toList();
+        if (_searchQuery.isNotEmpty) {
+          final q = _searchQuery.toLowerCase();
+          notes = notes
+              .where(
+                (n) =>
+                    n.title.toLowerCase().contains(q) ||
+                    n.content.toLowerCase().contains(q) ||
+                    n.tags.any((t) => t.toLowerCase().contains(q)),
+              )
+              .toList();
         }
 
-        notes.sort((a, b) {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          switch (_sortBy) {
-            case 'title':
-              return a.title.compareTo(b.title);
-            case 'category':
-              return a.category.compareTo(b.category);
-            default:
-              return b.date.compareTo(a.date);
-          }
-        });
-
-        if (notes.isEmpty) return _buildEmptyState(isDark);
+        switch (_sortBy) {
+          case 'title':
+            notes.sort((a, b) => a.title.compareTo(b.title));
+            break;
+          case 'category':
+            notes.sort((a, b) => a.category.compareTo(b.category));
+            break;
+          default:
+            notes.sort((a, b) => b.date.compareTo(a.date));
+        }
 
         final pinned = notes.where((n) => n.isPinned).toList();
-        final regular = notes.where((n) => !n.isPinned).toList();
+        final unpinned = notes.where((n) => !n.isPinned).toList();
 
-        return CustomScrollView(
-          slivers: [
-            const SliverPadding(padding: EdgeInsets.fromLTRB(20, 8, 20, 80)),
-            if (pinned.isNotEmpty) ...[
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10, left: 4),
-                  child: Row(
-                    children: [
-                      Icon(Icons.push_pin_rounded,
-                          size: 14,
-                          color: isDark ? Colors.amberAccent : Colors.amber),
-                      const SizedBox(width: 6),
-                      Text('Sabitlenmiş',
-                          style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isDark
-                                  ? Colors.amberAccent
-                                  : Colors.amber.shade700)),
-                    ],
+        if (notes.isEmpty) {
+          return _buildEmptyState(cs, isDark, l10n);
+        }
+
+        final columns = PhobesResponsive.getGridColumns(context);
+
+        if (_isGridView) {
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              if (pinned.isNotEmpty) ...[
+                SliverToBoxAdapter(
+                  child: _buildHorizontalSection(
+                    title: l10n?.notePin ?? 'Pinned',
+                    icon: Icons.push_pin_rounded,
+                    items: pinned,
+                    cs: cs,
+                    isDark: isDark,
+                    l10n: l10n,
+                  ),
+                ),
+              ],
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    _selectedNotebookId == null
+                        ? (l10n?.noteAll ?? 'All Notes')
+                        : (l10n?.noteNotebookNotes ?? 'Notebook Notes'),
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSurface,
+                    ),
                   ),
                 ),
               ),
-              _isGridView
-                  ? _buildGridSliver(pinned, isDark)
-                  : _buildListSliver(pinned, isDark),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            ],
-            if (regular.isNotEmpty && pinned.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10, left: 4),
-                  child: Text('Tüm Notlar',
-                      style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white38 : Colors.black38)),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                sliver: SliverGrid(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns.clamp(1, 4),
+                    childAspectRatio: isCompact ? 1.1 : 1.3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) => FadeInUp(
+                      duration: Duration(milliseconds: 200 + i * 50),
+                      child: _buildNoteCard(
+                          unpinned[i], cs, isDark, l10n, isCompact),
+                    ),
+                    childCount: unpinned.length,
+                  ),
                 ),
               ),
-            _isGridView
-                ? _buildGridSliver(regular, isDark)
-                : _buildListSliver(regular, isDark),
-          ],
-        );
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
+          );
+        } else {
+          final allNotes = [...pinned, ...unpinned];
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+            itemCount: allNotes.length,
+            itemBuilder: (ctx, i) => FadeInUp(
+              duration: Duration(milliseconds: 200 + i * 30),
+              child: _buildNoteListTile(allNotes[i], cs, isDark, l10n),
+            ),
+          );
+        }
       },
     );
   }
 
-  SliverGrid _buildGridSliver(List<Note> notes, bool isDark) {
-    final width = MediaQuery.of(context).size.width;
-    final cols = width > 900 ? 3 : (width > 500 ? 2 : 2);
-
-    return SliverGrid(
-      delegate: SliverChildBuilderDelegate(
-        (_, i) => FadeInUp(
-          delay: Duration(milliseconds: i * 40),
-          duration: const Duration(milliseconds: 300),
-          child: _buildGridCard(notes[i], isDark),
-        ),
-        childCount: notes.length,
-      ),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cols,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.82,
-      ),
-    );
-  }
-
-  Widget _buildGridCard(Note note, bool isDark) {
-    final noteColor = Color(note.color);
-    final plainText = _extractPlainText(note);
-    final wordCount =
-        plainText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
-
-    return GestureDetector(
-      onTap: () => _openNote(note),
-      onLongPress: () => _showNoteActions(note, isDark),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: note.isPinned
-                  ? Colors.amberAccent.withValues(alpha: 0.3)
-                  : Theme.of(context)
-                      .colorScheme
-                      .outline
-                      .withValues(alpha: 0.1)),
-          boxShadow: [
-            BoxShadow(
-              color: noteColor.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 5,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  noteColor,
-                  noteColor.withValues(alpha: 0.4),
-                ]),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: noteColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(_getCategoryIcon(note.category),
-                                  size: 10, color: noteColor),
-                              const SizedBox(width: 4),
-                              Text(note.category,
-                                  style: GoogleFonts.outfit(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
-                                      color: noteColor)),
-                            ],
-                          ),
-                        ),
-                        const Spacer(),
-                        if (note.isPinned)
-                          const Icon(Icons.push_pin,
-                              size: 12, color: Colors.amberAccent),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      note.title.isEmpty ? 'Başlıksız' : note.title,
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
-                        height: 1.2,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: Text(
-                        plainText,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: isDark ? Colors.white30 : Colors.black38,
-                          height: 1.6,
-                        ),
-                        maxLines: 5,
-                        overflow: TextOverflow.fade,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.access_time_rounded,
-                            size: 10,
-                            color: isDark ? Colors.white24 : Colors.black26),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatDate(note.date),
-                          style: GoogleFonts.outfit(
-                              fontSize: 10,
-                              color: isDark ? Colors.white24 : Colors.black26),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '$wordCount kelime',
-                          style: GoogleFonts.outfit(
-                              fontSize: 9,
-                              color: isDark ? Colors.white12 : Colors.black12),
-                        ),
-                      ],
-                    ),
-                    if (note.tags.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 2,
-                        children: note.tags.take(3).map((tag) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.04)
-                                  : Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                  color: isDark
-                                      ? Colors.white10
-                                      : Colors.black.withValues(alpha: 0.06)),
-                            ),
-                            child: Text('#$tag',
-                                style: GoogleFonts.outfit(
-                                    fontSize: 9,
-                                    color: isDark
-                                        ? Colors.white30
-                                        : Colors.black38)),
-                          );
-                        }).toList(),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  SliverList _buildListSliver(List<Note> notes, bool isDark) {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (_, i) => FadeInUp(
-          delay: Duration(milliseconds: i * 40),
-          duration: const Duration(milliseconds: 300),
-          child: _buildListCard(notes[i], isDark),
-        ),
-        childCount: notes.length,
-      ),
-    );
-  }
-
-  Widget _buildListCard(Note note, bool isDark) {
-    final noteColor = Color(note.color);
-    final plainText = _extractPlainText(note);
-    final wordCount =
-        plainText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
-
-    return GestureDetector(
-      onTap: () => _openNote(note),
-      onLongPress: () => _showNoteActions(note, isDark),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-              color: note.isPinned
-                  ? Colors.amberAccent.withValues(alpha: 0.3)
-                  : Theme.of(context)
-                      .colorScheme
-                      .outline
-                      .withValues(alpha: 0.1)),
-        ),
-        child: IntrinsicHeight(
+  Widget _buildHorizontalSection({
+    required String title,
+    required IconData icon,
+    required List<Note> items,
+    required ColorScheme cs,
+    required bool isDark,
+    required AppLocalizations? l10n,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
           child: Row(
             children: [
-              Container(
-                width: 5,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [noteColor, noteColor.withValues(alpha: 0.3)],
-                  ),
-                  borderRadius:
-                      const BorderRadius.horizontal(left: Radius.circular(16)),
+              Icon(icon, size: 18, color: cs.primary),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
                 ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (ctx, i) => SizedBox(
+              width: 200,
+              child: _buildNoteCard(items[i], cs, isDark, l10n, true),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNoteCard(Note note, ColorScheme cs, bool isDark,
+      AppLocalizations? l10n, bool isCompact) {
+    final dateStr = DateFormat.MMMd(Localizations.localeOf(context).toString())
+        .format(note.date);
+
+    return Hero(
+      tag: 'note_${note.id}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openNote(note),
+          onLongPress: () => _showNoteActions(note, cs, isDark, l10n),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: isDark ? cs.surfaceVariant : cs.surface,
+              border: Border.all(color: Color(note.color).withOpacity(0.1)),
+              boxShadow: [
+                BoxShadow(
+                    color: Color(note.color).withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4)),
+              ],
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (note.emoji.isNotEmpty)
+                      Text(note.emoji, style: const TextStyle(fontSize: 22))
+                    else
+                      Icon(_getCategoryIcon(note.category),
+                          size: 18, color: Color(note.color)),
+                    if (note.isPinned)
+                      Icon(Icons.push_pin_rounded, size: 14, color: cs.primary),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  note.title.isEmpty
+                      ? (l10n?.untitledNote ?? 'Untitled')
+                      : note.title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                    color: cs.onSurface,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Text(
+                    note.preview,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      color: cs.onSurface.withOpacity(0.5),
+                      height: 1.4,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text(
+                      dateStr,
+                      style: GoogleFonts.outfit(
+                        fontSize: 10,
+                        color: cs.onSurface.withOpacity(0.3),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (note.isFavorite)
+                      Icon(Icons.star_rounded,
+                          size: 13, color: Colors.amber.withOpacity(0.7)),
+                    if (note.isShared)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Icon(
+                          Icons.share_rounded,
+                          size: 13,
+                          color: cs.secondary.withOpacity(0.5),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoteListTile(
+      Note note, ColorScheme cs, bool isDark, AppLocalizations? l10n) {
+    final dateStr = DateFormat.yMMMd(Localizations.localeOf(context).toString())
+        .add_Hm()
+        .format(note.date);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () => _openNote(note),
+          onLongPress: () => _showNoteActions(note, cs, isDark, l10n),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark ? cs.surfaceVariant : cs.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: cs.outline.withOpacity(isDark ? 0.12 : 0.06)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Color(note.color),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (note.emoji.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child:
+                        Text(note.emoji, style: const TextStyle(fontSize: 20)),
+                  ),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          if (note.isPinned) ...[
-                            const Icon(Icons.push_pin,
-                                size: 12, color: Colors.amberAccent),
-                            const SizedBox(width: 6),
-                          ],
                           Expanded(
                             child: Text(
-                              note.title.isEmpty ? 'Başlıksız' : note.title,
+                              note.title.isEmpty
+                                  ? (l10n?.untitledNote ?? 'Untitled')
+                                  : note.title,
                               style: GoogleFonts.outfit(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color:
-                                      isDark ? Colors.white : Colors.black87),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: noteColor.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
+                          if (note.isPinned)
+                            Icon(Icons.push_pin_rounded,
+                                size: 13, color: cs.primary),
+                          if (note.isShared)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Icon(Icons.share_rounded,
+                                  size: 13, color: cs.secondary),
                             ),
-                            child: Text(note.category,
-                                style: GoogleFonts.outfit(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w600,
-                                    color: noteColor)),
-                          ),
+                          if (note.isFavorite)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.star_rounded,
+                                  size: 13, color: Colors.amber),
+                            ),
                         ],
                       ),
-                      if (plainText.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(plainText,
-                            style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: isDark ? Colors.white30 : Colors.black38,
-                                height: 1.5),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis),
-                      ],
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(_formatDate(note.date),
-                              style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.white24
-                                      : Colors.black26)),
-                          const SizedBox(width: 12),
-                          Text('$wordCount kelime',
-                              style: GoogleFonts.outfit(
-                                  fontSize: 10,
-                                  color: isDark
-                                      ? Colors.white12
-                                      : Colors.black12)),
-                          if (note.tags.isNotEmpty) ...[
-                            const SizedBox(width: 12),
-                            ...note.tags.take(2).map((t) => Padding(
-                                  padding: const EdgeInsets.only(right: 6),
-                                  child: Text('#$t',
-                                      style: GoogleFonts.outfit(
-                                          fontSize: 10,
-                                          color: noteColor.withValues(
-                                              alpha: 0.6))),
-                                )),
-                          ],
-                        ],
+                      const SizedBox(height: 2),
+                      Text(
+                        dateStr,
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: cs.onSurface.withOpacity(0.35),
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Icon(Icons.chevron_right_rounded,
-                    size: 20, color: isDark ? Colors.white12 : Colors.black12),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFAB(bool isDark, ColorScheme cs) {
-    return GestureDetector(
-      onTap: () {
-        List<String> tags = [];
-        if (widget.teamFilterId != null) {
-          tags.add(widget.teamFilterId!);
-        }
-        _openNote(
-          null,
-          prefillCategory: widget.isEmbedded ? 'Ekip Notları' : null,
-          prefillTeamId: widget.teamFilterId,
-          prefillTags: tags,
-        );
-      },
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          color: cs.primary,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: cs.primary.withValues(alpha: 0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child:
-            const Icon(Icons.edit_note_rounded, color: Colors.white, size: 28),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(bool isDark) {
-    return Center(
-      child: FadeInUp(
-        child: Padding(
-          padding: const EdgeInsets.all(40),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      PhobesTheme.kPrimaryColor.withValues(alpha: 0.1),
-                      Colors.teal.withValues(alpha: 0.05),
-                    ],
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Color(note.color).withOpacity(isDark ? 0.12 : 0.08),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.note_alt_outlined,
-                    color: isDark ? Colors.white24 : Colors.black12, size: 40),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                _searchQuery.isNotEmpty
-                    ? 'Sonuç bulunamadı'
-                    : _selectedCategory == 'Tümü'
-                        ? 'Henüz not yok'
-                        : '$_selectedCategory kategorisinde not yok',
-                style: GoogleFonts.outfit(
-                    color: isDark ? Colors.white54 : Colors.black54,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _searchQuery.isNotEmpty
-                    ? 'Başka bir terimle aramayı deneyin'
-                    : 'İlk notunuzu oluşturmak için + butonuna dokunun',
-                style: GoogleFonts.outfit(
-                    color: isDark ? Colors.white24 : Colors.black26,
-                    fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              if (_searchQuery.isEmpty) ...[
-                const SizedBox(height: 32),
-                GestureDetector(
-                  onTap: () => _openNote(null),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 28, vertical: 14),
-                    decoration: BoxDecoration(
-                      gradient: PhobesTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                            color: PhobesTheme.kPrimaryColor
-                                .withValues(alpha: 0.3),
-                            blurRadius: 12)
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.add, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
-                        Text('İlk Notu Oluştur',
-                            style: GoogleFonts.outfit(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14)),
-                      ],
-                    ),
+                  child: Icon(
+                    _getCategoryIcon(note.category),
+                    size: 16,
+                    color: Color(note.color),
                   ),
                 ),
               ],
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _openNote(Note? note,
-      {String? prefillCategory,
-      String? prefillTeamId,
-      List<String>? prefillTags}) {
-    PhobesPageRoute.pushResponsive(
+  IconData _getCategoryIcon(String key) {
+    switch (key) {
+      case 'work':
+        return Icons.work_rounded;
+      case 'personal':
+        return Icons.person_rounded;
+      case 'ideas':
+        return Icons.lightbulb_rounded;
+      case 'meeting':
+        return Icons.groups_rounded;
+      case 'research':
+        return Icons.science_rounded;
+      case 'study':
+        return Icons.school_rounded;
+      default:
+        return Icons.note_rounded;
+    }
+  }
+
+  Widget _buildEmptyState(ColorScheme cs, bool isDark, AppLocalizations? l10n) {
+    return PhobesEmptyState(
+      icon: Icons.note_alt_rounded,
+      title: l10n?.noteEmptyState ?? 'Düşüncelerin Burada Canlanacak',
+      description: l10n?.noteEmptyStateDesc ??
+          'Henüz bir notun yok. Yeni sayfa açmak için + butonuna dokunun.',
+      buttonText: l10n?.noteCreateFirst ?? 'Create Your First Note',
+      buttonIcon: Icons.add_rounded,
+      onButtonTap: _navigateToEditor,
+    );
+  }
+
+  void _openNote(Note note) {
+    Navigator.push(
       context,
-      NoteAddEditScreen(
-        selectedDate: note?.date ?? DateTime.now(),
-        note: note,
-        preselectedCategory: note?.category ??
-            prefillCategory ??
-            (_selectedCategory == 'Tümü' ? 'Genel' : _selectedCategory),
-        preselectedTeamId: prefillTeamId,
-        preselectedTags: prefillTags,
+      MaterialPageRoute(builder: (_) => NoteAddEditScreen(existingNote: note)),
+    );
+  }
+
+  void _navigateToEditor({String? templateKey}) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NoteAddEditScreen(
+          teamId: widget.teamFilterId,
+          templateKey: templateKey,
+          notebookId: _selectedNotebookId,
+        ),
       ),
     );
   }
 
-  void _showNoteActions(Note note, bool isDark) {
-    HapticFeedback.mediumImpact();
+  void _showNoteActions(
+      Note note, ColorScheme cs, bool isDark, AppLocalizations? l10n) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? PhobesTheme.surfaceColor : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          color: cs.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1008,398 +896,195 @@ class _NotesScreenState extends State<NotesScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black26,
+                  color: cs.onSurface.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Color(note.color),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    note.title.isEmpty ? 'Başlıksız' : note.title,
-                    style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildActionItem(
-              icon: note.isPinned
-                  ? Icons.push_pin_outlined
-                  : Icons.push_pin_rounded,
-              label: note.isPinned ? 'Sabitlemeyi Kaldır' : 'Sabitle',
-              color: Colors.amberAccent,
-              isDark: isDark,
-              onTap: () async {
-                Navigator.pop(ctx);
-                final updated = note.copyWith(isPinned: !note.isPinned);
-                await _fb.updateNote(updated);
-              },
-            ),
-            _buildActionItem(
-              icon: Icons.edit_rounded,
-              label: 'Düzenle',
-              color: PhobesTheme.kPrimaryColor,
-              isDark: isDark,
-              onTap: () {
-                Navigator.pop(ctx);
-                _openNote(note);
-              },
-            ),
-            _buildActionItem(
-              icon: Icons.copy_rounded,
-              label: 'Kopyala',
-              color: Colors.cyanAccent,
-              isDark: isDark,
-              onTap: () async {
-                Navigator.pop(ctx);
-                final duplicate = Note(
-                  userId: note.userId,
-                  title: '${note.title} (kopya)',
-                  date: DateTime.now(),
-                  content: note.content,
-                  category: note.category,
-                  color: note.color,
-                  tags: note.tags,
-                );
-                await _fb.addNote(duplicate);
-              },
-            ),
-            _buildActionItem(
-              icon: Icons.category_rounded,
-              label: 'Kategori Değiştir',
-              color: Colors.orangeAccent,
-              isDark: isDark,
-              onTap: () {
-                Navigator.pop(ctx);
-                _showChangeCategoryDialog(note, isDark);
-              },
-            ),
-            const SizedBox(height: 8),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            _buildActionItem(
-              icon: Icons.delete_rounded,
-              label: 'Sil',
-              color: Colors.redAccent,
-              isDark: isDark,
-              onTap: () async {
-                Navigator.pop(ctx);
-                _confirmDelete(note);
-              },
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            if (note.deletedAt != null) ...[
+              _actionTile(
+                icon: Icons.restore_rounded,
+                label: l10n?.noteRestore ?? 'Restore',
+                color: Colors.teal,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (note.id != null) FirebaseService().restoreNote(note.id!);
+                },
+              ),
+              _actionTile(
+                icon: Icons.delete_forever_rounded,
+                label: l10n?.noteDeletePermanent ?? 'Delete Permanently',
+                color: cs.error,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDelete(note, l10n);
+                },
+              ),
+              const SizedBox(height: 8),
+            ] else ...[
+              _actionTile(
+                icon: note.isPinned
+                    ? Icons.push_pin_rounded
+                    : Icons.push_pin_outlined,
+                label: note.isPinned
+                    ? (l10n?.noteUnpin ?? 'Unpin')
+                    : (l10n?.notePin ?? 'Pin'),
+                color: cs.primary,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  final updated = note.copyWith(isPinned: !note.isPinned);
+                  FirebaseService().updateNote(updated);
+                },
+              ),
+              _actionTile(
+                icon: note.isFavorite
+                    ? Icons.star_rounded
+                    : Icons.star_outline_rounded,
+                label: note.isFavorite
+                    ? (l10n?.noteUnfavorite ?? 'Unfavorite')
+                    : (l10n?.noteFavorite ?? 'Favorite'),
+                color: Colors.amber,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (note.id != null) {
+                    FirebaseService()
+                        .toggleNoteFavorite(note.id!, !note.isFavorite);
+                  }
+                },
+              ),
+              _actionTile(
+                icon: note.isLocked
+                    ? Icons.lock_open_rounded
+                    : Icons.lock_rounded,
+                label: note.isLocked
+                    ? (l10n?.noteUnlock ?? 'Unlock')
+                    : (l10n?.noteLock ?? 'Lock'),
+                color: Colors.deepOrange,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (note.id != null) {
+                    FirebaseService().toggleNoteLock(note.id!, !note.isLocked);
+                  }
+                },
+              ),
+              _actionTile(
+                icon: note.isArchived
+                    ? Icons.unarchive_rounded
+                    : Icons.archive_rounded,
+                label: note.isArchived
+                    ? (l10n?.noteUnarchive ?? 'Unarchive')
+                    : (l10n?.noteArchiveAction ?? 'Archive'),
+                color: Colors.teal,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  final id = note.id;
+                  if (id == null) return;
+                  if (note.isArchived) {
+                    FirebaseService().unarchiveNote(id);
+                  } else {
+                    FirebaseService().archiveNote(id);
+                  }
+                },
+              ),
+              _actionTile(
+                icon: Icons.edit_rounded,
+                label: l10n?.edit ?? 'Edit',
+                color: cs.secondary,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NoteAddEditScreen(existingNote: note),
+                    ),
+                  );
+                },
+              ),
+              _actionTile(
+                icon: Icons.copy_all_rounded,
+                label: l10n?.noteDuplicate ?? 'Duplicate',
+                color: cs.primary,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  FirebaseService().duplicateNote(note);
+                },
+              ),
+              _actionTile(
+                icon: Icons.delete_rounded,
+                label: l10n?.noteMoveToTrash ?? 'Move to Trash',
+                color: cs.error,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  if (note.id != null) FirebaseService().moveToTrash(note.id!);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionItem({
+  Widget _actionTile({
     required IconData icon,
     required String label,
     required Color color,
-    required bool isDark,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ListTile(
+      dense: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
+      title: Text(label,
+          style: GoogleFonts.outfit(fontSize: 14, fontWeight: FontWeight.w500)),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        size: 18,
+        color: cs.onSurface.withOpacity(0.3),
+      ),
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 14),
-            Text(label,
-                style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    color: isDark ? Colors.white : Colors.black87,
-                    fontWeight: FontWeight.w500)),
-          ],
-        ),
-      ),
     );
   }
 
-  void _showChangeCategoryDialog(Note note, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isDark ? PhobesTheme.surfaceColor : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black26,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('Kategori Seç',
-                style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _categories.skip(1).map((cat) {
-                final catName = cat['name'] as String;
-                final catColor = Color(cat['color'] as int);
-                final isSelected = note.category == catName;
-                return GestureDetector(
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    final updated = note.copyWith(category: catName);
-                    await _fb.updateNote(updated);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? catColor.withValues(alpha: 0.2)
-                          : (isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.grey.shade50),
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected
-                          ? Border.all(color: catColor.withValues(alpha: 0.5))
-                          : Border.all(
-                              color: isDark ? Colors.white10 : Colors.black12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(cat['icon'] as IconData,
-                            size: 16,
-                            color: isSelected
-                                ? catColor
-                                : (isDark ? Colors.white54 : Colors.black54)),
-                        const SizedBox(width: 8),
-                        Text(catName,
-                            style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: isSelected
-                                    ? catColor
-                                    : (isDark
-                                        ? Colors.white70
-                                        : Colors.black87))),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete(Note note) async {
-    final confirm = await showDialog<bool>(
+  void _confirmDelete(Note note, AppLocalizations? l10n) {
+    showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: PhobesTheme.surfaceColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Notu Sil',
-            style: GoogleFonts.outfit(
-                color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Text(
-          '"${note.title.isEmpty ? 'Başlıksız' : note.title}" notunu silmek istediğinize emin misiniz?',
-          style: GoogleFonts.outfit(color: Colors.white70),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          l10n?.deleteNoteTitle ?? 'Delete Note',
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
+        content: Text(l10n?.deleteNoteWarning ?? 'Are you sure?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text('İptal',
-                  style: GoogleFonts.outfit(color: Colors.white54))),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10))),
-            child: Text('Sil', style: GoogleFonts.outfit(color: Colors.white)),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n?.cancel ?? 'Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (note.id != null) FirebaseService().deleteNote(note.id!);
+              Navigator.pop(ctx);
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: Text(l10n?.delete ?? 'Delete'),
           ),
         ],
       ),
     );
-    if (confirm == true && note.id != null) {
-      await _fb.deleteNote(note.id!);
-    }
-  }
-
-  void _showSortOptions() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isDark ? PhobesTheme.surfaceColor : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black26,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text('Sıralama',
-                style: GoogleFonts.outfit(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87)),
-            const SizedBox(height: 16),
-            _buildSortOption(
-                'Tarih', 'date', Icons.calendar_today_rounded, ctx, isDark),
-            _buildSortOption(
-                'İsim', 'title', Icons.sort_by_alpha_rounded, ctx, isDark),
-            _buildSortOption(
-                'Kategori', 'category', Icons.category_rounded, ctx, isDark),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSortOption(String label, String value, IconData icon,
-      BuildContext ctx, bool isDark) {
-    final isSelected = _sortBy == value;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _sortBy = value);
-        Navigator.pop(ctx);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? PhobesTheme.kPrimaryColor.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? Border.all(
-                  color: PhobesTheme.kPrimaryColor.withValues(alpha: 0.3))
-              : null,
-        ),
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 18,
-                color: isSelected
-                    ? PhobesTheme.kPrimaryColor
-                    : (isDark ? Colors.white54 : Colors.black45)),
-            const SizedBox(width: 12),
-            Text(label,
-                style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected
-                        ? PhobesTheme.kPrimaryColor
-                        : (isDark ? Colors.white : Colors.black87))),
-            const Spacer(),
-            if (isSelected)
-              const Icon(Icons.check_rounded,
-                  size: 18, color: PhobesTheme.kPrimaryColor),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _extractPlainText(Note note) {
-    try {
-      final doc = quill.Document.fromJson(jsonDecode(note.content));
-      return doc.toPlainText().trim();
-    } catch (_) {
-      return note.content;
-    }
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inMinutes < 1) return 'Şimdi';
-    if (diff.inHours < 1) return '${diff.inMinutes}dk önce';
-    if (diff.inDays < 1) return '${diff.inHours}s önce';
-    if (diff.inDays == 1) return 'Dün';
-    if (diff.inDays < 7) return '${diff.inDays}g önce';
-    return DateFormat('dd MMM', 'tr').format(date);
-  }
-
-  IconData _getCategoryIcon(String cat) {
-    switch (cat) {
-      case 'İş':
-        return Icons.work_rounded;
-      case 'Kişisel':
-        return Icons.person_rounded;
-      case 'Fikir':
-        return Icons.lightbulb_rounded;
-      case 'Toplantı':
-        return Icons.groups_rounded;
-      case 'Araştırma':
-        return Icons.science_rounded;
-      default:
-        return Icons.note_rounded;
-    }
   }
 }

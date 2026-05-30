@@ -22,7 +22,7 @@ class PremiumCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final cardColor = color ?? cs.surfaceContainer;
+    final cardColor = color ?? cs.surfaceVariant;
 
     return Container(
       margin: margin ?? const EdgeInsets.only(bottom: 16),
@@ -31,7 +31,7 @@ class PremiumCard extends StatelessWidget {
         borderRadius: PhobesTheme.defaultRadius,
         boxShadow: PhobesTheme.getCardShadow(isDark),
         border: Border.all(
-          color: cs.outline.withValues(alpha: isDark ? 0.3 : 0.1),
+          color: cs.outline.withOpacity(isDark ? 0.3 : 0.1),
         ),
       ),
       child: Material(

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/medication_model.dart';
 import '../../services/firebase_service.dart';
-import '../../services/notification_service.dart';
+import '../../core/navigation_keys.dart';
 import '../../widgets/phobes_widgets.dart';
+import '../../widgets/phobes_form_wrapper.dart';
+import '../../l10n/app_localizations.dart';
 
 class MedicationAddEditScreen extends StatefulWidget {
   final Medication? medication;
@@ -67,11 +70,34 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
     0xFF607D8B,
   ];
 
-  static const _frequencies = {
-    'daily': 'Günlük',
-    'weekly': 'Haftalık',
-    'asNeeded': 'Gerektiğinde',
+  static Map<String, String> _frequencies(AppLocalizations l10n) => {
+    'daily': l10n.medFreqDaily,
+    'weekly': l10n.medFreqWeekly,
+    'asNeeded': l10n.medFreqAsNeeded,
   };
+
+  void _dismissForm([Object? result]) {
+    if (PhobesFormScope.maybeOf(context) != null) {
+      PhobesFormScope.closeForm(context, result);
+    } else {
+      Navigator.of(context).pop(result);
+    }
+  }
+
+  void _finishSave(String message) {
+    if (!mounted) return;
+    _dismissForm(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final root = rootNavigatorKey.currentContext;
+      if (root != null) {
+        PhobesSnackbar.show(
+          root,
+          message: message,
+          type: PhobesSnackbarType.success,
+        );
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -88,12 +114,11 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
       _isActive = m.isActive;
       _reminderEnabled = m.reminderEnabled;
       _startDate = m.startDate;
-      _startDate = m.startDate;
       _endDate = m.endDate;
       _stockTracking = m.stockTracking;
       _stockController.text = m.stock.toString();
       _thresholdController.text = m.stockThreshold.toString();
-      
+
       if (m.barcode != null || m.imageUrl != null) {
         _currentSelectedMedicineData = {
           'name': m.name,
@@ -120,9 +145,10 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context)!;
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('İlaç adı gerekli')),
+        SnackBar(content: Text(AppLocalizations.of(context)!.medNameRequired)),
       );
       return;
     }
@@ -165,51 +191,17 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
         await _firebaseService.addMedication(med);
       }
 
-      final notificationService = NotificationService();
-      if (_isActive && _reminderEnabled) {
-        for (int i = 0; i < _times.length; i++) {
-          final timeParts = _times[i].split(':');
-          final scheduledTime = DateTime(
-            _startDate.year,
-            _startDate.month,
-            _startDate.day,
-            int.parse(timeParts[0]),
-            int.parse(timeParts[1]),
-          );
-
-          await notificationService.scheduleAndSaveNotification(
-            id: '${med.id ?? med.name}_$i',
-            title: 'İlaç Zamanı: ${med.name}',
-            body: '${med.dosage} almayı unutma.',
-            scheduledTime: scheduledTime,
-            type: 'medication',
-            targetId: med.id,
-            targetType: 'medication',
-            icon: med.icon,
-            color: 0xFF009688,
-            channelId: 'medications',
-            channelName: 'İlaçlarım',
-            prefKey: 'notif_med_dose',
-          );
-        }
-      } else {
-        for (int i = 0; i < _times.length; i++) {
-          await notificationService
-              .cancelNotification('${med.id ?? med.name}_$i');
-        }
-      }
-
       if (mounted) {
-        if (widget.onClose != null) {
-          widget.onClose!();
-        } else {
-          Navigator.pop(context);
-        }
+        _finishSave(
+          _isEditing ? l10n.medUpdatedSuccess : l10n.medAddedSuccess,
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
+        PhobesSnackbar.show(
+          context,
+          message: l10n.medSaveFailed,
+          type: PhobesSnackbarType.error,
         );
       }
     } finally {
@@ -219,6 +211,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final color = Color(_selectedColor);
 
@@ -226,14 +219,8 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
       backgroundColor:
           isDark ? const Color(0xFF050505) : const Color(0xFFF8FAFC),
       appBar: PhobesPremiumAppBar(
-        title: _isEditing ? 'İlacı Düzenle' : 'Yeni İlaç',
-        onBackPressed: () {
-          if (widget.onClose != null) {
-            widget.onClose!();
-          } else {
-            Navigator.pop(context);
-          }
-        },
+        title: _isEditing ? l10n.medEditTitle : l10n.medNewTitle,
+        onBackPressed: () => _dismissForm(),
         trailing: _isSaving
             ? const SizedBox(
                 width: 20,
@@ -243,13 +230,13 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             : TextButton(
                 onPressed: _save,
                 style: TextButton.styleFrom(
-                  backgroundColor: color.withValues(alpha: 0.15),
+                  backgroundColor: color.withOpacity(0.15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Text(
-                  _isEditing ? 'Güncelle' : 'Kaydet',
+                  _isEditing ? AppLocalizations.of(context)!.update : AppLocalizations.of(context)!.save,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w600,
                     color: color,
@@ -271,23 +258,23 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
+                        color: color.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: color.withValues(alpha: 0.3)),
+                        border: Border.all(color: color.withOpacity(0.3)),
                       ),
                       child: Center(
                         child: _currentSelectedMedicineData?['imageUrl'] != null
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(14),
-                                child: Image.network(
-                                  _currentSelectedMedicineData!['imageUrl'],
+                                child: CachedNetworkImage(
+                                  imageUrl: _currentSelectedMedicineData!['imageUrl'],
                                   fit: BoxFit.cover,
-                                  errorBuilder: (c, e, s) => Text(_selectedIcon,
-                                      style: const TextStyle(fontSize: 32)),
+                                  errorWidget: (c, e, s) => Text(_selectedIcon,
+                                      style: const TextStyle(fontSize: 32),),
                                 ),
                               )
                             : Text(_selectedIcon,
-                                style: const TextStyle(fontSize: 32)),
+                                style: const TextStyle(fontSize: 32),),
                       ),
                     ),
                   ),
@@ -298,7 +285,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                       children: [
                         _buildSearchField(
                           _nameController,
-                          'İlaç Adı',
+                          l10n.medNameLabel,
                           Icons.medication_rounded,
                           isDark,
                         ),
@@ -313,12 +300,12 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               delay: const Duration(milliseconds: 50),
               child: _buildField(
                 _dosageController,
-                'Doz (örn: 500mg, 1 tablet)',
+                l10n.medDosageHint,
                 Icons.science_rounded,
                 isDark,
               ),
             ),
-            // Clinical info card after search selection
+
             if (_currentSelectedMedicineData != null) ...[
               const SizedBox(height: 12),
               FadeInDown(
@@ -329,30 +316,30 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             const SizedBox(height: 20),
             FadeInDown(
               delay: const Duration(milliseconds: 100),
-              child: _buildSection('Sıklık', isDark),
+              child: _buildSection(l10n.medFrequencySection, isDark),
             ),
             const SizedBox(height: 8),
             FadeInDown(
               delay: const Duration(milliseconds: 120),
               child: Wrap(
                 spacing: 8,
-                children: _frequencies.entries.map((e) {
+                children: _frequencies(AppLocalizations.of(context)!).entries.map((e) {
                   final isSelected = _frequency == e.key;
                   return GestureDetector(
                     onTap: () => setState(() => _frequency = e.key),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
+                          horizontal: 16, vertical: 10,),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? color.withValues(alpha: 0.15)
+                            ? color.withOpacity(0.15)
                             : isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : Colors.black.withValues(alpha: 0.03),
+                                ? Colors.white.withOpacity(0.04)
+                                : Colors.black.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isSelected
-                              ? color.withValues(alpha: 0.4)
+                              ? color.withOpacity(0.4)
                               : Colors.transparent,
                         ),
                       ),
@@ -377,7 +364,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             const SizedBox(height: 20),
             FadeInDown(
               delay: const Duration(milliseconds: 150),
-              child: _buildSection('Alım Saatleri', isDark),
+              child: _buildSection(l10n.medDoseTimesSection, isDark),
             ),
             const SizedBox(height: 8),
             FadeInDown(
@@ -396,18 +383,18 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
+                            horizontal: 14, vertical: 10,),
                         decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
+                          color: color.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(12),
                           border:
-                              Border.all(color: color.withValues(alpha: 0.3)),
+                              Border.all(color: color.withOpacity(0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.access_time_rounded,
-                                size: 16, color: color),
+                                size: 16, color: color,),
                             const SizedBox(width: 6),
                             Text(
                               entry.value,
@@ -429,16 +416,16 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                          horizontal: 14, vertical: 10,),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.04)
-                            : Colors.black.withValues(alpha: 0.03),
+                            ? Colors.white.withOpacity(0.04)
+                            : Colors.black.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isDark
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.08),
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.black.withOpacity(0.08),
                         ),
                       ),
                       child: Row(
@@ -446,14 +433,14 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                         children: [
                           Icon(Icons.add_rounded,
                               size: 16,
-                              color: isDark ? Colors.white54 : Colors.black45),
+                              color: isDark ? Colors.white54 : Colors.black45,),
                           const SizedBox(width: 4),
-                          Text('Saat Ekle',
+                          Text(l10n.medAddTime,
                               style: GoogleFonts.outfit(
                                   fontSize: 12,
                                   color: isDark
                                       ? Colors.white54
-                                      : Colors.black45)),
+                                      : Colors.black45,),),
                         ],
                       ),
                     ),
@@ -464,7 +451,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             const SizedBox(height: 20),
             FadeInDown(
               delay: const Duration(milliseconds: 200),
-              child: _buildSection('Renk', isDark),
+              child: _buildSection(l10n.medColorSection, isDark),
             ),
             const SizedBox(height: 8),
             FadeInDown(
@@ -487,14 +474,14 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                    color: Color(c).withValues(alpha: 0.5),
-                                    blurRadius: 10)
+                                    color: Color(c).withOpacity(0.5),
+                                    blurRadius: 10,),
                               ]
                             : null,
                       ),
                       child: isSelected
                           ? const Icon(Icons.check_rounded,
-                              size: 18, color: Colors.white)
+                              size: 18, color: Colors.white,)
                           : null,
                     ),
                   );
@@ -504,7 +491,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             const SizedBox(height: 20),
             FadeInDown(
               delay: const Duration(milliseconds: 250),
-              child: _buildSection('Tarihler', isDark),
+              child: _buildSection(l10n.medDatesSection, isDark),
             ),
             const SizedBox(height: 8),
             FadeInDown(
@@ -513,14 +500,14 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                 children: [
                   Expanded(
                     child: _buildDateTile(
-                        'Başlangıç', _startDate, isDark, color, (d) {
+                        l10n.medStartDate, _startDate, isDark, color, (d) {
                       setState(() => _startDate = d);
                     }),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _buildDateTile(
-                      'Bitiş (Ops.)',
+                      l10n.medEndDateOptional,
                       _endDate,
                       isDark,
                       color,
@@ -537,7 +524,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               delay: const Duration(milliseconds: 300),
               child: _buildField(
                 _notesController,
-                'Notlar (isteğe bağlı)',
+                l10n.medNotesOptional,
                 Icons.notes_rounded,
                 isDark,
                 maxLines: 3,
@@ -547,8 +534,8 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             FadeInDown(
               delay: const Duration(milliseconds: 350),
               child: _buildToggleTile(
-                'Hatırlatıcı Bildirimi',
-                'Her doz saatinde bildirim gönder',
+                l10n.medReminderTitle,
+                l10n.medReminderSubtitle,
                 Icons.notifications_active_rounded,
                 _reminderEnabled,
                 (v) => setState(() => _reminderEnabled = v),
@@ -560,8 +547,8 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             FadeInDown(
               delay: const Duration(milliseconds: 400),
               child: _buildToggleTile(
-                'Aktif',
-                'Pasif ilaçlar günlük listede gösterilmez',
+                l10n.medActiveTitle,
+                l10n.medActiveSubtitle,
                 Icons.power_settings_new_rounded,
                 _isActive,
                 (v) => setState(() => _isActive = v),
@@ -572,14 +559,14 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
             const SizedBox(height: 16),
             FadeInDown(
               delay: const Duration(milliseconds: 450),
-              child: _buildSection('Stok Takibi', isDark),
+              child: _buildSection(l10n.medStockSection, isDark),
             ),
             const SizedBox(height: 8),
             FadeInDown(
               delay: const Duration(milliseconds: 470),
               child: _buildToggleTile(
-                'Stok Takibini Etkinleştir',
-                'Kalan ilaç miktarını otomatik takip et',
+                l10n.medEnableStockTitle,
+                l10n.medEnableStockSubtitle,
                 Icons.inventory_2_rounded,
                 _stockTracking,
                 (v) => setState(() => _stockTracking = v),
@@ -596,7 +583,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                     Expanded(
                       child: _buildField(
                         _stockController,
-                        'Mevcut Stok',
+                        l10n.medCurrentStock,
                         Icons.numbers_rounded,
                         isDark,
                         keyboardType: TextInputType.number,
@@ -606,7 +593,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                     Expanded(
                       child: _buildField(
                         _thresholdController,
-                        'Kritik Eşik',
+                        l10n.medCriticalThreshold,
                         Icons.warning_amber_rounded,
                         isDark,
                         keyboardType: TextInputType.number,
@@ -616,7 +603,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                 ),
               ),
             ],
-            const SizedBox(height: 40), // Additional spacer before content ends
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -636,19 +623,20 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
   }
 
   Widget _buildSearchField(
-      TextEditingController ctrl, String hint, IconData icon, bool isDark) {
+      TextEditingController ctrl, String hint, IconData icon, bool isDark,) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       children: [
         Container(
           decoration: BoxDecoration(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.04)
-                : Colors.black.withValues(alpha: 0.03),
+                ? Colors.white.withOpacity(0.04)
+                : Colors.black.withOpacity(0.03),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withValues(alpha: 0.06)
-                  : Colors.black.withValues(alpha: 0.06),
+                  ? Colors.white.withOpacity(0.06)
+                  : Colors.black.withOpacity(0.06),
             ),
           ),
           child: TextField(
@@ -672,13 +660,13 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               }
             },
             style: GoogleFonts.outfit(
-                color: isDark ? Colors.white : Colors.black87),
+                color: isDark ? Colors.white : Colors.black87,),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: GoogleFonts.outfit(
-                  color: isDark ? Colors.white24 : Colors.black26),
+                  color: isDark ? Colors.white24 : Colors.black26,),
               prefixIcon: Icon(icon,
-                  color: isDark ? Colors.white24 : Colors.black26, size: 20),
+                  color: isDark ? Colors.white24 : Colors.black26, size: 20,),
               border: InputBorder.none,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -698,7 +686,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
+                  color: Colors.black.withOpacity(0.2),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
@@ -721,7 +709,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'İlaçlar aranıyor...',
+                            l10n.medSearching,
                             style: GoogleFonts.outfit(
                               fontSize: 13,
                               color: isDark ? Colors.white54 : Colors.black54,
@@ -741,17 +729,17 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                               const Text('🔍', style: TextStyle(fontSize: 24)),
                               const SizedBox(height: 12),
                               Text(
-                                'İlaç bulunamadı',
+                                l10n.medSearchNotFound,
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.w600,
                                   color: isDark
                                       ? Colors.white70
-                                      : Colors.black.withValues(alpha: 0.7),
+                                      : Colors.black.withOpacity(0.7),
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Lütfen resmi verileri içe aktarın veya\nfarklı bir isim deneyin.',
+                                l10n.medSearchNotFoundHint,
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.outfit(
                                   fontSize: 12,
@@ -776,7 +764,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                               child: ListTile(
                                 dense: true,
                                 contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 4),
+                                    horizontal: 16, vertical: 4,),
                                 title: Text(
                                   med['name'] ?? '',
                                   style: GoogleFonts.outfit(
@@ -802,7 +790,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                                         med['dosage'] ?? med['dose'] ?? '';
                                     _showSearchResults = false;
                                     _currentSelectedMedicineData = med;
-                                    _selectedIcon = "💊";
+                                    _selectedIcon = '💊';
                                   });
                                 },
                               ),
@@ -821,6 +809,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
   Map<String, dynamic>? _currentSelectedMedicineData;
 
   Widget _buildSelectedMedicineInfoCard(bool isDark, Color color) {
+    final l10n = AppLocalizations.of(context)!;
     final data = _currentSelectedMedicineData!;
     final genericName = data['generic_name'] as String? ?? '';
     final atcCode = data['atcCode'] as String? ?? '';
@@ -834,9 +823,9 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
+        color: color.withOpacity(0.06),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
+        border: Border.all(color: color.withOpacity(0.15)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -846,7 +835,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               Icon(Icons.verified_rounded, size: 16, color: color),
               const SizedBox(width: 6),
               Text(
-                'Veritabanından eşleştirildi',
+                l10n.medMatchedFromDb,
                 style: GoogleFonts.outfit(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -857,21 +846,21 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               GestureDetector(
                 onTap: () => setState(() => _currentSelectedMedicineData = null),
                 child: Icon(Icons.close_rounded, size: 16,
-                    color: isDark ? Colors.white38 : Colors.black38),
+                    color: isDark ? Colors.white38 : Colors.black38,),
               ),
             ],
           ),
           if (genericName.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _buildInfoRow('Etken Madde', genericName, isDark),
+            _buildInfoRow(l10n.medActiveIngredient, genericName, isDark),
           ],
           if (atcCode.isNotEmpty) ...[
             const SizedBox(height: 4),
-            _buildInfoRow('ATC Kodu', atcCode, isDark),
+            _buildInfoRow(l10n.medAtcCode, atcCode, isDark),
           ],
           if (barcode.isNotEmpty) ...[
             const SizedBox(height: 4),
-            _buildInfoRow('Barkod', barcode, isDark),
+            _buildInfoRow(l10n.medBarcode, barcode, isDark),
           ],
           if (categories.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -881,14 +870,14 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               children: categories.take(3).map((cat) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   cat,
                   style: GoogleFonts.outfit(fontSize: 10, color: color, fontWeight: FontWeight.w500),
                 ),
-              )).toList(),
+              ),).toList(),
             ),
           ],
         ],
@@ -924,17 +913,17 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
 
   Widget _buildField(
       TextEditingController ctrl, String hint, IconData icon, bool isDark,
-      {int maxLines = 1, TextInputType keyboardType = TextInputType.text}) {
+      {int maxLines = 1, TextInputType keyboardType = TextInputType.text,}) {
     return Container(
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : Colors.black.withValues(alpha: 0.03),
+            ? Colors.white.withOpacity(0.04)
+            : Colors.black.withOpacity(0.03),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.06),
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.06),
         ),
       ),
       child: TextField(
@@ -946,9 +935,9 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.outfit(
-              color: isDark ? Colors.white24 : Colors.black26),
+              color: isDark ? Colors.white24 : Colors.black26,),
           prefixIcon: Icon(icon,
-              color: isDark ? Colors.white24 : Colors.black26, size: 20),
+              color: isDark ? Colors.white24 : Colors.black26, size: 20,),
           border: InputBorder.none,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -959,7 +948,8 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
 
   Widget _buildDateTile(String label, DateTime? date, bool isDark, Color color,
       ValueChanged<DateTime> onPicked,
-      {bool clearable = false, VoidCallback? onClear}) {
+      {bool clearable = false, VoidCallback? onClear,}) {
+    final l10n = AppLocalizations.of(context)!;
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -980,19 +970,19 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.04)
-              : Colors.black.withValues(alpha: 0.03),
+              ? Colors.white.withOpacity(0.04)
+              : Colors.black.withOpacity(0.03),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.06),
+                ? Colors.white.withOpacity(0.06)
+                : Colors.black.withOpacity(0.06),
           ),
         ),
         child: Row(
           children: [
             Icon(Icons.calendar_today_rounded,
-                size: 16, color: isDark ? Colors.white38 : Colors.black38),
+                size: 16, color: isDark ? Colors.white38 : Colors.black38,),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -1001,11 +991,11 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                   Text(label,
                       style: GoogleFonts.outfit(
                           fontSize: 10,
-                          color: isDark ? Colors.white38 : Colors.black38)),
+                          color: isDark ? Colors.white38 : Colors.black38,),),
                   Text(
                     date != null
                         ? '${date.day}.${date.month}.${date.year}'
-                        : 'Seçilmedi',
+                        : l10n.medNotSelected,
                     style: GoogleFonts.outfit(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
@@ -1019,7 +1009,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
               GestureDetector(
                 onTap: onClear,
                 child: Icon(Icons.close_rounded,
-                    size: 16, color: isDark ? Colors.white24 : Colors.black26),
+                    size: 16, color: isDark ? Colors.white24 : Colors.black26,),
               ),
           ],
         ),
@@ -1028,18 +1018,18 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
   }
 
   Widget _buildToggleTile(String title, String subtitle, IconData icon,
-      bool value, ValueChanged<bool> onChanged, bool isDark, Color color) {
+      bool value, ValueChanged<bool> onChanged, bool isDark, Color color,) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : Colors.black.withValues(alpha: 0.03),
+            ? Colors.white.withOpacity(0.04)
+            : Colors.black.withOpacity(0.03),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark
-              ? Colors.white.withValues(alpha: 0.06)
-              : Colors.black.withValues(alpha: 0.06),
+              ? Colors.white.withOpacity(0.06)
+              : Colors.black.withOpacity(0.06),
         ),
       ),
       child: Row(
@@ -1050,7 +1040,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                   ? color
                   : isDark
                       ? Colors.white24
-                      : Colors.black26),
+                      : Colors.black26,),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1060,11 +1050,11 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                     style: GoogleFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.black87)),
+                        color: isDark ? Colors.white : Colors.black87,),),
                 Text(subtitle,
                     style: GoogleFonts.outfit(
                         fontSize: 11,
-                        color: isDark ? Colors.white38 : Colors.black38)),
+                        color: isDark ? Colors.white38 : Colors.black38,),),
               ],
             ),
           ),
@@ -1101,6 +1091,7 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
   }
 
   void _showIconPicker() {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1116,9 +1107,9 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('İkon Seç',
+              Text(l10n.medPickIcon,
                   style: GoogleFonts.outfit(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
+                      fontSize: 16, fontWeight: FontWeight.bold,),),
               const SizedBox(height: 16),
               Wrap(
                 spacing: 12,
@@ -1135,21 +1126,21 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? Color(_selectedColor).withValues(alpha: 0.15)
+                            ? Color(_selectedColor).withOpacity(0.15)
                             : isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.black.withValues(alpha: 0.04),
+                                ? Colors.white.withOpacity(0.06)
+                                : Colors.black.withOpacity(0.04),
                         borderRadius: BorderRadius.circular(14),
                         border: isSelected
                             ? Border.all(
                                 color: Color(_selectedColor)
-                                    .withValues(alpha: 0.5),
-                                width: 2)
+                                    .withOpacity(0.5),
+                                width: 2,)
                             : null,
                       ),
                       child: Center(
                           child:
-                              Text(icon, style: const TextStyle(fontSize: 24))),
+                              Text(icon, style: const TextStyle(fontSize: 24)),),
                     ),
                   );
                 }).toList(),

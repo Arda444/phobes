@@ -3,10 +3,19 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/phobes_theme.dart';
+import '../../core/app_locales.dart';
+import '../../core/marketing_module_catalog.dart';
+import '../../main.dart';
+import '../../widgets/marketing/marketing_feature_card.dart';
 import '../../widgets/phobes_widgets.dart';
 import '../../l10n/app_localizations.dart';
 import '../settings/about_phobes_screen.dart';
+import '../common/phobes_feature_tree_screen.dart';
+import '../common/phobes_contact_screen.dart';
+import '../common/legal_document_screen.dart';
+import '../../core/legal_content.dart';
 import 'auth_screen.dart';
 import 'landing_mockups.dart';
 
@@ -17,12 +26,15 @@ class LandingScreen extends StatefulWidget {
   State<LandingScreen> createState() => _LandingScreenState();
 }
 
+enum _SubPage { home, about, features, contact }
+
 class _LandingScreenState extends State<LandingScreen>
     with TickerProviderStateMixin {
   late ScrollController _scrollController;
   late AnimationController _bgAnimController;
   double _scrollProgress = 0.0;
   bool _isScrolled = false;
+  _SubPage _subPage = _SubPage.home;
 
   @override
   void initState() {
@@ -63,10 +75,12 @@ class _LandingScreenState extends State<LandingScreen>
           const begin = Offset(0.0, 1.0);
           const end = Offset.zero;
           const curve = Curves.easeOutQuart;
-          var tween =
+          final tween =
               Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
           return SlideTransition(
-              position: animation.drive(tween), child: child);
+            position: animation.drive(tween),
+            child: child,
+          );
         },
       ),
     );
@@ -82,244 +96,344 @@ class _LandingScreenState extends State<LandingScreen>
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-          backgroundColor: isDark ? Colors.black : cs.surface,
-          body: Stack(
-            children: [
-              // Dynamic Mesh Gradient Background
-              AnimatedBuilder(
-                animation: _bgAnimController,
-                builder: (context, _) => CustomPaint(
-                  size: MediaQuery.of(context).size,
-                  painter: _MeshGradientPainter(
-                      _bgAnimController.value, _scrollProgress, cs, isDark),
-                ),
+      backgroundColor: isDark ? Colors.black : cs.surface,
+      body: Stack(
+        children: [
+          AnimatedBuilder(
+            animation: _bgAnimController,
+            builder: (context, _) => CustomPaint(
+              size: MediaQuery.of(context).size,
+              painter: _MeshGradientPainter(
+                _bgAnimController.value,
+                _scrollProgress,
+                cs,
+                isDark,
               ),
-
-              // Glass Overlay
-              IgnorePointer(
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ClipRect(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
                   child: Container(color: Colors.transparent),
                 ),
               ),
-
-              CustomScrollView(
-                controller: _scrollController,
-                physics: const ClampingScrollPhysics(),
-                slivers: [
-                  // Navbar
-                  SliverAppBar(
-                    floating: true,
-                    pinned: true,
-                    automaticallyImplyLeading: false,
-                    backgroundColor: _isScrolled
-                        ? (isDark
-                            ? Colors.black.withValues(alpha: 0.85)
-                            : Colors.white.withValues(alpha: 0.85))
-                        : Colors.transparent,
-                    elevation: _isScrolled ? 1 : 0,
-                    toolbarHeight: 70,
-                    flexibleSpace: ClipRRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-                    titleSpacing: 0,
-                    title: _buildNavbar(cs, l10n, isWeb, isDark),
+            ),
+          ),
+          CustomScrollView(
+            controller: _scrollController,
+            physics: const ClampingScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                floating: true,
+                pinned: true,
+                automaticallyImplyLeading: false,
+                backgroundColor: _isScrolled
+                    ? (isDark
+                        ? Colors.black.withOpacity(0.85)
+                        : Colors.white.withOpacity(0.85))
+                    : Colors.transparent,
+                elevation: _isScrolled ? 1 : 0,
+                toolbarHeight: 70,
+                flexibleSpace: ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(color: Colors.transparent),
                   ),
-
-                  // Hero
-                  SliverToBoxAdapter(
-                    child: isWeb
-                        ? _buildWebHero(cs, l10n, isDark)
-                        : _buildMobileHero(cs, l10n, isDark),
-                  ),
-
-                  // Trust Bar
-                  SliverToBoxAdapter(child: _buildTrustBar(cs)),
-
-                  // ── Feature Sections ──
-                  _buildSection(
-                    isWeb: isWeb,
-                    cs: cs,
-                    title: "Zamanın Efendisi",
-                    subtitle: "AKILLI TAKVİM",
-                    desc:
-                        "Haftalık, aylık ve günlük görünümlerle tüm planını tek bir yerde gör. Görevler, randevular ve notlar aynı takvimde birleşir.",
-                    mockup: const CodeCalendarMockup(),
-                    color: Colors.orange,
-                    reversed: false,
-                    icon: Icons.calendar_month_rounded,
-                  ),
-
-                  _buildSection(
-                    isWeb: isWeb,
-                    cs: cs,
-                    title: "Ekip Gücü",
-                    subtitle: "PROJE YÖNETİMİ",
-                    desc:
-                        "Kanban panosu, proje takibi ve liderlik tablosu ile takımını yönet. Görev ata, ilerleme izle, verimlilik artır.",
-                    mockup: const CodeDashboardMockup(),
-                    color: cs.primary,
-                    reversed: true,
-                    icon: Icons.people_alt_rounded,
-                  ),
-
-                  _buildSection(
-                    isWeb: isWeb,
-                    cs: cs,
-                    title: "Yapay Zeka Asistanı",
-                    subtitle: "PHOBES NOVA",
-                    desc:
-                        "AI asistanın verimlilik analizi yapar, görevlerini önceliklendirir, toplantı çakışmalarını tespit eder ve sana özel öneriler sunar.",
-                    mockup: const CodeIntelligenceMockup(),
-                    color: cs.secondary,
-                    reversed: false,
-                    icon: Icons.auto_awesome_rounded,
-                  ),
-
-                  _buildSection(
-                    isWeb: isWeb,
-                    cs: cs,
-                    title: "Finansal Kontrol",
-                    subtitle: "AKILLI BÜTÇE",
-                    desc:
-                        "Harcamalarını kategorize et, aylık limit belirle ve paranın nereye gittiğini detaylı grafiklerle gör.",
-                    mockup: const CodeFinanceMockup(),
-                    color: cs.tertiary,
-                    reversed: true,
-                    icon: Icons.account_balance_wallet_rounded,
-                  ),
-
-                  // ── All Features Grid ──
-                  SliverToBoxAdapter(child: _buildAllFeatures(cs, isWeb, isDark)),
-
-                  // ── Platform Section ──
-                  SliverToBoxAdapter(child: _buildPlatformSection(cs, isWeb, isDark)),
-
-                  // Final CTA
-                  SliverToBoxAdapter(child: _buildFinalCTA(cs, l10n, isWeb)),
-
-                  // Footer
-                  SliverToBoxAdapter(child: _buildFooter(cs, isWeb)),
-
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 60)),
-                ],
+                ),
+                titleSpacing: 0,
+                title: _buildNavbar(cs, l10n, isWeb, isDark),
               ),
+              if (_subPage == _SubPage.home) ...[
+                SliverToBoxAdapter(
+                  child: isWeb
+                      ? _buildWebHero(cs, l10n, isDark)
+                      : _buildMobileHero(cs, l10n, isDark),
+                ),
+                SliverToBoxAdapter(child: _buildTrustBar(cs)),
+                _buildSection(
+                  isWeb: isWeb,
+                  cs: cs,
+                  title: l10n.landingFeatCalendarTitle,
+                  subtitle: l10n.landingFeatCalendarBadge,
+                  desc: l10n.landingFeatCalendarDesc,
+                  mockup: const CodeCalendarMockup(),
+                  color: Colors.orange,
+                  reversed: false,
+                  icon: Icons.calendar_month_rounded,
+                ),
+                _buildSection(
+                  isWeb: isWeb,
+                  cs: cs,
+                  title: l10n.landingFeatTeamsTitle,
+                  subtitle: l10n.landingFeatTeamsBadge,
+                  desc: l10n.landingFeatTeamsDesc,
+                  mockup: const CodeDashboardMockup(),
+                  color: cs.primary,
+                  reversed: true,
+                  icon: Icons.people_alt_rounded,
+                ),
+                _buildSection(
+                  isWeb: isWeb,
+                  cs: cs,
+                  title: l10n.landingFeatNovaTitle,
+                  subtitle: l10n.landingFeatNovaBadge,
+                  desc: l10n.landingFeatNovaDesc,
+                  mockup: const CodeIntelligenceMockup(),
+                  color: cs.secondary,
+                  reversed: false,
+                  icon: Icons.auto_awesome_rounded,
+                ),
+                _buildSection(
+                  isWeb: isWeb,
+                  cs: cs,
+                  title: l10n.landingFeatBudgetTitle,
+                  subtitle: l10n.landingFeatBudgetBadge,
+                  desc: l10n.landingFeatBudgetDesc,
+                  mockup: const CodeFinanceMockup(),
+                  color: cs.tertiary,
+                  reversed: true,
+                  icon: Icons.account_balance_wallet_rounded,
+                ),
+                SliverToBoxAdapter(
+                  child: _buildAllFeatures(context, cs, isWeb, isDark),
+                ),
+                SliverToBoxAdapter(
+                    child: _buildPlatformSection(cs, isWeb, isDark)),
+                SliverToBoxAdapter(child: _buildFinalCTA(cs, l10n, isWeb)),
+                SliverToBoxAdapter(child: _buildFooter(context, cs, isWeb)),
+                const SliverPadding(padding: EdgeInsets.only(bottom: 60)),
+              ] else
+                SliverFillRemaining(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: _subPage == _SubPage.about
+                        ? const AboutPhobesScreen(embedded: true)
+                        : _subPage == _SubPage.features
+                            ? const PhobesFeatureTreeScreen(embedded: true)
+                            : const PhobesContactScreen(embedded: true),
+                  ),
+                ),
             ],
-          ),
-        );
-// Removed Builder and Theme wrappers
-  }
-
-  // ─── NAVBAR ───
-
-  Widget _buildNavbar(ColorScheme cs, AppLocalizations l10n, bool isWeb, bool isDark) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isWeb ? 48 : 16),
-      child: Row(
-        children: [
-          // Logo
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: PhobesTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Text('P',
-                  style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white)),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text('Phobes',
-              style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: cs.onSurface,
-                  letterSpacing: -0.5)),
-
-          const Spacer(),
-          if (isWeb) ...[
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AboutPhobesScreen()),
-              ),
-              child: Text("Hakkında",
-                  style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: cs.onSurface.withValues(alpha: 0.6))),
-            ),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const PhobesFeatureTreeScreen()),
-              ),
-              child: Text("Özellikler",
-                  style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: cs.onSurface.withValues(alpha: 0.6))),
-            ),
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PhobesContactScreen()),
-              ),
-              child: Text("İletişim",
-                  style: GoogleFonts.outfit(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: cs.onSurface.withValues(alpha: 0.6))),
-            ),
-            const SizedBox(width: 8),
-          ],
-
-          // Theme toggle
-          IconButton(
-            icon: Icon(
-              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              color: cs.onSurface.withValues(alpha: 0.6),
-              size: 20,
-            ),
-            onPressed: () => PhobesTheme.toggleTheme(),
-            tooltip: isDark ? "Açık Tema" : "Koyu Tema",
-          ),
-
-          const SizedBox(width: 4),
-
-          // Auth buttons
-          TextButton(
-            onPressed: () => _navigateToAuth(true),
-            child: Text(l10n.login,
-                style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: cs.onSurface.withValues(alpha: 0.7))),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 38,
-            child: PhobesButton(
-              text: l10n.register,
-              width: 100,
-              onPressed: () => _navigateToAuth(false),
-            ),
           ),
         ],
       ),
     );
   }
 
-  // ─── WEB HERO ───
+  Widget _navBtn(String label, _SubPage page, ColorScheme cs) {
+    final active = _subPage == page;
+    return TextButton(
+      onPressed: () {
+        setState(() => _subPage = page);
+        _scrollController.jumpTo(0);
+      },
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(
+          fontSize: 13,
+          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          color: active ? cs.primary : cs.onSurface.withOpacity(0.6),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageSwitcher(ColorScheme cs, AppLocalizations l10n) {
+    final currentCode = MyApp.of(context)?.locale?.languageCode ??
+        Localizations.localeOf(context).languageCode;
+    final currentOption =
+        localeOptionForCode(currentCode) ?? kAppLocaleOptions.first;
+
+    return PopupMenuButton<Locale>(
+      tooltip: l10n.language,
+      position: PopupMenuPosition.under,
+      color: cs.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: cs.outline.withOpacity(0.12)),
+      ),
+      elevation: 8,
+      onSelected: (locale) => MyApp.of(context)?.setLocale(locale),
+      itemBuilder: (context) => [
+        for (final option in kAppLocaleOptions)
+          PopupMenuItem<Locale>(
+            value: option.locale,
+            height: 40,
+            child: Row(
+              children: [
+                if (option.locale.languageCode == currentCode)
+                  Icon(Icons.check_rounded,
+                      size: 16, color: cs.primary)
+                else
+                  const SizedBox(width: 16),
+                const SizedBox(width: 10),
+                Text(
+                  option.nativeLabel,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight:
+                        option.locale.languageCode == currentCode
+                            ? FontWeight.w700
+                            : FontWeight.w500,
+                    color: option.locale.languageCode == currentCode
+                        ? cs.primary
+                        : cs.onSurface.withOpacity(0.85),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  option.locale.languageCode.toUpperCase(),
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 10,
+                    color: cs.onSurface.withOpacity(0.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: cs.outline.withOpacity(0.15)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.language_rounded,
+              size: 16,
+              color: cs.onSurface.withOpacity(0.6),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              currentOption.locale.languageCode.toUpperCase(),
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: cs.onSurface.withOpacity(0.7),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(width: 2),
+            Icon(
+              Icons.expand_more_rounded,
+              size: 14,
+              color: cs.onSurface.withOpacity(0.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavbar(
+      ColorScheme cs, AppLocalizations l10n, bool isWeb, bool isDark) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isWeb ? 48 : 12),
+      child: Row(
+        children: [
+          Container(
+            width: isWeb ? 32 : 28,
+            height: isWeb ? 32 : 28,
+            decoration: BoxDecoration(
+              gradient: PhobesTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                'P',
+                style: GoogleFonts.outfit(
+                  fontSize: isWeb ? 18 : 16,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          if (isWeb) ...[
+            const SizedBox(width: 10),
+            Text(
+              'Phobes',
+              style: GoogleFonts.outfit(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: cs.onSurface,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+          const Spacer(),
+          if (isWeb) ...[
+            if (_subPage != _SubPage.home)
+              TextButton.icon(
+                onPressed: () {
+                  setState(() => _subPage = _SubPage.home);
+                  _scrollController.jumpTo(0);
+                },
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 14,
+                  color: cs.onSurface.withOpacity(0.6),
+                ),
+                label: Text(
+                  l10n.landingHome,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: cs.onSurface.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            _navBtn(l10n.landingAbout, _SubPage.about, cs),
+            _navBtn(l10n.landingFeatures, _SubPage.features, cs),
+            _navBtn(l10n.landingContact, _SubPage.contact, cs),
+            const SizedBox(width: 8),
+          ],
+          _buildLanguageSwitcher(cs, l10n),
+          const SizedBox(width: 2),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            icon: Icon(
+              isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: cs.onSurface.withOpacity(0.6),
+              size: 20,
+            ),
+            onPressed: () => PhobesTheme.toggleTheme(),
+            tooltip: isDark ? l10n.landingThemeLight : l10n.landingThemeDark,
+          ),
+          if (isWeb) ...[
+            const SizedBox(width: 4),
+            TextButton(
+              onPressed: () => _navigateToAuth(true),
+              child: Text(
+                l10n.login,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface.withOpacity(0.7),
+                ),
+              ),
+            ),
+          ],
+          SizedBox(width: isWeb ? 8 : 4),
+          SizedBox(
+            height: isWeb ? 38 : 34,
+            child: PhobesButton(
+              text: isWeb ? l10n.register : l10n.login,
+              width: isWeb ? 100 : 78,
+              onPressed: () => _navigateToAuth(!isWeb),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildWebHero(ColorScheme cs, AppLocalizations l10n, bool isDark) {
     return Container(
@@ -341,9 +455,11 @@ class _LandingScreenState extends State<LandingScreen>
                     duration: const Duration(seconds: 3),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: cs.primary.withValues(alpha: 0.1),
+                        color: cs.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: Row(
@@ -352,16 +468,22 @@ class _LandingScreenState extends State<LandingScreen>
                           SpinPerfect(
                             infinite: true,
                             duration: const Duration(seconds: 4),
-                            child: Icon(Icons.auto_awesome,
-                                size: 14, color: cs.primary),
+                            child: Icon(
+                              Icons.auto_awesome,
+                              size: 14,
+                              color: cs.primary,
+                            ),
                           ),
                           const SizedBox(width: 6),
-                          Text("AI DESTEKLİ VERİMLİLİK",
-                              style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  color: cs.primary,
-                                  letterSpacing: 2)),
+                          Text(
+                            l10n.landingAiProductivity,
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: cs.primary,
+                              letterSpacing: 2,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -370,12 +492,15 @@ class _LandingScreenState extends State<LandingScreen>
                 const SizedBox(height: 24),
                 FadeInLeft(
                   delay: const Duration(milliseconds: 200),
-                  child: Text("Sadece Yaşama,\nZamanı Yönet.",
-                      style: GoogleFonts.outfit(
-                          fontSize: 64,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                          color: cs.onSurface)),
+                  child: Text(
+                    l10n.landingHeroHeadline,
+                    style: GoogleFonts.outfit(
+                      fontSize: 64,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                      color: cs.onSurface,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 20),
                 FadeInLeft(
@@ -383,11 +508,13 @@ class _LandingScreenState extends State<LandingScreen>
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 460),
                     child: Text(
-                        "Takvim, görev yönetimi, bütçe, randevular, istatistikler, ilaç takibi, alışkanlıklar, odak modu ve AI asistanı — hepsi tek uygulamada.",
-                        style: GoogleFonts.outfit(
-                            fontSize: 17,
-                            color: cs.onSurface.withValues(alpha: 0.5),
-                            height: 1.6)),
+                      l10n.landingHeroSub,
+                      style: GoogleFonts.outfit(
+                        fontSize: 17,
+                        color: cs.onSurface.withOpacity(0.5),
+                        height: 1.6,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 36),
@@ -398,23 +525,28 @@ class _LandingScreenState extends State<LandingScreen>
                     ElasticIn(
                       delay: const Duration(milliseconds: 600),
                       child: _DownloadBtn(
-                          name: "App Store",
-                          icon: Icons.apple_rounded,
-                          isDark: isDark),
+                        name: 'App Store',
+                        icon: Icons.apple_rounded,
+                        isDark: isDark,
+                      ),
                     ),
                     ElasticIn(
                       delay: const Duration(milliseconds: 750),
                       child: _DownloadBtn(
-                          name: "Play Store",
-                          icon: Icons.android_rounded,
-                          isDark: isDark),
+                        name: 'Android APK',
+                        icon: Icons.android_rounded,
+                        isDark: isDark,
+                        topLabel: 'Direct Download',
+                        url: '/phobes.apk',
+                      ),
                     ),
                     ElasticIn(
                       delay: const Duration(milliseconds: 900),
                       child: _DownloadBtn(
-                          name: "Windows",
-                          icon: Icons.window_rounded,
-                          isDark: isDark),
+                        name: 'Windows',
+                        icon: Icons.window_rounded,
+                        isDark: isDark,
+                      ),
                     ),
                   ],
                 ),
@@ -432,9 +564,10 @@ class _LandingScreenState extends State<LandingScreen>
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                          color: cs.primary.withValues(alpha: 0.15),
-                          blurRadius: 60,
-                          offset: const Offset(0, 20)),
+                        color: cs.primary.withOpacity(0.15),
+                        blurRadius: 60,
+                        offset: const Offset(0, 20),
+                      ),
                     ],
                   ),
                   child: ClipRRect(
@@ -450,8 +583,6 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
-  // ─── MOBILE HERO ───
-
   Widget _buildMobileHero(ColorScheme cs, AppLocalizations l10n, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -459,22 +590,28 @@ class _LandingScreenState extends State<LandingScreen>
         children: [
           const SizedBox(height: 16),
           FadeInDown(
-            child: Text("Zamanı Yönet.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                    color: cs.onSurface)),
+            child: Text(
+              l10n.landingHeroHeadline,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 40,
+                fontWeight: FontWeight.w900,
+                height: 1.1,
+                color: cs.onSurface,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           FadeInDown(
             delay: const Duration(milliseconds: 200),
             child: Text(
-                "Takvim, bütçe, ekip, istatistik ve AI — tek uygulamada.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                    fontSize: 15, color: cs.onSurface.withValues(alpha: 0.5))),
+              l10n.landingHeroSub,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 15,
+                color: cs.onSurface.withOpacity(0.5),
+              ),
+            ),
           ),
           const SizedBox(height: 28),
           FadeInUp(
@@ -485,23 +622,51 @@ class _LandingScreenState extends State<LandingScreen>
           FadeInUp(
             delay: const Duration(milliseconds: 600),
             child: PhobesButton(
-                text: "HEMEN BAŞLA",
-                width: double.infinity,
-                onPressed: () => _navigateToAuth(false)),
+              text: l10n.landingCtaStart,
+              width: double.infinity,
+              onPressed: () => _navigateToAuth(false),
+            ),
+          ),
+          const SizedBox(height: 24),
+          FadeInUp(
+            delay: const Duration(milliseconds: 750),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                _DownloadBtn(
+                  name: 'App Store',
+                  icon: Icons.apple_rounded,
+                  isDark: isDark,
+                ),
+                _DownloadBtn(
+                  name: 'Android APK',
+                  icon: Icons.android_rounded,
+                  isDark: isDark,
+                  topLabel: 'Direct Download',
+                  url: '/phobes.apk',
+                ),
+                _DownloadBtn(
+                  name: 'Windows',
+                  icon: Icons.window_rounded,
+                  isDark: isDark,
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ─── TRUST BAR ───
-
   Widget _buildTrustBar(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     return FadeInUp(
       delay: const Duration(milliseconds: 800),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-        color: cs.onSurface.withValues(alpha: 0.02),
+        color: cs.onSurface.withOpacity(0.02),
         child: Wrap(
           alignment: WrapAlignment.center,
           spacing: 32,
@@ -509,31 +674,37 @@ class _LandingScreenState extends State<LandingScreen>
           children: [
             BounceInDown(
               delay: const Duration(milliseconds: 800),
-              child: const _TrustLogo(
-                  icon: Icons.flash_on_rounded, label: "Hızlı"),
+              child: _TrustLogo(
+                icon: Icons.flash_on_rounded,
+                label: l10n.landingTrustFast,
+              ),
             ),
             BounceInDown(
               delay: const Duration(milliseconds: 950),
-              child: const _TrustLogo(
-                  icon: Icons.security_rounded, label: "Güvenli"),
+              child: _TrustLogo(
+                icon: Icons.security_rounded,
+                label: l10n.landingTrustSecure,
+              ),
             ),
             BounceInDown(
               delay: const Duration(milliseconds: 1100),
-              child: const _TrustLogo(
-                  icon: Icons.cloud_done_rounded, label: "Senkronize"),
+              child: _TrustLogo(
+                icon: Icons.cloud_done_rounded,
+                label: l10n.landingTrustSync,
+              ),
             ),
             BounceInDown(
               delay: const Duration(milliseconds: 1250),
-              child: const _TrustLogo(
-                  icon: Icons.verified_user_rounded, label: "Premium"),
+              child: _TrustLogo(
+                icon: Icons.verified_user_rounded,
+                label: l10n.landingTrustPremium,
+              ),
             ),
           ],
         ),
       ),
     );
   }
-
-  // ─── BENEFIT SECTION ───
 
   Widget _buildSection({
     required bool isWeb,
@@ -556,35 +727,44 @@ class _LandingScreenState extends State<LandingScreen>
           child: Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: color, size: 24),
           ),
         ),
         const SizedBox(height: 16),
-        Text(subtitle,
-            style: GoogleFonts.outfit(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 3,
-                color: color)),
+        Text(
+          subtitle,
+          style: GoogleFonts.outfit(
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 3,
+            color: color,
+          ),
+        ),
         const SizedBox(height: 10),
-        Text(title,
-            textAlign: isWeb ? TextAlign.start : TextAlign.center,
-            style: GoogleFonts.outfit(
-                fontSize: 32,
-                fontWeight: FontWeight.w900,
-                color: cs.onSurface)),
+        Text(
+          title,
+          textAlign: isWeb ? TextAlign.start : TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 32,
+            fontWeight: FontWeight.w900,
+            color: cs.onSurface,
+          ),
+        ),
         const SizedBox(height: 12),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
-          child: Text(desc,
-              textAlign: isWeb ? TextAlign.start : TextAlign.center,
-              style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  color: cs.onSurface.withValues(alpha: 0.5),
-                  height: 1.6)),
+          child: Text(
+            desc,
+            textAlign: isWeb ? TextAlign.start : TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 15,
+              color: cs.onSurface.withOpacity(0.5),
+              height: 1.6,
+            ),
+          ),
         ),
       ],
     );
@@ -598,11 +778,14 @@ class _LandingScreenState extends State<LandingScreen>
       return SliverPadding(
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
         sliver: SliverToBoxAdapter(
-          child: Column(children: [
-            FadeInLeft(child: textW),
-            const SizedBox(height: 32),
-            FadeInUp(delay: const Duration(milliseconds: 200), child: mockupW),
-          ]),
+          child: Column(
+            children: [
+              FadeInLeft(child: textW),
+              const SizedBox(height: 32),
+              FadeInUp(
+                  delay: const Duration(milliseconds: 200), child: mockupW),
+            ],
+          ),
         ),
       );
     }
@@ -610,8 +793,11 @@ class _LandingScreenState extends State<LandingScreen>
     final children = reversed
         ? [
             Expanded(
-                child: FadeInUp(
-                    delay: const Duration(milliseconds: 200), child: mockupW)),
+              child: FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: mockupW,
+              ),
+            ),
             const SizedBox(width: 60),
             Expanded(child: FadeInLeft(child: textW)),
           ]
@@ -619,154 +805,98 @@ class _LandingScreenState extends State<LandingScreen>
             Expanded(child: FadeInLeft(child: textW)),
             const SizedBox(width: 60),
             Expanded(
-                child: FadeInUp(
-                    delay: const Duration(milliseconds: 200), child: mockupW)),
+              child: FadeInUp(
+                delay: const Duration(milliseconds: 200),
+                child: mockupW,
+              ),
+            ),
           ];
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(vertical: 60, horizontal: 80),
       sliver: SliverToBoxAdapter(
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: children,
         ),
       ),
     );
   }
 
-  // ─── ALL FEATURES GRID ───
+  Widget _buildAllFeatures(
+    BuildContext context,
+    ColorScheme cs,
+    bool isWeb,
+    bool isDark,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final features = l10n != null
+        ? MarketingModuleCatalog.landingFeatures(l10n)
+        : <MarketingModule>[];
 
-  Widget _buildAllFeatures(ColorScheme cs, bool isWeb, bool isDark) {
-    const features = [
-      _Feat(Icons.calendar_month_rounded, "Akıllı Takvim",
-          "Haftalık, aylık, günlük görünüm", Color(0xFFE65100)),
-      _Feat(Icons.task_alt_rounded, "Görev Yönetimi",
-          "Priorite, tekrar, sesli ekleme", Color(0xFF4285F4)),
-      _Feat(Icons.event_available_rounded, "Randevular",
-          "Müşteri yönetimi ve grup randevuları", Color(0xFF10B981)),
-      _Feat(Icons.bar_chart_rounded, "İstatistikler",
-          "Verimlilik analizi ve grafikler", Color(0xFFF59E0B)),
-      _Feat(Icons.account_balance_wallet_rounded, "Bütçe Takibi",
-          "Gelir, gider, kategori limitleri", Color(0xFF06B6D4)),
-      _Feat(Icons.auto_awesome_rounded, "Phobes Nova AI",
-          "Akıllı öneri ve analiz asistanı", Color(0xFF8B5CF6)),
-      _Feat(Icons.note_alt_rounded, "Zengin Notlar",
-          "Kategorili, etiketli not sistemi", Color(0xFF3B82F6)),
-      _Feat(Icons.view_kanban_rounded, "Kanban Panosu",
-          "Proje takibi ve ekip yönetimi", Color(0xFFF472B6)),
-      _Feat(Icons.group_rounded, "Ekip Yönetimi",
-          "Liderlik tablosu ve aktivite", Color(0xFFEF4444)),
-      _Feat(Icons.timer_rounded, "Odak Modu",
-          "Pomodoro ve konsantrasyon takibi", Color(0xFF059669)),
-      _Feat(Icons.loop_rounded, "Alışkanlık Takibi",
-          "Günlük rutinlerini oluştur", Color(0xFF7C3AED)),
-      _Feat(Icons.medication_rounded, "İlaç Hatırlatıcı",
-          "Doz takibi ve bildirimler", Color(0xFFDB2777)),
-      _Feat(Icons.notifications_active_rounded, "Akıllı Bildirimler",
-          "Özelleştirilebilir hatırlatıcılar", Color(0xFFF97316)),
-      _Feat(Icons.palette_rounded, "Kişiselleştirme",
-          "8 renk, dark/light/AMOLED tema", Color(0xFF8B5CF6)),
-      _Feat(Icons.mic_rounded, "Sesli Görev Ekleme",
-          "Konuşarak hızlı görev kaydet", Color(0xFF0EA5E9)),
-    ];
+    double cardWidthFor(double maxWidth) {
+      if (maxWidth >= 1200) return 220;
+      if (maxWidth >= 900) return 200;
+      if (maxWidth >= 600) return (maxWidth - 32) / 2 - 8;
+      return maxWidth - 32;
+    }
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 80, horizontal: isWeb ? 80 : 24),
       child: Column(
         children: [
           FadeInDown(
-            child: Text("TÜM ÖZELLİKLER",
-                style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 3,
-                    color: cs.primary)),
+            child: Text(
+              l10n?.landingAllFeatures ?? 'ALL FEATURES',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 3,
+                color: cs.primary,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           FadeInDown(
             delay: const Duration(milliseconds: 100),
-            child: Text("Her İhtiyacın İçin\nTek Uygulama",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    height: 1.1,
-                    color: cs.onSurface)),
+            child: Text(
+              l10n?.landingAllFeaturesTitle ?? 'One app for\nevery need',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+                height: 1.1,
+                color: cs.onSurface,
+              ),
+            ),
           ),
           const SizedBox(height: 48),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            alignment: WrapAlignment.center,
-            children: features.asMap().entries.map((e) {
-              return FadeInUp(
-                delay: Duration(milliseconds: 100 + e.key * 60),
-                child: _buildFeatCard(cs, e.value, isDark),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardW = cardWidthFor(constraints.maxWidth);
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                alignment: WrapAlignment.center,
+                children: features.asMap().entries.map((e) {
+                  final m = e.value;
+                  return FadeInUp(
+                    delay: Duration(milliseconds: 100 + e.key * 40),
+                    child: MarketingFeatureCard(
+                      module: m,
+                      title: l10n != null ? m.title(l10n) : m.id,
+                      subtitle: l10n != null ? m.subtitle(l10n) : '',
+                      isDark: isDark,
+                      width: cardW,
+                    ),
+                  );
+                }).toList(),
               );
-            }).toList(),
+            },
           ),
         ],
       ),
     );
   }
-
-  Widget _buildFeatCard(ColorScheme cs, _Feat f, bool isDark) {
-    return ZoomIn(
-      duration: const Duration(milliseconds: 600),
-      child: _HoverMockup(
-        color: f.color,
-        child: Container(
-          width: 190,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-                color: cs.onSurface.withValues(alpha: isDark ? 0.08 : 0.06)),
-            boxShadow: isDark
-                ? null
-                : [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4)),
-                  ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Pulse(
-                infinite: true,
-                duration: const Duration(seconds: 3),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: f.color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(f.icon, color: f.color, size: 20),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(f.title,
-                  style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface)),
-              const SizedBox(height: 4),
-              Text(f.sub,
-                  style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      color: cs.onSurface.withValues(alpha: 0.4),
-                      height: 1.3)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── PLATFORM SECTION ───
 
   Widget _buildPlatformSection(ColorScheme cs, bool isWeb, bool isDark) {
     return Padding(
@@ -774,22 +904,28 @@ class _LandingScreenState extends State<LandingScreen>
       child: Column(
         children: [
           FadeInDown(
-            child: Text("HER YERDE PHOBES",
-                style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 3,
-                    color: cs.primary)),
+            child: Text(
+              'HER YERDE PHOBES',
+              style: GoogleFonts.outfit(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 3,
+                color: cs.primary,
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           FadeInDown(
             delay: const Duration(milliseconds: 100),
-            child: Text("Tüm Platformlarda",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    color: cs.onSurface)),
+            child: Text(
+              'Tüm Platformlarda',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.outfit(
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+                color: cs.onSurface,
+              ),
+            ),
           ),
           const SizedBox(height: 48),
           Wrap(
@@ -799,23 +935,47 @@ class _LandingScreenState extends State<LandingScreen>
             children: [
               FadeInUp(
                 delay: const Duration(milliseconds: 200),
-                child: _platformCard(cs, Icons.phone_iphone_rounded, "iOS",
-                    "iPhone & iPad", const Color(0xFF007AFF), isDark),
+                child: _platformCard(
+                  cs,
+                  Icons.phone_iphone_rounded,
+                  'iOS',
+                  'iPhone & iPad',
+                  const Color(0xFF007AFF),
+                  isDark,
+                ),
               ),
               FadeInUp(
                 delay: const Duration(milliseconds: 300),
-                child: _platformCard(cs, Icons.android_rounded, "Android",
-                    "Tüm Cihazlar", const Color(0xFF3DDC84), isDark),
+                child: _platformCard(
+                  cs,
+                  Icons.android_rounded,
+                  'Android',
+                  'Tüm Cihazlar',
+                  const Color(0xFF3DDC84),
+                  isDark,
+                ),
               ),
               FadeInUp(
                 delay: const Duration(milliseconds: 400),
-                child: _platformCard(cs, Icons.window_rounded, "Windows",
-                    "Masaüstü", const Color(0xFF00BCF2), isDark),
+                child: _platformCard(
+                  cs,
+                  Icons.window_rounded,
+                  'Windows',
+                  'Masaüstü',
+                  const Color(0xFF00BCF2),
+                  isDark,
+                ),
               ),
               FadeInUp(
                 delay: const Duration(milliseconds: 500),
                 child: _platformCard(
-                    cs, Icons.language_rounded, "Web", "Tarayıcı", cs.primary, isDark),
+                  cs,
+                  Icons.language_rounded,
+                  'Web',
+                  'Tarayıcı',
+                  cs.primary,
+                  isDark,
+                ),
               ),
             ],
           ),
@@ -825,28 +985,40 @@ class _LandingScreenState extends State<LandingScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.05),
+                color: cs.primary.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+                border: Border.all(color: cs.primary.withOpacity(0.1)),
               ),
               child: Wrap(
                 alignment: WrapAlignment.center,
                 spacing: 12,
                 children: [
-                  Icon(Icons.dark_mode_rounded,
-                      size: 18, color: cs.onSurface.withValues(alpha: 0.5)),
-                  Text("Dark & Light Mod",
-                      style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: cs.onSurface)),
-                  Text("+ AMOLED",
-                      style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: cs.primary)),
-                  Icon(Icons.light_mode_rounded,
-                      size: 18, color: Colors.orange.withValues(alpha: 0.6)),
+                  Icon(
+                    Icons.dark_mode_rounded,
+                    size: 18,
+                    color: cs.onSurface.withOpacity(0.5),
+                  ),
+                  Text(
+                    'Dark & Light Mod',
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: cs.onSurface,
+                    ),
+                  ),
+                  Text(
+                    '+ AMOLED',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: cs.primary,
+                    ),
+                  ),
+                  Icon(
+                    Icons.light_mode_rounded,
+                    size: 18,
+                    color: Colors.orange.withOpacity(0.6),
+                  ),
                 ],
               ),
             ),
@@ -857,7 +1029,13 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   Widget _platformCard(
-      ColorScheme cs, IconData icon, String name, String sub, Color c, bool isDark) {
+    ColorScheme cs,
+    IconData icon,
+    String name,
+    String sub,
+    Color c,
+    bool isDark,
+  ) {
     return ElasticIn(
       duration: const Duration(milliseconds: 800),
       child: _HoverMockup(
@@ -866,16 +1044,17 @@ class _LandingScreenState extends State<LandingScreen>
           width: 150,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+            color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: c.withValues(alpha: 0.12)),
+            border: Border.all(color: c.withOpacity(0.12)),
             boxShadow: isDark
                 ? null
                 : [
                     BoxShadow(
-                        color: c.withValues(alpha: 0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6)),
+                      color: c.withOpacity(0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
                   ],
           ),
           child: Column(
@@ -885,31 +1064,35 @@ class _LandingScreenState extends State<LandingScreen>
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: c.withValues(alpha: 0.1),
+                    color: c.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon, color: c, size: 28),
                 ),
               ),
               const SizedBox(height: 14),
-              Text(name,
-                  style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: cs.onSurface)),
+              Text(
+                name,
+                style: GoogleFonts.outfit(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: cs.onSurface,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(sub,
-                  style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      color: cs.onSurface.withValues(alpha: 0.4))),
+              Text(
+                sub,
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  color: cs.onSurface.withOpacity(0.4),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-
-  // ─── FINAL CTA ───
 
   Widget _buildFinalCTA(ColorScheme cs, AppLocalizations l10n, bool isWeb) {
     return FadeInUp(
@@ -921,14 +1104,14 @@ class _LandingScreenState extends State<LandingScreen>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                cs.primary.withValues(alpha: 0.06),
-                cs.secondary.withValues(alpha: 0.04),
+                cs.primary.withOpacity(0.06),
+                cs.secondary.withOpacity(0.04),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+            border: Border.all(color: cs.primary.withOpacity(0.1)),
           ),
           child: Column(
             children: [
@@ -936,34 +1119,43 @@ class _LandingScreenState extends State<LandingScreen>
                 child: SpinPerfect(
                   infinite: true,
                   duration: const Duration(seconds: 5),
-                  child: Icon(Icons.rocket_launch_rounded,
-                      size: 40, color: cs.primary),
+                  child: Icon(
+                    Icons.rocket_launch_rounded,
+                    size: 40,
+                    color: cs.primary,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
-              Text("Hemen Başla",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                      fontSize: isWeb ? 44 : 32,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
-                      color: cs.onSurface)),
+              Text(
+                l10n.landingCtaStart,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  fontSize: isWeb ? 44 : 32,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                  color: cs.onSurface,
+                ),
+              ),
               const SizedBox(height: 16),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 480),
                 child: Text(
-                    "Binlerce üretken insan arasına katıl ve Phobes premium deneyimini bugün yaşa.",
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        color: cs.onSurface.withValues(alpha: 0.5),
-                        height: 1.5)),
+                  'Binlerce üretken insan arasına katıl ve Phobes premium deneyimini bugün yaşa.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    color: cs.onSurface.withOpacity(0.5),
+                    height: 1.5,
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
               PhobesButton(
-                  text: "ÜCRETSİZ BAŞLA",
-                  width: isWeb ? 280 : double.infinity,
-                  onPressed: () => _navigateToAuth(false)),
+                text: l10n.landingCtaFree,
+                width: isWeb ? 280 : double.infinity,
+                onPressed: () => _navigateToAuth(false),
+              ),
             ],
           ),
         ),
@@ -971,9 +1163,8 @@ class _LandingScreenState extends State<LandingScreen>
     );
   }
 
-  // ─── FOOTER ───
-
-  Widget _buildFooter(ColorScheme cs, bool isWeb) {
+  Widget _buildFooter(BuildContext context, ColorScheme cs, bool isWeb) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 32),
       child: Column(
@@ -988,148 +1179,278 @@ class _LandingScreenState extends State<LandingScreen>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Phobes",
-                            style: GoogleFonts.outfit(
-                                fontSize: 22, fontWeight: FontWeight.w900)),
+                        Text(
+                          'Phobes',
+                          style: GoogleFonts.outfit(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                         const SizedBox(height: 6),
-                        Text("Zamanın, senin kontrolünde.",
-                            style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                color: cs.onSurface.withValues(alpha: 0.4))),
+                        Text(
+                          l10n?.landingTagline ?? 'Your time, under your control.',
+                          style: GoogleFonts.outfit(
+                            fontSize: 13,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                        ),
                       ],
                     ),
                     Row(
                       children: [
                         _FooterLinkCol(
-                            title: "Ürün",
-                            items: const [
-                              "Akıllı Takvim",
-                              "Bütçe Takibi",
-                              "Phobes Nova AI"
-                            ],
-                            onTap: (_) => _navigateToAuth(false)),
+                          title: l10n?.footerProduct ?? 'Product',
+                          items: l10n != null
+                              ? [
+                                  MarketingModuleCatalog.all
+                                      .firstWhere((m) => m.id == 'calendar')
+                                      .title(l10n),
+                                  MarketingModuleCatalog.all
+                                      .firstWhere((m) => m.id == 'budget')
+                                      .title(l10n),
+                                  MarketingModuleCatalog.all
+                                      .firstWhere((m) => m.id == 'nova')
+                                      .title(l10n),
+                                ]
+                              : const [
+                                  'Calendar',
+                                  'Budget',
+                                  'Nova',
+                                ],
+                          onTap: (_) => _navigateToAuth(false),
+                        ),
                         const SizedBox(width: 48),
                         _FooterLinkCol(
-                            title: "Şirket",
-                            items: const [
-                              "Hakkımızda",
-                              "Özellik Ağacı",
-                              "İletişim"
-                            ],
-                            onTap: (item) {
-                              if (item == "Hakkımızda") {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const AboutPhobesScreen()),
-                                );
-                              } else if (item == "Özellik Ağacı") {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const PhobesFeatureTreeScreen()),
-                                );
-                              } else if (item == "İletişim") {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const PhobesContactScreen()),
-                                );
-                              }
-                            }),
+                          title: l10n?.footerCompany ?? 'Company',
+                          items: [
+                            l10n?.landingAbout ?? 'About',
+                            l10n?.landingFeatures ?? 'Features',
+                            l10n?.landingContact ?? 'Contact',
+                          ],
+                          onTap: (item) {
+                            final about = l10n?.landingAbout ?? 'About';
+                            final features =
+                                l10n?.landingFeatures ?? 'Features';
+                            final contact = l10n?.landingContact ?? 'Contact';
+                            if (item == about) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const AboutPhobesScreen(),
+                                ),
+                              );
+                            } else if (item == features) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const PhobesFeatureTreeScreen(),
+                                ),
+                              );
+                            } else if (item == contact) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const PhobesContactScreen(),
+                                ),
+                              );
+                            }
+                          },
+                        ),
                         const SizedBox(width: 48),
                         _FooterLinkCol(
-                            title: "Yasal",
-                            items: const [
-                              "Gizlilik Politikası",
-                              "Kullanım Şartları",
-                              "Çerez Politikası"
-                            ],
-                            onTap: (item) {
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(content: Text(item)));
-                            }),
+                          title: l10n?.footerLegal ?? 'Legal',
+                          items: [
+                            l10n?.privacyPolicy ?? 'Privacy Policy',
+                            l10n?.termsOfService ?? 'Terms of Service',
+                            l10n?.cookiePolicy ?? 'Cookie Policy',
+                          ],
+                          onTap: (item) {
+                            final privacy = l10n?.privacyPolicy ?? 'Privacy Policy';
+                            final terms = l10n?.termsOfService ?? 'Terms of Service';
+                            final LegalDocumentType type;
+                            if (item == privacy) {
+                              type = LegalDocumentType.privacy;
+                            } else if (item == terms) {
+                              type = LegalDocumentType.terms;
+                            } else {
+                              type = LegalDocumentType.cookies;
+                            }
+                            LegalDocumentScreen.open(context, type);
+                          },
+                        ),
                       ],
                     ),
                   ],
                 )
               : Column(
                   children: [
-                    Text("Phobes",
-                        style: GoogleFonts.outfit(
-                            fontSize: 20, fontWeight: FontWeight.w900)),
+                    Text(
+                      'Phobes',
+                      style: GoogleFonts.outfit(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text("Zamanın, senin kontrolünde.",
-                        style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            color: cs.onSurface.withValues(alpha: 0.4))),
+                    Text(
+                      l10n?.landingTagline ?? 'Your time, under your control.',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: cs.onSurface.withOpacity(0.4),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 12,
+                      children: [
+                        _FooterLegalLink(
+                          label: l10n?.privacyPolicy ?? 'Privacy',
+                          onTap: () => LegalDocumentScreen.open(
+                            context,
+                            LegalDocumentType.privacy,
+                          ),
+                        ),
+                        _FooterLegalLink(
+                          label: l10n?.termsOfService ?? 'Terms',
+                          onTap: () => LegalDocumentScreen.open(
+                            context,
+                            LegalDocumentType.terms,
+                          ),
+                        ),
+                        _FooterLegalLink(
+                          label: l10n?.cookiePolicy ?? 'Cookies',
+                          onTap: () => LegalDocumentScreen.open(
+                            context,
+                            LegalDocumentType.cookies,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
           const SizedBox(height: 20),
-          Text("© 2026 Techluna Software. Tüm hakları saklıdır.",
-              style: GoogleFonts.outfit(
-                  fontSize: 11, color: cs.onSurface.withValues(alpha: 0.2))),
+          Text(
+            '© 2026 Techluna Software. Tüm hakları saklıdır.',
+            style: GoogleFonts.outfit(
+              fontSize: 11,
+              color: cs.onSurface.withOpacity(0.2),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ─── DATA ───
-
-class _Feat {
-  final IconData icon;
-  final String title;
-  final String sub;
-  final Color color;
-  const _Feat(this.icon, this.title, this.sub, this.color);
-}
-
-// ─── WIDGETS ───
-
-class _DownloadBtn extends StatelessWidget {
+class _DownloadBtn extends StatefulWidget {
   final String name;
   final IconData icon;
   final bool isDark;
-  const _DownloadBtn(
-      {required this.name, required this.icon, required this.isDark});
+  final String? topLabel;
+  final String? url;
+  const _DownloadBtn({
+    required this.name,
+    required this.icon,
+    required this.isDark,
+    this.topLabel,
+    this.url,
+  });
+
+  @override
+  State<_DownloadBtn> createState() => _DownloadBtnState();
+}
+
+class _DownloadBtnState extends State<_DownloadBtn> {
+  bool _hovered = false;
+
+  String get _topLabel {
+    if (widget.topLabel != null) return widget.topLabel!;
+    if (widget.name == 'App Store') return 'Download on the';
+    if (widget.name == 'Windows') return 'Download for';
+    return 'GET IT ON';
+  }
+
+  Future<void> _onTap() async {
+    final url = widget.url;
+    if (url == null) return;
+    final uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.1)
-            : const Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 24),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final enabled = widget.url != null;
+    return MouseRegion(
+      cursor: enabled
+          ? SystemMouseCursors.click
+          : SystemMouseCursors.basic,
+      onEnter: (_) => setState(() => _hovered = enabled),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: enabled ? _onTap : null,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.isDark
+                ? Colors.white.withOpacity(_hovered ? 0.16 : 0.1)
+                : const Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.25),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+            border: enabled
+                ? Border.all(
+                    color: Colors.white.withOpacity(_hovered ? 0.25 : 0),
+                  )
+                : null,
+          ),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                  name == "App Store"
-                      ? "Download on the"
-                      : (name == "Windows" ? "Download for" : "GET IT ON"),
-                  style:
-                      GoogleFonts.outfit(fontSize: 9, color: Colors.white70)),
-              Text(name,
-                  style: GoogleFonts.outfit(
+              Icon(widget.icon, color: Colors.white, size: 24),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _topLabel,
+                    style: GoogleFonts.outfit(
+                      fontSize: 9,
+                      color: Colors.white70,
+                    ),
+                  ),
+                  Text(
+                    widget.name,
+                    style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white)),
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              if (enabled) ...[
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.download_rounded,
+                  size: 16,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ],
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1145,13 +1466,16 @@ class _TrustLogo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: cs.onSurface.withValues(alpha: 0.2), size: 20),
+        Icon(icon, color: cs.onSurface.withOpacity(0.2), size: 20),
         const SizedBox(width: 6),
-        Text(label,
-            style: GoogleFonts.outfit(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: cs.onSurface.withValues(alpha: 0.2))),
+        Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: cs.onSurface.withOpacity(0.2),
+          ),
+        ),
       ],
     );
   }
@@ -1184,9 +1508,10 @@ class _HoverMockupState extends State<_HoverMockup> {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                  color: widget.color.withValues(alpha: _hovered ? 0.18 : 0.08),
-                  blurRadius: _hovered ? 50 : 30,
-                  offset: const Offset(0, 12)),
+                color: widget.color.withOpacity(_hovered ? 0.18 : 0.08),
+                blurRadius: _hovered ? 50 : 30,
+                offset: const Offset(0, 12),
+              ),
             ],
           ),
           child: widget.child,
@@ -1213,8 +1538,9 @@ class _FloatingWidgetState extends State<_FloatingWidget>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 3000))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat(reverse: true);
     _anim = Tween<Offset>(
       begin: const Offset(0, 0.01),
       end: const Offset(0, -0.01),
@@ -1233,35 +1559,67 @@ class _FloatingWidgetState extends State<_FloatingWidget>
   }
 }
 
+class _FooterLegalLink extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _FooterLegalLink({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(
+          fontSize: 11,
+          color: cs.onSurface.withOpacity(0.35),
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
+  }
+}
+
 class _FooterLinkCol extends StatelessWidget {
   final String title;
   final List<String> items;
   final void Function(String) onTap;
-  const _FooterLinkCol(
-      {required this.title, required this.items, required this.onTap});
+  const _FooterLinkCol({
+    required this.title,
+    required this.items,
+    required this.onTap,
+  });
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style:
-                GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(
+          title,
+          style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
         const SizedBox(height: 12),
-        ...items.map((i) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: GestureDetector(
-                onTap: () => onTap(i),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Text(i,
-                      style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: cs.onSurface.withValues(alpha: 0.4))),
+        ...items.map(
+          (i) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: GestureDetector(
+              onTap: () => onTap(i),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Text(
+                  i,
+                  style: GoogleFonts.outfit(
+                    fontSize: 13,
+                    color: cs.onSurface.withOpacity(0.4),
+                  ),
                 ),
               ),
-            )),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -1274,19 +1632,25 @@ class _MeshGradientPainter extends CustomPainter {
   final bool isDark;
 
   _MeshGradientPainter(
-      this.progress, this.scrollProgress, this.cs, this.isDark);
+    this.progress,
+    this.scrollProgress,
+    this.cs,
+    this.isDark,
+  );
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..style = PaintingStyle.fill;
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height),
-        Paint()..color = isDark ? Colors.black : Colors.white);
+    canvas.drawRect(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      Paint()..color = isDark ? Colors.black : Colors.white,
+    );
 
     void drawOrb(Offset center, double radius, Color color) {
       paint.shader = RadialGradient(
         colors: [
-          color.withValues(alpha: isDark ? 0.12 : 0.06),
-          Colors.transparent
+          color.withOpacity(isDark ? 0.12 : 0.06),
+          Colors.transparent,
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius));
       canvas.drawCircle(center, radius, paint);
@@ -1294,15 +1658,21 @@ class _MeshGradientPainter extends CustomPainter {
 
     final t = progress * 2 * math.pi;
     drawOrb(
-        Offset(size.width * (0.2 + 0.1 * math.sin(t)),
-            size.height * (0.2 + (0.4 * scrollProgress))),
-        size.width * 1.2,
-        cs.primary);
+      Offset(
+        size.width * (0.2 + 0.1 * math.sin(t)),
+        size.height * (0.2 + (0.4 * scrollProgress)),
+      ),
+      size.width * 1.2,
+      cs.primary,
+    );
     drawOrb(
-        Offset(size.width * (0.8 - (0.3 * scrollProgress)),
-            size.height * (0.6 + 0.1 * math.sin(t * 0.7))),
-        size.width * 1.0,
-        cs.secondary);
+      Offset(
+        size.width * (0.8 - (0.3 * scrollProgress)),
+        size.height * (0.6 + 0.1 * math.sin(t * 0.7)),
+      ),
+      size.width * 1.0,
+      cs.secondary,
+    );
   }
 
   @override

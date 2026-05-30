@@ -51,7 +51,7 @@ class CalendarNoteCard extends StatelessWidget {
                   iconSize: 14,
                   padding: 6,
                   color: cs.primary,
-                  backgroundColor: cs.primary.withValues(alpha: 0.1),
+                  backgroundColor: cs.primary.withOpacity(0.1),
                   onTap: onTap,
                 ),
               ],
@@ -62,7 +62,7 @@ class CalendarNoteCard extends StatelessWidget {
               width: 40,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [cs.primary, cs.primary.withValues(alpha: 0)],
+                  colors: [cs.primary, cs.primary.withOpacity(0)],
                 ),
               ),
             ),
@@ -71,7 +71,7 @@ class CalendarNoteCard extends StatelessWidget {
               child: Text(
                 noteText,
                 style: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.7),
+                  color: cs.onSurface.withOpacity(0.7),
                   fontSize: 13,
                   height: 1.5,
                   fontWeight: FontWeight.w400,
@@ -86,7 +86,7 @@ class CalendarNoteCard extends StatelessWidget {
               child: Icon(
                 Icons.notes_rounded,
                 size: 16,
-                color: cs.onSurface.withValues(alpha: 0.15),
+                color: cs.onSurface.withOpacity(0.15),
               ),
             ),
           ],

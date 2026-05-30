@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../../widgets/calendar/calendar_day_card.dart';
 import '../../models/task_model.dart';
 import '../../models/appointment_model.dart';
 import '../../models/note_model.dart';
+import '../../core/safe_date_format.dart';
+import '../../l10n/app_localizations.dart';
 import '../../widgets/phobes_widgets.dart';
-
-// ──────────────────────────────────────────────
-// 1. CALENDAR WEEKLY VIEW MOCKUP
-// ──────────────────────────────────────────────
 
 class CodeCalendarMockup extends StatefulWidget {
   const CodeCalendarMockup({super.key});
@@ -30,8 +27,8 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
   }
 
   List<DateTime> _getWeekDays(DateTime focused) {
-    int dayOffset = focused.weekday - 1;
-    DateTime monday = focused.subtract(Duration(days: dayOffset));
+    final int dayOffset = focused.weekday - 1;
+    final DateTime monday = focused.subtract(Duration(days: dayOffset));
     return List.generate(7, (i) => monday.add(Duration(days: i)));
   }
 
@@ -39,26 +36,26 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.3)
-            : Colors.white.withValues(alpha: 0.3),
+            ? Colors.black.withOpacity(0.3)
+            : Colors.white.withOpacity(0.3),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: cs.primary.withOpacity(0.1)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildMockHeader(cs),
+          _buildMockHeader(cs, l10n),
           const SizedBox(height: 20),
           LayoutBuilder(
             builder: (context, constraints) {
               final isMobile = constraints.maxWidth < 600;
 
-              // Helper to generate a row of cards
               Widget buildCardRow(List<DateTime> days, int startIndex) {
                 return Row(
                   children: List.generate(days.length, (idx) {
@@ -66,8 +63,8 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
                     final globalIdx = startIndex + idx;
                     return CalendarDayCard(
                       day: day,
-                      events: _getMockEvents(day),
-                      notes: _getMockNotes(day),
+                      events: _getMockEvents(day, l10n),
+                      notes: _getMockNotes(day, l10n),
                       isSelected: DateUtils.isSameDay(day, _selectedDay),
                       animationDelay: Duration(milliseconds: 100 * globalIdx),
                       onTap: () => setState(() => _selectedDay = day),
@@ -93,18 +90,18 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
                       height: 150,
                       child: Row(
                         children: [
-                          // 7th Day
+
                           CalendarDayCard(
                             day: _weekDays[6],
-                            events: _getMockEvents(_weekDays[6]),
-                            notes: _getMockNotes(_weekDays[6]),
+                            events: _getMockEvents(_weekDays[6], l10n),
+                            notes: _getMockNotes(_weekDays[6], l10n),
                             isSelected:
                                 DateUtils.isSameDay(_weekDays[6], _selectedDay),
                             animationDelay: const Duration(milliseconds: 600),
                             onTap: () =>
                                 setState(() => _selectedDay = _weekDays[6]),
                           ),
-                          // Empty placeholders to balance the layout width naturally
+
                           const Spacer(),
                           const Spacer(),
                         ],
@@ -114,7 +111,6 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
                 );
               }
 
-              // Normal Desktop/Tablet View (1 Row)
               return SizedBox(
                 height: 220,
                 child: buildCardRow(_weekDays, 0),
@@ -124,12 +120,14 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _buildStatChip("3 Görev", Icons.task_alt_rounded, cs.primary, cs),
+              _buildStatChip(l10n.landingMockTasksCount(3),
+                  Icons.task_alt_rounded, cs.primary, cs,),
               const SizedBox(width: 8),
-              _buildStatChip(
-                  "1 Randevu", Icons.event_rounded, Colors.orange, cs),
+              _buildStatChip(l10n.landingMockAppointmentsCount(1),
+                  Icons.event_rounded, Colors.orange, cs,),
               const SizedBox(width: 8),
-              _buildStatChip("2 Not", Icons.note_rounded, Colors.amber, cs),
+              _buildStatChip(l10n.landingMockNotesCount(2),
+                  Icons.note_rounded, Colors.amber, cs),
             ],
           ),
         ],
@@ -137,7 +135,7 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
     );
   }
 
-  Widget _buildMockHeader(ColorScheme cs) {
+  Widget _buildMockHeader(ColorScheme cs, AppLocalizations l10n) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -145,17 +143,17 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              DateFormat('MMMM yyyy', 'tr_TR').format(_selectedDay),
+              formatDateSafe('MMMM yyyy', _selectedDay, 'tr'),
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             Text(
-              "Haftalık Görünüm",
+              l10n.landingMockWeeklyView,
               style: GoogleFonts.outfit(
                 fontSize: 12,
-                color: cs.onSurface.withValues(alpha: 0.4),
+                color: cs.onSurface.withOpacity(0.4),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -176,7 +174,7 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.1),
+        color: cs.primary.withOpacity(0.1),
         shape: BoxShape.circle,
       ),
       child: Icon(icon, size: 16, color: cs.primary),
@@ -184,12 +182,12 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
   }
 
   Widget _buildStatChip(
-      String label, IconData icon, Color color, ColorScheme cs) {
+      String label, IconData icon, Color color, ColorScheme cs,) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
+          color: color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -201,9 +199,9 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
             Flexible(
               child: Text(label,
                   style: GoogleFonts.outfit(
-                      fontSize: 11, fontWeight: FontWeight.w600, color: color),
+                      fontSize: 11, fontWeight: FontWeight.w600, color: color,),
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+                  overflow: TextOverflow.ellipsis,),
             ),
           ],
         ),
@@ -211,22 +209,20 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
     );
   }
 
-  List<dynamic> _getMockEvents(DateTime day) {
+  List<dynamic> _getMockEvents(DateTime day, AppLocalizations l10n) {
     if (day.weekday == 1) {
       return [
         Task(
           userId: 'mock',
-          title: 'Plan',
+          title: l10n.landingMockTaskPlan,
           startTime: day.add(const Duration(hours: 9)),
           endTime: day.add(const Duration(hours: 10)),
-          color: 0xFF4285F4,
         ),
         Appointment(
           userId: 'mock',
-          title: 'Randevu',
+          title: l10n.landingMockAppointment,
           clientName: 'Phobes Nova',
           date: day.add(const Duration(hours: 14)),
-          durationMinutes: 60,
         ),
       ];
     }
@@ -234,7 +230,7 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
       return [
         Task(
           userId: 'mock',
-          title: 'Spor',
+          title: l10n.landingMockTaskSport,
           startTime: day.add(const Duration(hours: 18)),
           endTime: day.add(const Duration(hours: 19)),
           color: 0xFF34A853,
@@ -245,7 +241,7 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
       return [
         Task(
           userId: 'mock',
-          title: 'Sunum',
+          title: l10n.landingMockTaskPresentation,
           startTime: day.add(const Duration(hours: 10)),
           endTime: day.add(const Duration(hours: 12)),
           color: 0xFFEA4335,
@@ -255,13 +251,13 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
     return [];
   }
 
-  List<Note> _getMockNotes(DateTime day) {
+  List<Note> _getMockNotes(DateTime day, AppLocalizations l10n) {
     if (day.weekday == 2) {
       return [
         Note(
           userId: 'mock',
-          title: 'Not',
-          content: 'Yeni özellikler için notlar',
+          title: l10n.landingMockNoteTitle,
+          content: l10n.landingMockNoteContent,
           date: day,
         ),
       ];
@@ -270,22 +266,19 @@ class _CodeCalendarMockupState extends State<CodeCalendarMockup> {
   }
 }
 
-// ──────────────────────────────────────────────
-// 2. TEAM DASHBOARD MOCKUP
-// ──────────────────────────────────────────────
-
 class CodeDashboardMockup extends StatelessWidget {
   const CodeDashboardMockup({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.3),
+        color: cs.surfaceVariant.withOpacity(0.3),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        border: Border.all(color: cs.outlineVariant.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,9 +286,9 @@ class CodeDashboardMockup extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Ekip Panosu",
+              Text(l10n.landingMockTeamBoard,
                   style: GoogleFonts.outfit(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+                      fontSize: 18, fontWeight: FontWeight.bold,),),
               PhobesIconButton(
                 icon: Icons.more_horiz_rounded,
                 onTap: () {},
@@ -303,32 +296,32 @@ class CodeDashboardMockup extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          _buildProjectProgressCard(cs),
+          _buildProjectProgressCard(cs, l10n),
           const SizedBox(height: 20),
           Row(
             children: [
-              _buildMiniStat(
-                  Icons.people_rounded, "12", "Üye", Colors.cyanAccent, cs),
+              _buildMiniStat(Icons.people_rounded, '12',
+                  l10n.landingMockMembers, Colors.cyanAccent, cs,),
               const SizedBox(width: 8),
-              _buildMiniStat(
-                  Icons.folder_rounded, "8", "Proje", Colors.amberAccent, cs),
+              _buildMiniStat(Icons.folder_rounded, '8',
+                  l10n.landingMockProjects, Colors.amberAccent, cs,),
             ],
           ),
           const SizedBox(height: 20),
-          _buildActivityChart(cs),
+          _buildActivityChart(cs, l10n),
         ],
       ),
     );
   }
 
-  Widget _buildProjectProgressCard(ColorScheme cs) {
+  Widget _buildProjectProgressCard(ColorScheme cs, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            cs.primary.withValues(alpha: 0.8),
-            cs.primary.withValues(alpha: 0.4)
+            cs.primary.withOpacity(0.8),
+            cs.primary.withOpacity(0.4),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -341,14 +334,14 @@ class CodeDashboardMockup extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Genel İlerleme",
+                Text(l10n.landingMockOverallProgress,
                     style: GoogleFonts.outfit(
-                        color: Colors.white70, fontSize: 12)),
-                Text("%78",
+                        color: Colors.white70, fontSize: 12,),),
+                Text('%78',
                     style: GoogleFonts.outfit(
                         color: Colors.white,
                         fontSize: 28,
-                        fontWeight: FontWeight.bold)),
+                        fontWeight: FontWeight.bold,),),
               ],
             ),
           ),
@@ -369,14 +362,14 @@ class CodeDashboardMockup extends StatelessWidget {
   }
 
   Widget _buildMiniStat(
-      IconData icon, String value, String label, Color color, ColorScheme cs) {
+      IconData icon, String value, String label, Color color, ColorScheme cs,) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: cs.surface.withValues(alpha: 0.5),
+          color: cs.surface.withOpacity(0.5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.3)),
+          border: Border.all(color: cs.outlineVariant.withOpacity(0.3)),
         ),
         child: Column(
           children: [
@@ -384,23 +377,23 @@ class CodeDashboardMockup extends StatelessWidget {
             const SizedBox(height: 4),
             Text(value,
                 style: GoogleFonts.outfit(
-                    fontSize: 16, fontWeight: FontWeight.bold)),
+                    fontSize: 16, fontWeight: FontWeight.bold,),),
             Text(label,
                 style: GoogleFonts.outfit(
-                    fontSize: 10, color: cs.onSurface.withValues(alpha: 0.4))),
+                    fontSize: 10, color: cs.onSurface.withOpacity(0.4),),),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActivityChart(ColorScheme cs) {
+  Widget _buildActivityChart(ColorScheme cs, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Haftalık Aktivite",
+        Text(l10n.landingMockWeeklyActivity,
             style:
-                GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600)),
+                GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w600),),
         const SizedBox(height: 12),
         SizedBox(
           height: 60,
@@ -413,10 +406,10 @@ class CodeDashboardMockup extends StatelessWidget {
                       width: 14,
                       height: (20 + (i % 4) * 10).toDouble(),
                       decoration: BoxDecoration(
-                        color: cs.primary.withValues(alpha: i == 8 ? 1.0 : 0.2),
+                        color: cs.primary.withOpacity(i == 8 ? 1.0 : 0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                    )),
+                    ),),
           ),
         ),
       ],
@@ -424,28 +417,25 @@ class CodeDashboardMockup extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// 3. FINANCE / BUDGET MOCKUP
-// ──────────────────────────────────────────────
-
 class CodeFinanceMockup extends StatelessWidget {
   const CodeFinanceMockup({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.5),
+        color: cs.surface.withOpacity(0.5),
         borderRadius: BorderRadius.circular(24),
         border:
-            Border.all(color: cs.primary.withValues(alpha: 0.2), width: 1.5),
+            Border.all(color: cs.primary.withOpacity(0.2), width: 1.5),
         boxShadow: [
           BoxShadow(
-              color: cs.primary.withValues(alpha: 0.05),
+              color: cs.primary.withOpacity(0.05),
               blurRadius: 20,
-              spreadRadius: 5),
+              spreadRadius: 5,),
         ],
       ),
       child: Column(
@@ -453,54 +443,57 @@ class CodeFinanceMockup extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Bütçe Özeti",
+              Text(l10n.landingMockBudgetSummary,
                   style: GoogleFonts.outfit(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+                      fontSize: 18, fontWeight: FontWeight.bold,),),
               Icon(Icons.account_balance_wallet_rounded, color: cs.primary),
             ],
           ),
           const SizedBox(height: 24),
-          _buildFinanceHeroCard(cs),
+          _buildFinanceHeroCard(cs, l10n),
           const SizedBox(height: 20),
-          _buildCategoryLimit(cs, "Market", 0.7, Colors.orangeAccent),
+          _buildCategoryLimit(
+              cs, l10n.landingMockCategoryGroceries, 0.7, Colors.orangeAccent,),
           const SizedBox(height: 12),
-          _buildCategoryLimit(cs, "Teknoloji", 0.4, Colors.blueAccent),
+          _buildCategoryLimit(
+              cs, l10n.landingMockCategoryTech, 0.4, Colors.blueAccent,),
           const SizedBox(height: 12),
-          _buildCategoryLimit(cs, "Eğlence", 0.9, Colors.redAccent),
+          _buildCategoryLimit(
+              cs, l10n.landingMockCategoryEntertainment, 0.9, Colors.redAccent,),
         ],
       ),
     );
   }
 
-  Widget _buildFinanceHeroCard(ColorScheme cs) {
+  Widget _buildFinanceHeroCard(ColorScheme cs, AppLocalizations l10n) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cs.primary.withValues(alpha: 0.05),
+        color: cs.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: cs.primary.withOpacity(0.1)),
       ),
       child: Column(
         children: [
-          Text("Kullanılabilir Bütçe",
+          Text(l10n.landingMockAvailableBudget,
               style: GoogleFonts.outfit(
-                  fontSize: 12, color: cs.onSurface.withValues(alpha: 0.4))),
+                  fontSize: 12, color: cs.onSurface.withOpacity(0.4),),),
           const SizedBox(height: 4),
-          Text("₺12.450,00",
+          Text('₺12.450,00',
               style: GoogleFonts.outfit(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
-                  color: cs.primary)),
+                  color: cs.primary,),),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildInSummary(Icons.arrow_upward_rounded, "Gelir", "₺15.000",
-                  Colors.greenAccent),
+              _buildInSummary(Icons.arrow_upward_rounded, l10n.landingMockIncome,
+                  '₺15.000', Colors.greenAccent,),
               const SizedBox(width: 24),
-              _buildInSummary(Icons.arrow_downward_rounded, "Gider", "₺2.550",
-                  Colors.redAccent),
+              _buildInSummary(Icons.arrow_downward_rounded,
+                  l10n.landingMockExpense, '₺2.550', Colors.redAccent,),
             ],
           ),
         ],
@@ -509,23 +502,23 @@ class CodeFinanceMockup extends StatelessWidget {
   }
 
   Widget _buildInSummary(
-      IconData icon, String label, String value, Color color) {
+      IconData icon, String label, String value, Color color,) {
     return Column(
       children: [
         Row(children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
           Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-        ]),
+        ],),
         Text(value,
             style:
-                GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14)),
+                GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),),
       ],
     );
   }
 
   Widget _buildCategoryLimit(
-      ColorScheme cs, String label, double progress, Color color) {
+      ColorScheme cs, String label, double progress, Color color,) {
     return Column(
       children: [
         Row(
@@ -533,10 +526,10 @@ class CodeFinanceMockup extends StatelessWidget {
           children: [
             Text(label,
                 style: GoogleFonts.outfit(
-                    fontSize: 13, fontWeight: FontWeight.w500)),
-            Text("%${(progress * 100).toInt()}",
+                    fontSize: 13, fontWeight: FontWeight.w500,),),
+            Text('%${(progress * 100).toInt()}',
                 style: GoogleFonts.outfit(
-                    fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+                    fontSize: 12, fontWeight: FontWeight.bold, color: color,),),
           ],
         ),
         const SizedBox(height: 6),
@@ -545,7 +538,7 @@ class CodeFinanceMockup extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 6,
-            backgroundColor: color.withValues(alpha: 0.1),
+            backgroundColor: color.withOpacity(0.1),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
@@ -554,22 +547,19 @@ class CodeFinanceMockup extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────────
-// 4. AI INTELLIGENCE MOCKUP
-// ──────────────────────────────────────────────
-
 class CodeIntelligenceMockup extends StatelessWidget {
   const CodeIntelligenceMockup({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cs.surface.withValues(alpha: 0.8),
+        color: cs.surface.withOpacity(0.8),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.primary.withValues(alpha: 0.3), width: 2),
+        border: Border.all(color: cs.primary.withOpacity(0.3), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -578,38 +568,38 @@ class CodeIntelligenceMockup extends StatelessWidget {
             children: [
               Icon(Icons.auto_awesome_rounded, color: cs.primary),
               const SizedBox(width: 8),
-              Text("Phobes Nova",
+              Text('Phobes Nova',
                   style: GoogleFonts.outfit(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+                      fontSize: 18, fontWeight: FontWeight.bold,),),
             ],
           ),
           const SizedBox(height: 20),
           _buildChatBubble(
-              "Nova",
-              "Gelecek haftaki takvimin oldukça yoğun görünüyor. Pazartesi sabahı için hazırladığım özeti incelemek ister misin?",
+              l10n.landingMockNovaSender,
+              l10n.landingMockNovaMessage,
               cs,
-              true),
+              true,),
           const SizedBox(height: 12),
           _buildChatBubble(
-              "Siz",
-              "Evet lütfen, özellikle toplantı çakışmalarına dikkat çek.",
+              l10n.landingMockYouSender,
+              l10n.landingMockYouMessage,
               cs,
-              false),
+              false,),
           const SizedBox(height: 20),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-                color: cs.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16)),
+                color: cs.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),),
             child: Row(
               children: [
                 const Icon(Icons.insights_rounded, color: Colors.orangeAccent),
                 const SizedBox(width: 12),
                 Expanded(
                     child: Text(
-                        "Verimlilik analizi: Düne göre %15 artış yakaladın!",
+                        l10n.landingMockProductivityInsight,
                         style: GoogleFonts.outfit(
-                            fontSize: 12, fontWeight: FontWeight.w600))),
+                            fontSize: 12, fontWeight: FontWeight.w600,),),),
               ],
             ),
           ),
@@ -619,7 +609,7 @@ class CodeIntelligenceMockup extends StatelessWidget {
   }
 
   Widget _buildChatBubble(
-      String sender, String text, ColorScheme cs, bool isAi) {
+      String sender, String text, ColorScheme cs, bool isAi,) {
     return Align(
       alignment: isAi ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
@@ -627,8 +617,8 @@ class CodeIntelligenceMockup extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isAi
-              ? cs.primary.withValues(alpha: 0.1)
-              : cs.primary.withValues(alpha: 0.8),
+              ? cs.primary.withOpacity(0.1)
+              : cs.primary.withOpacity(0.8),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -643,11 +633,11 @@ class CodeIntelligenceMockup extends StatelessWidget {
                 style: GoogleFonts.outfit(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
-                    color: isAi ? cs.primary : Colors.white70)),
+                    color: isAi ? cs.primary : Colors.white70,),),
             const SizedBox(height: 4),
             Text(text,
                 style: GoogleFonts.outfit(
-                    fontSize: 13, color: isAi ? cs.onSurface : Colors.white)),
+                    fontSize: 13, color: isAi ? cs.onSurface : Colors.white,),),
           ],
         ),
       ),

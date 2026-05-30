@@ -1,0 +1,19 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # ── Enforced: prevent real bugs ──────────────────────────────────────────────
+    avoid_void_async: true
+
+    # ── Hints: improve code quality incrementally (info only, won't fail CI) ──────
+    always_declare_return_types: true
+    avoid_redundant_argument_values: true
+
+analyzer:
+  errors:
+    # Suppress Flutter SDK deprecations until upstream stabilises.
+    deprecated_member_use: ignore
+
+    # Style hints — visible in IDE but never block builds.
+    always_declare_return_types: info
+    avoid_redundant_argument_values: info

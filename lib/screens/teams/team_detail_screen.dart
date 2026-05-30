@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/team_model.dart';
 import '../../core/phobes_theme.dart';
@@ -11,6 +12,11 @@ import '../projects/project_list_screen.dart';
 import '../projects/project_detail_screen.dart';
 import '../../models/project_model.dart';
 import '../../widgets/phobes_widgets.dart';
+import '../../widgets/phobes_module_header.dart';
+import '../../widgets/phobes_module_tab_bar.dart';
+import 'tabs/team_book_club_tab.dart';
+import '../../services/team_service.dart';
+import '../../l10n/app_localizations.dart';
 
 class TeamDetailScreen extends StatefulWidget {
   final Team team;
@@ -21,38 +27,87 @@ class TeamDetailScreen extends StatefulWidget {
       {super.key,
       required this.team,
       this.initialIndex = 0,
-      this.externalIndex});
+      this.externalIndex,});
 
   @override
   State<TeamDetailScreen> createState() => _TeamDetailScreenState();
 }
 
-class _TeamDetailScreenState extends State<TeamDetailScreen> {
+class _TeamDetailScreenState extends State<TeamDetailScreen>
+    with TickerProviderStateMixin {
   late int _currentIndex;
+  late TabController _tabController;
   Project? _selectedProject;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.externalIndex ?? widget.initialIndex;
+    _tabController = TabController(
+      length: 7,
+      vsync: this,
+      initialIndex: _currentIndex,
+    );
+    TeamService().backfillProjectTaskTeamIds(widget.team.id);
+
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        if (_currentIndex != _tabController.index) {
+          setState(() {
+            _currentIndex = _tabController.index;
+
+            _selectedProject = null;
+          });
+        }
+      }
+    });
+  }
+
+  void _handleProjectSelection(Project project) {
+    setState(() {
+      _selectedProject = project;
+      _currentIndex = 1;
+    });
+    _tabController.animateTo(1);
+  }
+
+  void _popTeamDetail(BuildContext context) {
+    final path = GoRouterState.of(context).uri.path;
+    if (path.startsWith('/teams/') && path != '/teams') {
+      context.go('/teams');
+      return;
+    }
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(TeamDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.externalIndex != null && widget.externalIndex != _currentIndex) {
+    if (widget.externalIndex != null && widget.externalIndex != oldWidget.externalIndex) {
       setState(() {
         _currentIndex = widget.externalIndex!;
         _selectedProject = null;
       });
+      _tabController.animateTo(_currentIndex);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-
+    final l10n = AppLocalizations.of(context)!;
     final List<Widget> tabs = [
-      TeamKanbanTab(team: widget.team),
+      TeamKanbanTab(
+        team: widget.team,
+        onProjectSelected: _handleProjectSelection,
+      ),
       _selectedProject != null
           ? ProjectDetailScreen(
               project: _selectedProject!,
@@ -63,68 +118,74 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           : ProjectListScreen(
               team: widget.team,
               isEmbedded: true,
-              onProjectSelected: (project) =>
-                  setState(() => _selectedProject = project),
+              onProjectSelected: _handleProjectSelection,
             ),
-      TeamDashboardTab(team: widget.team),
+      TeamDashboardTab(
+        team: widget.team,
+        onProjectSelected: _handleProjectSelection,
+      ),
       TeamResourcesTab(team: widget.team),
       TeamActivityTab(team: widget.team),
       TeamNotesTab(team: widget.team),
+      TeamBookClubTab(team: widget.team),
     ];
 
     final List<String> titles = [
-      'Panolar',
-      'Projeler',
-      'İstatistik',
-      'Kaynaklar',
-      'Aktivite',
-      'Notlar',
+      l10n.teamTabBoards,
+      l10n.teamTabProjects,
+      l10n.teamTabStats,
+      l10n.teamTabResources,
+      l10n.teamTabActivity,
+      l10n.teamTabNotes,
+      l10n.teamTabBookClub,
     ];
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isAmoled = PhobesTheme.amoledMode.value;
     final cs = Theme.of(context).colorScheme;
-
     return LayoutBuilder(builder: (context, constraints) {
-      final isWide = constraints.maxWidth >= 900;
+      final isAmoled = PhobesTheme.amoledMode.value;
+      final isDark = Theme.of(context).brightness == Brightness.dark;
 
       return Scaffold(
         backgroundColor: isAmoled && isDark ? Colors.black : cs.surface,
-        appBar: null,
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverToBoxAdapter(
-              child: Column(
+        body: constraints.maxWidth >= 900
+            ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: MediaQuery.of(context).padding.top),
-                  if (isWide)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
-                      child: Text(
-                        widget.team.name,
-                        style: GoogleFonts.outfit(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: cs.onSurface,
-                        ),
-                      ),
-                    )
-                  else
-                    _buildTeamHeader(isDark, cs, context),
-                  _buildTopTabBar(
-                      cs, titles, isDark, constraints.maxWidth < 600),
+                  _buildTeamHeader(isDark, cs, context),
+                  _teamTabBar(titles),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: tabs,
+                    ),
+                  ),
                 ],
+              )
+            : NestedScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                  SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).padding.top),
+                        _buildTeamHeader(isDark, cs, context),
+                        _teamTabBar(titles),
+                      ],
+                    ),
+                  ),
+                ],
+                body: TabBarView(
+                  controller: _tabController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: tabs,
+                ),
               ),
-            ),
-          ],
-          body: IndexedStack(
-            index: _currentIndex,
-            children: tabs,
-          ),
-        ),
       );
-    });
+    },);
+
   }
 
   Widget _buildTeamHeader(bool isDark, ColorScheme cs, BuildContext context) {
@@ -134,7 +195,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     return Container(
       margin: EdgeInsets.fromLTRB(
         isCompact ? 12 : 16,
-        isCompact ? 16 : 24, // Increased top margin
+        isCompact ? 16 : 24,
         isCompact ? 12 : 16,
         isCompact ? 2 : 8,
       ),
@@ -147,7 +208,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         gradient: LinearGradient(
           colors: [
             cs.primary,
-            cs.primary.withValues(alpha: 0.7),
+            cs.primary.withOpacity(0.7),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -155,7 +216,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
         borderRadius: BorderRadius.circular(isCompact ? 20 : 24),
         boxShadow: [
           BoxShadow(
-            color: cs.primary.withValues(alpha: 0.3),
+            color: cs.primary.withOpacity(0.3),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -166,9 +227,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           if (Navigator.canPop(context)) ...[
             PhobesIconButton(
               icon: Icons.arrow_back_rounded,
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              backgroundColor: Colors.white.withOpacity(0.2),
               color: Colors.white,
-              onTap: () => Navigator.pop(context),
+              onTap: () => _popTeamDetail(context),
               size: isCompact ? 32 : 40,
             ),
             SizedBox(width: isCompact ? 8 : 12),
@@ -176,7 +237,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
           Container(
             padding: EdgeInsets.all(isCompact ? 8 : 12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: Colors.white.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -200,10 +261,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 ),
                 if (!isCompact) const SizedBox(height: 4),
                 Text(
-                  "${widget.team.memberIds.length} Üye",
+                  '${widget.team.memberIds.length} Üye',
                   style: GoogleFonts.outfit(
                     fontSize: isCompact ? 11 : 13,
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: Colors.white.withOpacity(0.8),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -215,85 +276,22 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
     );
   }
 
-  Widget _buildTopTabBar(ColorScheme cs, List<String> titles, bool isDark, bool isCompact) {
-    final icons = [
+  Widget _teamTabBar(List<String> titles) {
+    const icons = [
       Icons.view_kanban_rounded,
       Icons.folder_rounded,
       Icons.dashboard_rounded,
       Icons.source_rounded,
       Icons.history_rounded,
       Icons.note_alt_rounded,
+      Icons.menu_book_rounded,
     ];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: isDark
-              ? cs.surfaceContainerHighest.withValues(alpha: 0.4)
-              : cs.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.05)),
-        ),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: List.generate(titles.length, (index) {
-              final isSelected = _currentIndex == index;
-              final showText = isSelected || !isCompact;
-              
-              return GestureDetector(
-                onTap: () => setState(() => _currentIndex = index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  margin: const EdgeInsets.only(right: 2),
-                  decoration: BoxDecoration(
-                    color: isSelected ? cs.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: cs.primary.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            )
-                          ]
-                        : [],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        icons[index],
-                        size: 16,
-                        color: isSelected
-                            ? Colors.white
-                            : cs.onSurface.withValues(alpha: 0.5),
-                      ),
-                      if (showText) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          titles[index],
-                          style: GoogleFonts.outfit(
-                            color: isSelected
-                                ? Colors.white
-                                : cs.onSurface.withValues(alpha: 0.5),
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.w500,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ]
-                    ],
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
+    return PhobesModuleTabBar(
+      controller: _tabController,
+      tabs: List.generate(
+        titles.length,
+        (i) => PhobesModuleTab(titles[i], icons[i]),
       ),
     );
   }

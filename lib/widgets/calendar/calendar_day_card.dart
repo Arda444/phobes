@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:animate_do/animate_do.dart';
-import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../core/phobes_theme.dart';
+import '../../core/safe_date_format.dart';
 import '../../models/appointment_model.dart';
 import '../../models/task_model.dart';
 import '../../models/note_model.dart';
@@ -49,19 +50,19 @@ class CalendarDayCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
               border: Border.all(
                 color: isToday
-                    ? Colors.orangeAccent.withValues(alpha: 0.6)
+                    ? Colors.orangeAccent.withOpacity(0.6)
                     : (isSelected
                         ? cs.primary
-                        : cs.outline.withValues(alpha: isDark ? 0.15 : 0.1)),
+                        : cs.outline.withOpacity(isDark ? 0.15 : 0.1)),
                 width: isSelected || isToday ? 1.5 : 1,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: cs.primary.withValues(alpha: 0.25),
+                        color: cs.primary.withOpacity(0.25),
                         blurRadius: 15,
                         spreadRadius: -2,
-                      )
+                      ),
                     ]
                   : PhobesTheme.getCardShadow(isDark),
             ),
@@ -81,9 +82,9 @@ class CalendarDayCard extends StatelessWidget {
                           gradient: RadialGradient(
                             colors: [
                               (taskCount > 3 ? Colors.orange : cs.primary)
-                                  .withValues(alpha: isDark ? 0.2 : 0.3),
+                                  .withOpacity(isDark ? 0.2 : 0.3),
                               (taskCount > 3 ? Colors.orange : cs.primary)
-                                  .withValues(alpha: 0),
+                                  .withOpacity(0),
                             ],
                           ),
                         ),
@@ -92,26 +93,23 @@ class CalendarDayCard extends StatelessWidget {
                   Positioned.fill(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 8),
+                          horizontal: 8, vertical: 8,),
                       child: SizedBox(
                         width: double.infinity,
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              DateFormat(
-                                      'EEE',
-                                      Localizations.localeOf(context)
-                                          .toString())
-                                  .format(day)
-                                  .toUpperCase(),
+                              formatDateSafe(
+                                'EEE',
+                                day,
+                                Localizations.localeOf(context).toString(),
+                              ).toUpperCase(),
                               style: GoogleFonts.outfit(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: isToday
-                                    ? Colors.white.withValues(alpha: 0.7)
-                                    : cs.onSurface.withValues(alpha: 0.4),
+                                    ? Colors.white.withOpacity(0.7)
+                                    : cs.onSurface.withOpacity(0.4),
                                 letterSpacing: 1.5,
                               ),
                               textAlign: TextAlign.center,
@@ -124,7 +122,7 @@ class CalendarDayCard extends StatelessWidget {
                                   ? BoxDecoration(
                                       shape: BoxShape.circle,
                                       color:
-                                          Colors.white.withValues(alpha: 0.2),
+                                          Colors.white.withOpacity(0.2),
                                     )
                                   : null,
                               alignment: Alignment.center,
@@ -154,21 +152,21 @@ class CalendarDayCard extends StatelessWidget {
                                           .floor();
                                   if (maxRows < 1) maxRows = 1;
 
-                                  int itemsPerRow =
+                                  final int itemsPerRow =
                                       constraints.maxWidth > (150 * scale)
                                           ? 2
                                           : 1;
-                                  int maxItems = maxRows * itemsPerRow;
+                                  final int maxItems = maxRows * itemsPerRow;
 
                                   int displayCount = events.length;
                                   int remainingCount = 0;
 
-                                  int itemsToRender = events.length +
+                                  final int itemsToRender = events.length +
                                       (notes.isNotEmpty ? 1 : 0);
 
                                   if (itemsToRender > maxItems) {
                                     int availableRows = maxRows -
-                                        1; // 1 row for +X at the bottom
+                                        1;
                                     if (availableRows < 0) availableRows = 0;
 
                                     int availableForEvents =
@@ -187,13 +185,11 @@ class CalendarDayCard extends StatelessWidget {
                                       : constraints.maxWidth;
 
                                   return Column(
-                                    mainAxisSize: MainAxisSize.max,
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
                                       Wrap(
                                         spacing: 4 * scale,
-                                        runSpacing: 0,
                                         children: [
                                           ...events.take(displayCount).map(
                                               (e) => SizedBox(
@@ -202,7 +198,7 @@ class CalendarDayCard extends StatelessWidget {
                                                       context,
                                                       e,
                                                       isDark,
-                                                      isToday))),
+                                                      isToday,),),),
                                           if (notes.isNotEmpty &&
                                               itemsPerRow * maxRows > 1)
                                             SizedBox(
@@ -211,14 +207,14 @@ class CalendarDayCard extends StatelessWidget {
                                                     context,
                                                     notes.length,
                                                     isDark,
-                                                    isToday)),
+                                                    isToday,),),
                                         ],
                                       ),
                                       const Spacer(),
                                       if (remainingCount > 0)
                                         Padding(
                                           padding: EdgeInsets.only(
-                                              bottom: 2 * scale),
+                                              bottom: 2 * scale,),
                                           child: Text(
                                             '+$remainingCount',
                                             textAlign: TextAlign.center,
@@ -227,9 +223,9 @@ class CalendarDayCard extends StatelessWidget {
                                               fontWeight: FontWeight.bold,
                                               color: isToday
                                                   ? Colors.white
-                                                      .withValues(alpha: 0.9)
+                                                      .withOpacity(0.9)
                                                   : cs.onSurface
-                                                      .withValues(alpha: 0.6),
+                                                      .withOpacity(0.6),
                                             ),
                                           ),
                                         ),
@@ -253,8 +249,8 @@ class CalendarDayCard extends StatelessWidget {
   }
 
   Widget _buildUnifiedChip(
-      BuildContext context, dynamic e, bool isDark, bool isToday) {
-    String title = "";
+      BuildContext context, dynamic e, bool isDark, bool isToday,) {
+    String title = '';
     Color color = Colors.grey;
     bool isCompleted = false;
 
@@ -277,17 +273,17 @@ class CalendarDayCard extends StatelessWidget {
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: isToday
-            ? Colors.white.withValues(alpha: 0.25)
+            ? Colors.white.withOpacity(0.25)
             : (isCompleted
-                ? color.withValues(alpha: 0.1)
-                : color.withValues(alpha: 0.2)),
+                ? color.withOpacity(0.1)
+                : color.withOpacity(0.2)),
         borderRadius: BorderRadius.circular(4 * scale),
         border: !isCompleted
             ? Border.all(
                 color: isToday
-                    ? Colors.white.withValues(alpha: 0.5)
-                    : color.withValues(alpha: 0.3),
-                width: 0.5)
+                    ? Colors.white.withOpacity(0.5)
+                    : color.withOpacity(0.3),
+                width: 0.5,)
             : null,
       ),
       child: Text(
@@ -300,7 +296,7 @@ class CalendarDayCard extends StatelessWidget {
               : (isCompleted
                   ? (isDark ? Colors.white24 : Colors.black26)
                   : (isDark
-                      ? Colors.white.withValues(alpha: 0.9)
+                      ? Colors.white.withOpacity(0.9)
                       : Colors.black87)),
           decoration: isCompleted ? TextDecoration.lineThrough : null,
         ),
@@ -312,7 +308,8 @@ class CalendarDayCard extends StatelessWidget {
   }
 
   Widget _buildNoteIndicator(
-      BuildContext context, int count, bool isDark, bool isToday) {
+      BuildContext context, int count, bool isDark, bool isToday,) {
+    final l10n = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
     final scale = screenWidth > 1200 ? 1.4 : (screenWidth > 800 ? 1.2 : 1.0);
 
@@ -321,12 +318,12 @@ class CalendarDayCard extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 3 * scale, vertical: 2 * scale),
       decoration: BoxDecoration(
         color: isToday
-            ? Colors.white.withValues(alpha: 0.25)
-            : Colors.amber.withValues(alpha: 0.15),
+            ? Colors.white.withOpacity(0.25)
+            : Colors.amber.withOpacity(0.15),
         borderRadius: BorderRadius.circular(4 * scale),
       ),
       child: Text(
-        count > 1 ? '$count Not' : 'Not',
+        count > 1 ? l10n.calendarNoteCount(count) : l10n.calendarNoteSingular,
         style: GoogleFonts.outfit(
           fontSize: 8 * scale,
           fontWeight: FontWeight.bold,

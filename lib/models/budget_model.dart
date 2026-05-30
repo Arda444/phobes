@@ -1,4 +1,4 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum TransactionType { income, expense, transfer }
 
@@ -71,7 +71,7 @@ class Account {
         (e) => e.name == data['type'],
         orElse: () => AccountType.cash,
       ),
-      balance: (data['balance'] as num).toDouble(),
+      balance: (data['balance'] as num?)?.toDouble() ?? 0.0,
       currency: data['currency'] ?? 'TRY',
       color: data['color'],
       icon: data['icon'],
@@ -95,6 +95,7 @@ class BudgetTransaction {
   final String? accountId;
   final String? toAccountId;
   final List<String> tags;
+  final String? currency;
 
   BudgetTransaction({
     this.id,
@@ -112,6 +113,7 @@ class BudgetTransaction {
     this.accountId,
     this.toAccountId,
     this.tags = const [],
+    this.currency,
   });
 
   BudgetTransaction copyWith({
@@ -130,6 +132,8 @@ class BudgetTransaction {
     String? accountId,
     String? toAccountId,
     List<String>? tags,
+    String? currency,
+    bool clearCurrency = false,
   }) {
     return BudgetTransaction(
       id: id ?? this.id,
@@ -147,6 +151,7 @@ class BudgetTransaction {
       accountId: accountId ?? this.accountId,
       toAccountId: toAccountId ?? this.toAccountId,
       tags: tags ?? this.tags,
+      currency: clearCurrency ? null : (currency ?? this.currency),
     );
   }
 
@@ -166,6 +171,7 @@ class BudgetTransaction {
       'accountId': accountId,
       'toAccountId': toAccountId,
       'tags': tags,
+      if (currency != null) 'currency': currency,
     };
   }
 
@@ -175,14 +181,14 @@ class BudgetTransaction {
       id: doc.id,
       userId: data['userId'] ?? '',
       title: data['title'] ?? '',
-      amount: (data['amount'] as num).toDouble(),
+      amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
       type: TransactionType.values.firstWhere(
         (e) => e.name == data['type'],
         orElse: () => TransactionType.expense,
       ),
       category: data['category'] ?? 'Genel',
       subCategory: data['subCategory'],
-      date: (data['date'] as Timestamp).toDate(),
+      date: data['date'] is Timestamp ? (data['date'] as Timestamp).toDate() : DateTime.now(),
       description: data['description'] ?? '',
       taskId: data['taskId'],
       recurrence: data['recurrence'] ?? 'none',
@@ -190,6 +196,7 @@ class BudgetTransaction {
       accountId: data['accountId'],
       toAccountId: data['toAccountId'],
       tags: List<String>.from(data['tags'] ?? []),
+      currency: data['currency'],
     );
   }
 }
@@ -246,7 +253,7 @@ class BudgetLimit {
       userId: data['userId'] ?? '',
       category: data['category'] ?? 'Genel',
       subCategory: data['subCategory'],
-      limitAmount: (data['limitAmount'] as num).toDouble(),
+      limitAmount: (data['limitAmount'] as num?)?.toDouble() ?? 0.0,
       period: data['period'] ?? 'monthly',
     );
   }
@@ -318,12 +325,10 @@ class Debt {
       id: doc.id,
       userId: data['userId'] ?? '',
       personName: data['personName'] ?? '',
-      amount: (data['amount'] as num).toDouble(),
+      amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
       type: data['type'] == 'debt' ? DebtType.debt : DebtType.credit,
-      date: (data['date'] as Timestamp).toDate(),
-      dueDate: data['dueDate'] != null
-          ? (data['dueDate'] as Timestamp).toDate()
-          : null,
+      date: data['date'] is Timestamp ? (data['date'] as Timestamp).toDate() : DateTime.now(),
+      dueDate: data['dueDate'] is Timestamp ? (data['dueDate'] as Timestamp).toDate() : null,
       isPaid: data['isPaid'] ?? false,
       description: data['description'],
     );
@@ -386,8 +391,8 @@ class SavingsGoal {
       id: doc.id,
       userId: data['userId'] ?? '',
       title: data['title'] ?? '',
-      targetAmount: (data['targetAmount'] as num).toDouble(),
-      currentAmount: (data['currentAmount'] as num).toDouble(),
+      targetAmount: (data['targetAmount'] as num?)?.toDouble() ?? 0.0,
+      currentAmount: (data['currentAmount'] as num?)?.toDouble() ?? 0.0,
       deadline: data['deadline'] != null
           ? (data['deadline'] as Timestamp).toDate()
           : null,
@@ -479,10 +484,10 @@ class Asset {
         (e) => e.name == data['type'],
         orElse: () => AssetType.other,
       ),
-      amount: (data['amount'] as num).toDouble(),
-      currentValue: (data['currentValue'] as num).toDouble(),
-      purchasePrice: (data['purchasePrice'] as num).toDouble(),
-      lastUpdated: (data['lastUpdated'] as Timestamp).toDate(),
+      amount: (data['amount'] as num?)?.toDouble() ?? 0.0,
+      currentValue: (data['currentValue'] as num?)?.toDouble() ?? 0.0,
+      purchasePrice: (data['purchasePrice'] as num?)?.toDouble() ?? 0.0,
+      lastUpdated: data['lastUpdated'] is Timestamp ? (data['lastUpdated'] as Timestamp).toDate() : DateTime.now(),
     );
   }
 }

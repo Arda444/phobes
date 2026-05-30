@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -41,7 +41,6 @@ class PhobesTheme {
     amoledMode.value = enabled;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('amoled_mode', enabled);
-    themeMode.value = themeMode.value;
   }
 
   static Future<void> loadAmoledMode() async {
@@ -55,8 +54,7 @@ class PhobesTheme {
   static Future<void> setAccentColor(Color color) async {
     userAccentColor.value = color;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('accent_color', color.toARGB32());
-    themeMode.value = themeMode.value;
+    await prefs.setInt('accent_color', color.value);
   }
 
   static Future<void> loadAccentColor() async {
@@ -67,10 +65,31 @@ class PhobesTheme {
     }
   }
 
+  /// Arayüz ölçeği. 1.0 = %100 (varsayılan). Google Chrome zoom mantığı:
+  /// layout + metin birlikte ölçeklenir.
+  static final ValueNotifier<double> uiScale = ValueNotifier(1.0);
+
+  static const List<double> uiScaleOptions = [0.5, 0.75, 1.0, 1.25, 1.5];
+
+  static Future<void> setUiScale(double scale) async {
+    uiScale.value = scale;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('ui_scale', scale);
+  }
+
+  static Future<void> loadUiScale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getDouble('ui_scale');
+    if (saved != null && uiScaleOptions.contains(saved)) {
+      uiScale.value = saved;
+    }
+  }
+
   static Future<void> loadAllPreferences() async {
     await loadSavedTheme();
     await loadAmoledMode();
     await loadAccentColor();
+    await loadUiScale();
   }
 
   static const List<Color> accentColorOptions = [
@@ -92,7 +111,7 @@ class PhobesTheme {
   static const Color kDarkBackground = Color(0xFF050505);
   static const Color kDarkSurface = Color(0xFF121212);
   static const Color kDarkSurfaceLight = Color(0xFF1E1E1E);
-  static const Color kDarkSurfaceContainer = Color(0xFF2A2A2A);
+  static const Color kDarkSurfaceVariant = Color(0xFF2A2A2A);
 
   static const Color kAmoledBackground = Color(0xFF000000);
   static const Color kAmoledSurface = Color(0xFF0A0A0A);
@@ -101,7 +120,7 @@ class PhobesTheme {
   static const Color kLightBackground = Color(0xFFF8FAFC);
   static const Color kLightSurface = Color(0xFFFFFFFF);
   static const Color kLightSurfaceDark = Color(0xFFF1F5F9);
-  static const Color kLightSurfaceContainer = Color(0xFFE2E8F0);
+  static const Color kLightSurfaceVariant = Color(0xFFE2E8F0);
 
   static const Color kErrorColor = Color(0xFFEF4444);
   static const Color kSuccessColor = Color(0xFF10B981);
@@ -141,20 +160,16 @@ class PhobesTheme {
     final colorScheme = ColorScheme.dark(
       primary: accent,
       onPrimary: Colors.white,
-      primaryContainer: accent.withValues(alpha: 0.2),
+      primaryContainer: accent.withOpacity(0.2),
       onPrimaryContainer: accent,
       secondary: kSecondaryColor,
       onSecondary: Colors.white,
-      secondaryContainer: kSecondaryColor.withValues(alpha: 0.2),
+      secondaryContainer: kSecondaryColor.withOpacity(0.2),
       onSecondaryContainer: kSecondaryColor,
       tertiary: kTertiaryColor,
       onTertiary: Colors.white,
       surface: surface,
-      onSurface: Colors.white,
-      surfaceContainerLowest: background,
-      surfaceContainerLow: surface,
-      surfaceContainer: surfaceLight,
-      surfaceContainerHigh: kDarkSurfaceContainer,
+      surfaceVariant: surfaceLight,
       error: kErrorColor,
       onError: Colors.white,
       outline: Colors.white12,
@@ -176,25 +191,19 @@ class PhobesTheme {
     final accent = userAccentColor.value;
     final colorScheme = ColorScheme.light(
       primary: accent,
-      onPrimary: Colors.white,
-      primaryContainer: accent.withValues(alpha: 0.1),
+      primaryContainer: accent.withOpacity(0.1),
       onPrimaryContainer: accent,
       secondary: kSecondaryColor,
       onSecondary: Colors.white,
-      secondaryContainer: kSecondaryColor.withValues(alpha: 0.1),
+      secondaryContainer: kSecondaryColor.withOpacity(0.1),
       onSecondaryContainer: kSecondaryColor,
       tertiary: kTertiaryColor,
       onTertiary: Colors.white,
-      surface: kLightSurface,
       onSurface: const Color(0xFF1E293B),
-      surfaceContainerLowest: kLightBackground,
-      surfaceContainerLow: kLightSurface,
-      surfaceContainer: kLightSurfaceDark,
-      surfaceContainerHigh: kLightSurfaceContainer,
+      surfaceVariant: kLightSurfaceDark,
       error: kErrorColor,
-      onError: Colors.white,
       outline: Colors.black12,
-      outlineVariant: Colors.black.withValues(alpha: 0.06),
+      outlineVariant: Colors.black.withOpacity(0.06),
       shadow: Colors.black26,
     );
 
@@ -278,7 +287,7 @@ class PhobesTheme {
       bodySmall: GoogleFonts.outfit(
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        color: colorScheme.onSurface.withValues(alpha: 0.7),
+        color: colorScheme.onSurface.withOpacity(0.7),
       ),
       labelLarge: GoogleFonts.outfit(
         fontSize: 14,
@@ -288,12 +297,12 @@ class PhobesTheme {
       labelMedium: GoogleFonts.outfit(
         fontSize: 12,
         fontWeight: FontWeight.w500,
-        color: colorScheme.onSurface.withValues(alpha: 0.7),
+        color: colorScheme.onSurface.withOpacity(0.7),
       ),
       labelSmall: GoogleFonts.outfit(
         fontSize: 11,
         fontWeight: FontWeight.w500,
-        color: colorScheme.onSurface.withValues(alpha: 0.5),
+        color: colorScheme.onSurface.withOpacity(0.5),
         letterSpacing: 0.5,
       ),
     );
@@ -305,7 +314,7 @@ class PhobesTheme {
       scaffoldBackgroundColor: scaffoldBackground,
       primaryColor: colorScheme.primary,
       canvasColor: colorScheme.surface,
-      cardColor: colorScheme.surfaceContainer,
+      cardColor: colorScheme.surfaceVariant,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
@@ -323,7 +332,7 @@ class PhobesTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         selectedItemColor: colorScheme.primary,
-        unselectedItemColor: colorScheme.onSurface.withValues(alpha: 0.4),
+        unselectedItemColor: colorScheme.onSurface.withOpacity(0.4),
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         selectedLabelStyle: GoogleFonts.outfit(
@@ -337,16 +346,15 @@ class PhobesTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colorScheme.surface,
-        indicatorColor: colorScheme.primary.withValues(alpha: 0.15),
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
+        indicatorColor: colorScheme.primary.withOpacity(0.15),
+        iconTheme: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
             return IconThemeData(color: colorScheme.primary);
           }
-          return IconThemeData(
-              color: colorScheme.onSurface.withValues(alpha: 0.5));
+          return IconThemeData(color: colorScheme.onSurface.withOpacity(0.5));
         }),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
+        labelTextStyle: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
             return GoogleFonts.outfit(
               fontSize: 12,
               fontWeight: FontWeight.w600,
@@ -356,19 +364,19 @@ class PhobesTheme {
           return GoogleFonts.outfit(
             fontSize: 12,
             fontWeight: FontWeight.w400,
-            color: colorScheme.onSurface.withValues(alpha: 0.5),
+            color: colorScheme.onSurface.withOpacity(0.5),
           );
         }),
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: colorScheme.surface,
-        indicatorColor: colorScheme.primary.withValues(alpha: 0.15),
+        indicatorColor: colorScheme.primary.withOpacity(0.15),
         selectedIconTheme: IconThemeData(color: colorScheme.primary),
         unselectedIconTheme:
-            IconThemeData(color: colorScheme.onSurface.withValues(alpha: 0.5)),
+            IconThemeData(color: colorScheme.onSurface.withOpacity(0.5)),
       ),
       cardTheme: CardThemeData(
-        color: colorScheme.surfaceContainer,
+        color: colorScheme.surfaceVariant,
         elevation: isDark ? 0 : 1,
         shadowColor: isDark ? Colors.transparent : Colors.black12,
         shape: RoundedRectangleBorder(
@@ -380,18 +388,18 @@ class PhobesTheme {
         margin: const EdgeInsets.symmetric(vertical: 4),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: colorScheme.surfaceContainerLow,
+        backgroundColor: colorScheme.surface,
         elevation: 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadiusXL),
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: colorScheme.surfaceContainerLow,
+        backgroundColor: colorScheme.surface,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        dragHandleColor: colorScheme.onSurface.withValues(alpha: 0.2),
+        dragHandleColor: colorScheme.onSurface.withOpacity(0.2),
         dragHandleSize: const Size(40, 4),
         showDragHandle: true,
       ),
@@ -417,7 +425,7 @@ class PhobesTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadiusM),
           ),
-          side: BorderSide(color: colorScheme.primary.withValues(alpha: 0.5)),
+          side: BorderSide(color: colorScheme.primary.withOpacity(0.5)),
           textStyle: GoogleFonts.outfit(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -447,7 +455,7 @@ class PhobesTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colorScheme.surfaceContainer,
+        fillColor: colorScheme.surfaceVariant,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
@@ -457,7 +465,7 @@ class PhobesTheme {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(borderRadiusM),
           borderSide: BorderSide(
-              color: colorScheme.outline.withValues(alpha: 0.3), width: 0.5),
+              color: colorScheme.outline.withOpacity(0.3), width: 0.5,),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(borderRadiusM),
@@ -465,20 +473,20 @@ class PhobesTheme {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(borderRadiusM),
-          borderSide: BorderSide(color: colorScheme.error, width: 1),
+          borderSide: BorderSide(color: colorScheme.error),
         ),
         hintStyle: GoogleFonts.outfit(
-          color: colorScheme.onSurface.withValues(alpha: 0.4),
+          color: colorScheme.onSurface.withOpacity(0.4),
           fontSize: 14,
         ),
         labelStyle: GoogleFonts.outfit(
-          color: colorScheme.onSurface.withValues(alpha: 0.7),
+          color: colorScheme.onSurface.withOpacity(0.7),
           fontSize: 14,
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: colorScheme.surfaceContainer,
-        selectedColor: colorScheme.primary.withValues(alpha: 0.15),
+        backgroundColor: colorScheme.surfaceVariant,
+        selectedColor: colorScheme.primary.withOpacity(0.15),
         labelStyle: GoogleFonts.outfit(
           fontSize: 13,
           fontWeight: FontWeight.w500,
@@ -492,7 +500,7 @@ class PhobesTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor:
-            isDark ? colorScheme.surfaceContainerHigh : const Color(0xFF323232),
+            isDark ? colorScheme.surfaceVariant : const Color(0xFF323232),
         contentTextStyle: GoogleFonts.outfit(
           color: isDark ? colorScheme.onSurface : Colors.white,
           fontSize: 14,
@@ -506,7 +514,7 @@ class PhobesTheme {
       tabBarTheme: TabBarThemeData(
         indicatorColor: colorScheme.primary,
         labelColor: colorScheme.primary,
-        unselectedLabelColor: colorScheme.onSurface.withValues(alpha: 0.5),
+        unselectedLabelColor: colorScheme.onSurface.withOpacity(0.5),
         labelStyle: GoogleFonts.outfit(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -518,15 +526,17 @@ class PhobesTheme {
         indicatorSize: TabBarIndicatorSize.label,
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return colorScheme.primary;
-          return colorScheme.onSurface.withValues(alpha: 0.4);
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return colorScheme.primary.withValues(alpha: 0.3);
+        thumbColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
+            return colorScheme.primary;
           }
-          return colorScheme.surfaceContainerHigh;
+          return colorScheme.onSurface.withOpacity(0.4);
+        }),
+        trackColor: MaterialStateProperty.resolveWith((states) {
+          if (states.contains(MaterialState.selected)) {
+            return colorScheme.primary.withOpacity(0.3);
+          }
+          return colorScheme.surfaceVariant;
         }),
       ),
       dividerColor: dividerColor,
@@ -546,7 +556,7 @@ class PhobesTheme {
       iconTheme: IconThemeData(color: iconColor, size: 24),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHigh,
+          color: colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(borderRadiusS),
         ),
         textStyle: GoogleFonts.outfit(
@@ -556,11 +566,11 @@ class PhobesTheme {
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: colorScheme.primary,
-        linearTrackColor: colorScheme.primary.withValues(alpha: 0.15),
-        circularTrackColor: colorScheme.primary.withValues(alpha: 0.15),
+        linearTrackColor: colorScheme.primary.withOpacity(0.15),
+        circularTrackColor: colorScheme.primary.withOpacity(0.15),
       ),
       popupMenuTheme: PopupMenuThemeData(
-        color: colorScheme.surfaceContainerLow,
+        color: colorScheme.surface,
         elevation: 8,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(borderRadiusM),
@@ -572,15 +582,15 @@ class PhobesTheme {
       ),
       sliderTheme: SliderThemeData(
         activeTrackColor: colorScheme.primary,
-        inactiveTrackColor: colorScheme.primary.withValues(alpha: 0.15),
+        inactiveTrackColor: colorScheme.primary.withOpacity(0.15),
         thumbColor: colorScheme.primary,
-        overlayColor: colorScheme.primary.withValues(alpha: 0.1),
+        overlayColor: colorScheme.primary.withOpacity(0.1),
       ),
       scrollbarTheme: ScrollbarThemeData(
-        thumbVisibility: WidgetStateProperty.all(false),
-        trackVisibility: WidgetStateProperty.all(false),
-        thickness: WidgetStateProperty.all(0),
-        thumbColor: WidgetStateProperty.all(Colors.transparent),
+        thumbVisibility: MaterialStateProperty.all(false),
+        trackVisibility: MaterialStateProperty.all(false),
+        thickness: MaterialStateProperty.all(0),
+        thumbColor: MaterialStateProperty.all(Colors.transparent),
         radius: const Radius.circular(10),
       ),
     );
@@ -592,7 +602,7 @@ class PhobesTheme {
           HSLColor.fromColor(userAccentColor.value)
               .withLightness(
                   (HSLColor.fromColor(userAccentColor.value).lightness - 0.1)
-                      .clamp(0.0, 1.0))
+                      .clamp(0.0, 1.0),)
               .toColor(),
         ],
         begin: Alignment.topLeft,
@@ -671,7 +681,7 @@ class PhobesTheme {
 
   static List<BoxShadow> glowShadow(Color color, {double intensity = 0.4}) => [
         BoxShadow(
-          color: color.withValues(alpha: intensity),
+          color: color.withOpacity(intensity),
           blurRadius: 20,
           spreadRadius: -5,
         ),
@@ -681,7 +691,7 @@ class PhobesTheme {
     if (isDark) {
       return [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.2),
+          color: Colors.black.withOpacity(0.2),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -689,7 +699,7 @@ class PhobesTheme {
     } else {
       return [
         BoxShadow(
-          color: Colors.grey.withValues(alpha: 0.1),
+          color: Colors.grey.withOpacity(0.1),
           blurRadius: 10,
           offset: const Offset(0, 4),
         ),
@@ -699,7 +709,7 @@ class PhobesTheme {
 
   static List<BoxShadow> get premiumShadow => [
         BoxShadow(
-          color: userAccentColor.value.withValues(alpha: 0.2),
+          color: userAccentColor.value.withOpacity(0.2),
           blurRadius: 20,
           offset: const Offset(0, 8),
           spreadRadius: -2,

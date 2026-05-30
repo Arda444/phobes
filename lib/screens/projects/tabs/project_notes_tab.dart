@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../models/note_model.dart';
 import '../../../../models/project_model.dart';
+import '../../../../services/firebase_service.dart';
 import '../../../../widgets/phobes_widgets.dart';
+import '../../notes/note_add_edit_screen.dart';
 
 class ProjectNotesTab extends StatelessWidget {
   final Project project;
+  final String teamId;
 
-  const ProjectNotesTab({super.key, required this.project});
+  const ProjectNotesTab({
+    super.key,
+    required this.project,
+    required this.teamId,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final locale = l10n.localeName;
+    final service = FirebaseService();
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -21,7 +34,7 @@ class ProjectNotesTab extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Tüm Notlar',
+                l10n.projectNotesTitle,
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -29,71 +42,102 @@ class ProjectNotesTab extends StatelessWidget {
                 ),
               ),
               PhobesButton(
-                text: 'Yeni Not',
+                text: l10n.newNote,
                 icon: Icons.add_rounded,
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => NoteAddEditScreen(
+                        projectId: project.id,
+                        teamId: teamId,
+                      ),
+                    ),
+                  );
+                },
                 isOutlined: true,
               ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: 3, // Placeholder count
-              itemBuilder: (context, index) {
-                return PhobesCard(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  onTap: () {},
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: StreamBuilder<List<Note>>(
+              stream: service.getProjectNotesStream(project.id),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: PhobesLoadingIndicator(color: cs.primary),
+                  );
+                }
+                final notes = snapshot.data ?? [];
+                if (notes.isEmpty) {
+                  return Center(
+                    child: Text(
+                      l10n.projectNoLinkedNotes,
+                      style: GoogleFonts.outfit(
+                        color: cs.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 80),
+                  itemCount: notes.length,
+                  itemBuilder: (context, index) {
+                    final note = notes[index];
+                    return PhobesCard(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => NoteAddEditScreen(
+                              existingNote: note,
+                              projectId: project.id,
+                              teamId: teamId,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              'Örnek Not Başlığı ${index + 1}',
+                          Text(
+                            note.title.isEmpty
+                                ? l10n.untitledNote
+                                : note.title,
+                            style: GoogleFonts.outfit(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          if (note.preview.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              note.preview,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurface,
+                                fontSize: 13,
+                                color: cs.onSurface.withOpacity(0.6),
                               ),
                             ),
-                          ),
-                          Icon(Icons.more_horiz_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.5)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Bu, projeyle ilgili örnek bir not içeriğidir. Daha fazla detay eklenebilir.',
-                        style: GoogleFonts.outfit(
-                          fontSize: 13,
-                          color: cs.onSurface.withValues(alpha: 0.6),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_rounded,
-                              size: 12,
-                              color: cs.onSurface.withValues(alpha: 0.4)),
-                          const SizedBox(width: 6),
+                          ],
+                          const SizedBox(height: 8),
                           Text(
-                            '2 saat önce',
+                            DateFormat('d MMM yyyy', locale)
+                                .format(note.updatedAt ?? note.date),
                             style: GoogleFonts.outfit(
                               fontSize: 11,
-                              color: cs.onSurface.withValues(alpha: 0.4),
+                              color: cs.onSurface.withOpacity(0.4),
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),

@@ -26,6 +26,7 @@ class WeatherData {
   final String description;
   final String city;
   final List<ForecastDay> forecast;
+  final String? airQualityIndex; // US EPA AQI
 
   WeatherData({
     required this.tempC,
@@ -35,18 +36,19 @@ class WeatherData {
     required this.description,
     required this.city,
     required this.forecast,
+    this.airQualityIndex,
   });
 }
 
 class WeatherService {
-  Future<WeatherData?> fetchWeather({String cityName = "İstanbul"}) async {
+  Future<WeatherData?> fetchWeather({String cityName = 'İstanbul'}) async {
     try {
       final encodedCity = Uri.encodeComponent(cityName);
       final weatherUrl = 'https://wttr.in/$encodedCity?format=j1&lang=tr';
       final response = await http.get(Uri.parse(weatherUrl));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
         final current = data['current_condition'][0];
         final nearestArea = data['nearest_area']?[0];
         final weatherDays = data['weather'] as List?;
@@ -66,11 +68,11 @@ class WeatherService {
           desc = current['weatherDesc'][0]['value'];
         }
 
-        List<ForecastDay> forecastList = [];
+        final List<ForecastDay> forecastList = [];
         if (weatherDays != null) {
-          for (var day in weatherDays.take(3)) {
+          for (final day in weatherDays.take(3)) {
             String dayDesc = '';
-            // Get description from the middle of the day (hourly index 4 is approx 12:00)
+
             final hourly = day['hourly'] as List?;
             if (hourly != null && hourly.length > 4) {
               final noon = hourly[4];
@@ -88,8 +90,20 @@ class WeatherService {
               minTemp: day['mintempC'] ?? '',
               avgTemp: day['avgtempC'] ?? '',
               description: dayDesc,
-            ));
+            ),);
           }
+        }
+
+        // Hava kalitesi (AQI) — wttr.in j1 formatından alınır
+        String? aqi;
+        try {
+          final aqRaw = current['air_quality'];
+          if (aqRaw != null) {
+            final aqiVal = aqRaw['us-epa-index'];
+            if (aqiVal != null) aqi = aqiVal.toString();
+          }
+        } catch (e) {
+          debugPrint('[WeatherService] AQI parse error: $e');
         }
 
         return WeatherData(
@@ -100,6 +114,7 @@ class WeatherService {
           description: desc,
           city: areaName,
           forecast: forecastList,
+          airQualityIndex: aqi,
         );
       }
     } catch (e) {

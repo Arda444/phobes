@@ -1,0 +1,10 @@
+# Firebase service account keys — NEVER commit these files.
+# If accidentally committed, revoke immediately in:
+# Firebase Console → Project Settings → Service Accounts → Manage service account permissions
+serviceAccountKey.json
+pserviceAccountKey.json
+*serviceAccountKey*.json
+*.json
+!package.json
+!package-lock.json
+node_modules/

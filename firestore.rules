@@ -1,0 +1,706 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isNotBanned() {
+      return isSignedIn() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('banned', false) != true
+      );
+    }
+    function canWrite() {
+      return isNotBanned() || isAdmin();
+    }
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Admin'
+      );
+    }
+    function blacklistMatchesSelf() {
+      return isSignedIn() && (
+        (resource.data.type == 'email' && resource.data.value == request.auth.token.email) ||
+        (resource.data.type == 'uid' && resource.data.value == request.auth.uid)
+      );
+    }
+    function isTeamMember(teamId) {
+      return isSignedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.memberIds;
+    }
+    function isTeamAdmin(teamId) {
+      let team = get(/databases/$(database)/documents/teams/$(teamId)).data;
+      return isSignedIn() && (
+        request.auth.uid == team.ownerId ||
+        request.auth.uid in team.adminIds
+      );
+    }
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+    function protectedUserFieldsUnchanged() {
+      return unchanged('banned') &&
+        unchanged('role') &&
+        unchanged('xp') &&
+        unchanged('level');
+    }
+    function userOwnerProfileUpdate() {
+      return isOwner(userId) &&
+        protectedUserFieldsUnchanged() &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['banned', 'role', 'xp', 'level']);
+    }
+    function taskTeamIdField() {
+      return request.resource.data.get('teamId', null);
+    }
+    function taskGroupIdField() {
+      return request.resource.data.get('groupId', null);
+    }
+    function taskGroupAccess() {
+      let gid = taskGroupIdField();
+      let tid = taskTeamIdField();
+      return gid == null ||
+        (tid != null && gid == tid && isTeamMember(tid)) ||
+        (tid != null && isTeamMember(tid) &&
+          exists(/databases/$(database)/documents/teams/$(tid)/projects/$(gid)));
+    }
+    function taskAssigneesValid() {
+      let tid = request.resource.data.get('teamId', null);
+      let assigned = request.resource.data.get('assignedTo', []);
+      return assigned.size() <= 30 && (
+        tid == null
+          ? assigned.size() == 0
+          : get(/databases/$(database)/documents/teams/$(tid)).data
+              .get('memberIds', [])
+              .hasAll(assigned)
+      );
+    }
+    function teamMemberWritableKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly([
+          'description', 'color', 'icon', 'settings', 'updatedAt'
+        ]);
+    }
+    function teamPrivilegedFieldsUnchanged() {
+      return unchanged('ownerId') &&
+        unchanged('memberIds') &&
+        unchanged('adminIds');
+    }
+    function teamAdminWritableKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly([
+          'name', 'color', 'icon', 'description', 'settings', 'updatedAt',
+          'announcement', 'announcementBy', 'announcementDate', 'joinCode'
+        ]);
+    }
+    function teamOwnerWritableKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly([
+          'name', 'color', 'icon', 'description', 'settings', 'updatedAt',
+          'announcement', 'announcementBy', 'announcementDate', 'joinCode',
+          'adminIds'
+        ]);
+    }
+    function appointmentGroupReadable(groupId) {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/appointment_groups/$(groupId)).data.ownerId
+          == request.auth.uid ||
+        request.auth.uid in get(/databases/$(database)/documents/appointment_groups/$(groupId))
+          .data.get('memberIds', []) ||
+        get(/databases/$(database)/documents/appointment_groups/$(groupId))
+          .data.get('isActive', true) != false
+      );
+    }
+    function appointmentGroupExists(groupId) {
+      return exists(/databases/$(database)/documents/appointment_groups/$(groupId));
+    }
+    function appointmentGroupOwner(groupId) {
+      return get(/databases/$(database)/documents/appointment_groups/$(groupId)).data.ownerId;
+    }
+    function taskOwnerWritableKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly([
+          'title', 'description', 'startTime', 'endTime', 'location', 'url',
+          'tags', 'isAllDay', 'color', 'priority', 'reminderMinutes',
+          'isCompleted', 'completionTime', 'postponeCount', 'repeatRule',
+          'recurrenceGroupId', 'groupId', 'teamId', 'assignedTo', 'createdBy',
+          'status', 'subtasks', 'linkedNoteIds'
+        ]);
+    }
+
+    // ── Users ──────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && !request.resource.data.keys().hasAny(['banned', 'role'])
+        && request.resource.data.get('xp', 0) == 0
+        && request.resource.data.get('level', 1) == 1;
+      allow update: if userOwnerProfileUpdate() || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+
+      match /medications/{medId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /user_books/{bookId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /reading_goals/{goalId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /book_quotes/{quoteId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /shelf_config/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      // slotMap, shelfLabels, bookOrder all stored here.
+      match /book_prefs/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /shelf_decorations/{decoId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /notifications/{notifId} {
+        allow read, write: if isOwner(userId);
+        // Allow any signed-in user to create a task-assignment notification
+        // for another user (used by _notifyAssignees in TaskService).
+        // The notification's userId field must match the collection owner.
+        allow create: if isSignedIn()
+          && request.resource.data.userId == userId
+          && (
+            isAdmin() ||
+            (
+              request.resource.data.type == 'task'
+              && request.resource.data.get('targetId', null) is string
+              && exists(/databases/$(database)/documents/tasks/$(request.resource.data.targetId))
+              && get(/databases/$(database)/documents/tasks/$(request.resource.data.targetId)).data.userId == request.auth.uid
+            ) ||
+            (
+              request.resource.data.type == 'team'
+              && request.resource.data.get('targetId', null) is string
+              && isTeamAdmin(request.resource.data.targetId)
+            ) ||
+            (
+              request.resource.data.type == 'appointment'
+              && request.resource.data.get('targetId', null) is string
+              && exists(/databases/$(database)/documents/appointments/$(request.resource.data.targetId))
+              && get(/databases/$(database)/documents/appointments/$(request.resource.data.targetId))
+                .data.userId == userId
+              && get(/databases/$(database)/documents/appointments/$(request.resource.data.targetId))
+                .data.get('clientId', null) == request.auth.uid
+            )
+          );
+      }
+    }
+
+    // ── Tasks ──────────────────────────────────────────────────────────────
+    match /tasks/{taskId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.get('assignedTo', []) ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId)
+        ) ||
+        (
+          resource.data.get('groupId', null) != null &&
+          resource.data.get('teamId', null) == null &&
+          isTeamMember(resource.data.groupId)
+        )
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && taskGroupAccess()
+        && taskAssigneesValid();
+      allow update: if isSignedIn() && (
+        (
+          resource.data.userId == request.auth.uid &&
+          unchanged('userId') &&
+          taskOwnerWritableKeys() &&
+          taskGroupAccess() &&
+          taskAssigneesValid()
+        ) ||
+        (
+          request.auth.uid in resource.data.get('assignedTo', []) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'isCompleted', 'completionTime']) &&
+          unchanged('userId') &&
+          unchanged('assignedTo') &&
+          unchanged('groupId') &&
+          unchanged('teamId') &&
+          unchanged('startTime') &&
+          unchanged('endTime')
+        )
+      );
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Notes ──────────────────────────────────────────────────────────────
+    match /notes/{noteId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.get('allowedUserIds', []) ||
+        (resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId))
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && (
+          request.resource.data.get('teamId', null) == null ||
+          isTeamMember(request.resource.data.teamId)
+        )
+        && request.resource.data.get('allowedUserIds', []).size() <= 30;
+      allow update: if isSignedIn() && (
+        (
+          resource.data.userId == request.auth.uid &&
+          unchanged('userId') &&
+          request.resource.data.get('allowedUserIds', []).size() <= 30 &&
+          (
+            request.resource.data.get('teamId', null) == resource.data.get('teamId', null) ||
+            (
+              request.resource.data.get('teamId', null) != null &&
+              isTeamMember(request.resource.data.teamId)
+            )
+          )
+        ) ||
+        (
+          request.auth.uid in resource.data.get('allowedUserIds', []) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'title', 'content', 'tags', 'updatedAt', 'isPinned', 'isFavorite',
+            'isArchived', 'deletedAt', 'pages', 'notebookId', 'color', 'emoji',
+            'lastEditedBy'
+          ]) &&
+          unchanged('userId') &&
+          unchanged('teamId') &&
+          unchanged('allowedUserIds')
+        )
+      );
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/notes/$(noteId)).data.userId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/notes/$(noteId)).data.get('allowedUserIds', []) ||
+          (get(/databases/$(database)/documents/notes/$(noteId)).data.get('teamId', null) != null &&
+            isTeamMember(get(/databases/$(database)/documents/notes/$(noteId)).data.teamId))
+        );
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      }
+      match /history/{histId} {
+        allow read: if isSignedIn() && (
+          get(/databases/$(database)/documents/notes/$(noteId)).data.userId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/notes/$(noteId)).data.get('allowedUserIds', [])
+        );
+        allow write: if isSignedIn() && (
+          get(/databases/$(database)/documents/notes/$(noteId)).data.userId == request.auth.uid ||
+          request.auth.uid in get(/databases/$(database)/documents/notes/$(noteId)).data.get('allowedUserIds', [])
+        );
+      }
+    }
+
+    // ── Notebooks ──────────────────────────────────────────────────────────
+    match /notebooks/{notebookId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Habits ─────────────────────────────────────────────────────────────
+    match /habits/{habitId} {
+      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if canWrite()
+        && resource.data.userId == request.auth.uid
+        && unchanged('userId')
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['title', 'streak', 'lastCompleted', 'createdAt']);
+      allow delete: if canWrite() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Appointments ───────────────────────────────────────────────────────
+    match /appointments/{apptId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        resource.data.get('clientId', null) == request.auth.uid
+      );
+      allow create: if canWrite() && (
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.get('clientId', null) != request.auth.uid
+        ) ||
+        (
+          request.resource.data.get('clientId', null) == request.auth.uid &&
+          request.resource.data.userId != request.auth.uid &&
+          request.resource.data.get('groupId', null) != null &&
+          appointmentGroupExists(request.resource.data.groupId) &&
+          appointmentGroupOwner(request.resource.data.groupId)
+            == request.resource.data.userId
+        )
+      );
+      allow update: if isSignedIn() && (
+        (
+          resource.data.userId == request.auth.uid &&
+          unchanged('userId') &&
+          unchanged('clientId') &&
+          unchanged('groupId')
+        ) ||
+        (
+          resource.data.get('clientId', null) == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'cancelReason']) &&
+          request.resource.data.status == 'cancelled' &&
+          unchanged('userId') &&
+          unchanged('clientId') &&
+          unchanged('groupId') &&
+          unchanged('date')
+        )
+      );
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    match /appointment_groups/{groupId} {
+      allow read: if isSignedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.uid in resource.data.get('memberIds', [])
+      );
+      allow create: if canWrite() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if canWrite() && resource.data.ownerId == request.auth.uid;
+
+      match /slots/{slotId} {
+        allow read: if appointmentGroupReadable(groupId);
+        allow create: if canWrite() && (
+          appointmentGroupOwner(groupId) == request.auth.uid ||
+          (
+            request.resource.data.clientId == request.auth.uid &&
+            appointmentGroupOwner(groupId)
+              == request.resource.data.get('providerId', '') &&
+            request.resource.data.get('groupId', '') == groupId
+          )
+        );
+        allow update: if canWrite() && (
+          appointmentGroupOwner(groupId) == request.auth.uid ||
+          (
+            resource.data.clientId == request.auth.uid &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['status']) &&
+            request.resource.data.status == 'cancelled'
+          )
+        );
+        allow delete: if canWrite()
+          && appointmentGroupOwner(groupId) == request.auth.uid;
+      }
+    }
+
+    // ── Teams ──────────────────────────────────────────────────────────────
+    match /teams/{teamId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid in resource.data.memberIds || isAdmin()
+      );
+      allow create: if canWrite()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds.size() == 1
+        && request.resource.data.memberIds[0] == request.auth.uid
+        && request.resource.data.adminIds.size() == 1
+        && request.resource.data.adminIds[0] == request.auth.uid;
+      allow update: if isSignedIn() && (
+        (
+          resource.data.ownerId == request.auth.uid &&
+          unchanged('ownerId') &&
+          unchanged('memberIds') &&
+          teamOwnerWritableKeys()
+        ) ||
+        (
+          isTeamAdmin(teamId) &&
+          teamPrivilegedFieldsUnchanged() &&
+          teamAdminWritableKeys()
+        ) ||
+        (isTeamMember(teamId) && teamMemberWritableKeys())
+      );
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /projects/{projectId} {
+        allow read: if isTeamMember(teamId);
+        allow write: if isTeamAdmin(teamId);
+
+        match /resources/{resId} {
+          allow read: if isTeamMember(teamId);
+          allow write: if isTeamAdmin(teamId);
+        }
+      }
+      match /resources/{resId} {
+        allow read: if isTeamMember(teamId);
+        allow write: if isTeamAdmin(teamId);
+      }
+      match /book_clubs/{clubId} {
+        allow read: if isTeamMember(teamId);
+        // Members can update their own progress; admins can do everything.
+        allow create, delete: if isTeamAdmin(teamId);
+        allow update: if isTeamAdmin(teamId) ||
+          (isTeamMember(teamId) &&
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['memberProgress']) &&
+            request.resource.data.memberProgress.diff(resource.data.memberProgress)
+              .affectedKeys().hasOnly([request.auth.uid]));
+      }
+    }
+
+    // ── Clients ──────────────────────────────────────────────────────────────
+    match /clients/{clientId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ── Corkboard ────────────────────────────────────────────────────────────
+    match /corkboard_boards/{boardId} {
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        (
+          request.resource.data.get('teamId', null) != null &&
+          isTeamMember(request.resource.data.teamId)
+        )
+      );
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId)
+        )
+      );
+      allow update, delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId) &&
+          isTeamAdmin(resource.data.teamId)
+        )
+      );
+    }
+
+    match /corkboard_items/{itemId} {
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        (
+          request.resource.data.get('teamId', null) != null &&
+          isTeamMember(request.resource.data.teamId)
+        )
+      );
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId)
+        )
+      );
+      allow update: if canWrite() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamAdmin(resource.data.teamId)
+        )
+      );
+      allow delete: if canWrite() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId) &&
+          (
+            resource.data.userId == request.auth.uid ||
+            isTeamAdmin(resource.data.teamId)
+          )
+        )
+      );
+    }
+
+    match /corkboard_connections/{connectionId} {
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        (
+          request.resource.data.get('teamId', null) != null &&
+          isTeamMember(request.resource.data.teamId)
+        )
+      );
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId)
+        )
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        (
+          resource.data.get('teamId', null) != null &&
+          isTeamMember(resource.data.teamId)
+        )
+      );
+      allow update: if false;
+    }
+
+    // ── Activity Logs ──────────────────────────────────────────────────────
+    match /activity_logs/{logId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isTeamMember(resource.data.teamId)
+      );
+      // userId zorunlu + maksimum boyut kontrolü (spam önleme)
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 500
+        && isTeamMember(request.resource.data.teamId);
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Budget ─────────────────────────────────────────────────────────────
+    match /budget_transactions/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    match /budget_accounts/{docId} {
+      allow create: if canWrite() && request.resource.data.userId == request.auth.uid;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Balance updates happen in the same client transaction as budget_transactions.
+      allow update: if canWrite()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && (
+          unchanged('balance') ||
+          (
+            request.resource.data.balance >= -10000000 &&
+            request.resource.data.balance <= 100000000 &&
+            math.abs(request.resource.data.balance - resource.data.balance) <= 1000000
+          )
+        );
+    }
+    match /budget_debts/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && unchanged('amount');
+    }
+    match /budget_limits/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    match /savings_goals/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && (
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['currentAmount'])
+          || (
+            request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['currentAmount'])
+            && request.resource.data.currentAmount >= 0
+            && request.resource.data.currentAmount
+              <= request.resource.data.get('targetAmount', 999999999) * 1.5
+          )
+        );
+    }
+    match /budget_assets/{docId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && (
+          unchanged('currentValue')
+          || request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['currentValue', 'lastUpdated'])
+        );
+    }
+
+    // ── Medicine Catalogue (read-only for all signed-in users) ─────────────
+    match /medicines/{medId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ── Nova AI Config ─────────────────────────────────────────────────────
+    // API key is now fetched server-side via Cloud Functions (admin SDK).
+    // Client code must NOT read config/nova — deny all client reads.
+    match /config/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /nova_rate_limits/{docId} {
+      allow read, write: if false;
+    }
+    match /action_rate_limits/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── Admin Collections ──────────────────────────────────────────────────
+    // Names match AdminService (auditLogs, appConfig, etc.), not admin_config/admin_logs.
+    match /auditLogs/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /activityLogs/{docId} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.get('details', '') is string
+        && request.resource.data.get('details', '').size() <= 500
+        && request.resource.data.get('action', '') in [
+          'login', 'logout', 'page_view', 'feature_use', 'error'
+        ];
+      allow update, delete: if isAdmin();
+    }
+    match /appConfig/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /appVersions/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /notificationTemplates/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /pushHistory/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /surveys/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /surveyResponses/{surveyId}/responses/{responseId} {
+      allow read: if isAdmin() || (isSignedIn() && responseId == request.auth.uid);
+      allow create: if isSignedIn()
+        && responseId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    match /broadcasts/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /users/{userId}/dismissedBroadcasts/{broadcastId} {
+      allow read, write: if isOwner(userId);
+    }
+    match /adminRoles/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /blacklist/{docId} {
+      allow read: if isAdmin() || blacklistMatchesSelf();
+      allow write: if isAdmin();
+    }
+    match /feedback/{docId} {
+      allow read: if isAdmin();
+      // Gönderen userId eşleşmeli + mesaj boyutu sınırlı (spam önleme)
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.message is string
+        && request.resource.data.message.size() <= 2000;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

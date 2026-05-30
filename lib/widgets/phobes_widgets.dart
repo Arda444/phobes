@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../core/navigation_keys.dart';
 import '../core/phobes_theme.dart';
+import '../l10n/app_localizations.dart';
 
 class PhobesCard extends StatelessWidget {
   final Widget child;
@@ -40,32 +44,35 @@ class PhobesCard extends StatelessWidget {
       margin: margin ?? const EdgeInsets.only(bottom: PhobesTheme.spacingM),
       decoration: BoxDecoration(
         gradient: gradient,
-        color: gradient == null ? cs.surfaceContainer : null,
+        color: gradient == null ? cs.surfaceVariant : null,
         borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
         border: Border.all(
-          color: cs.outline.withValues(alpha: isDark ? 0.3 : 0.15),
+          color: cs.outline.withOpacity(isDark ? 0.3 : 0.15),
         ),
         boxShadow: enableGlow
             ? [
                 BoxShadow(
-                  color: (glowColor ?? cs.primary).withValues(alpha: 0.3),
+                  color: (glowColor ?? cs.primary).withOpacity(0.3),
                   blurRadius: 20,
                   spreadRadius: -5,
                 ),
               ]
             : PhobesTheme.getCardShadow(isDark),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
-          splashColor: cs.primary.withValues(alpha: 0.08),
-          highlightColor: cs.primary.withValues(alpha: 0.04),
-          child: Padding(
-            padding: padding ?? const EdgeInsets.all(PhobesTheme.spacingL),
-            child: child,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
+            splashColor: cs.primary.withOpacity(0.08),
+            highlightColor: cs.primary.withOpacity(0.04),
+            child: Padding(
+              padding: padding ?? const EdgeInsets.all(PhobesTheme.spacingL),
+              child: child,
+            ),
           ),
         ),
       ),
@@ -109,8 +116,8 @@ class PhobesGlassCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.white.withValues(alpha: 0.6),
+                    ? Colors.white.withOpacity(0.1)
+                    : Colors.white.withOpacity(0.6),
               ),
             ),
             child: Material(
@@ -118,7 +125,7 @@ class PhobesGlassCard extends StatelessWidget {
               child: InkWell(
                 onTap: onTap,
                 borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
-                splashColor: cs.primary.withValues(alpha: 0.08),
+                splashColor: cs.primary.withOpacity(0.08),
                 child: Padding(
                   padding:
                       padding ?? const EdgeInsets.all(PhobesTheme.spacingL),
@@ -188,12 +195,12 @@ class _PhobesButtonState extends State<PhobesButton>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final defaultGradient = LinearGradient(
-      colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
+      colors: [cs.primary, cs.primary.withOpacity(0.8)],
     );
 
     final textColor = widget.isOutlined ? cs.primary : cs.onPrimary;
 
-    final outlinedBg = isDark ? cs.surfaceContainer : cs.surfaceContainerHigh;
+    final outlinedBg = isDark ? cs.surfaceVariant : cs.surfaceVariant;
 
     return GestureDetector(
       onTapDown: (_) => _controller.forward(),
@@ -219,7 +226,7 @@ class _PhobesButtonState extends State<PhobesButton>
                 ? null
                 : [
                     BoxShadow(
-                      color: cs.primary.withValues(alpha: 0.4),
+                      color: cs.primary.withOpacity(0.4),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -277,6 +284,8 @@ class PhobesIconButton extends StatelessWidget {
   final double? size;
   final int? badgeCount;
   final bool enableGlow;
+  final bool showBorder;
+  final double borderRadius;
 
   const PhobesIconButton({
     super.key,
@@ -289,6 +298,8 @@ class PhobesIconButton extends StatelessWidget {
     this.size,
     this.badgeCount,
     this.enableGlow = false,
+    this.showBorder = true,
+    this.borderRadius = 10,
   });
 
   @override
@@ -296,7 +307,7 @@ class PhobesIconButton extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final baseColor = color ?? cs.onSurface.withValues(alpha: 0.8);
+    final baseColor = color ?? cs.onSurface.withOpacity(0.8);
 
     return GestureDetector(
       onTap: onTap,
@@ -306,17 +317,19 @@ class PhobesIconButton extends StatelessWidget {
         padding: EdgeInsets.all(padding),
         decoration: BoxDecoration(
           color: backgroundColor ?? Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: cs.outline.withValues(alpha: isDark ? 0.08 : 0.05),
-          ),
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: showBorder
+              ? Border.all(
+                  color: cs.outline.withOpacity(isDark ? 0.08 : 0.05),
+                )
+              : null,
           boxShadow: enableGlow
               ? [
                   BoxShadow(
-                    color: (color ?? cs.primary).withValues(alpha: 0.2),
+                    color: (color ?? cs.primary).withOpacity(0.2),
                     blurRadius: 10,
                     spreadRadius: 1,
-                  )
+                  ),
                 ]
               : null,
         ),
@@ -374,6 +387,12 @@ class PhobesTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final bool autofocus;
 
+  /// Pass [] to disable browser autofill on this field.
+  final Iterable<String>? autofillHints;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
+
   const PhobesTextField({
     super.key,
     this.controller,
@@ -387,6 +406,10 @@ class PhobesTextField extends StatelessWidget {
     this.keyboardType,
     this.onChanged,
     this.autofocus = false,
+    this.autofillHints,
+    this.textInputAction,
+    this.onSubmitted,
+    this.focusNode,
   });
 
   @override
@@ -400,19 +423,25 @@ class PhobesTextField extends StatelessWidget {
       keyboardType: keyboardType,
       onChanged: onChanged,
       autofocus: autofocus,
+      autofillHints: autofillHints,
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
+      focusNode: focusNode,
       style: GoogleFonts.outfit(color: cs.onSurface, fontSize: 15),
       cursorColor: cs.primary,
       decoration: InputDecoration(
         hintText: hintText,
         labelText: labelText,
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon,
-                color: cs.onSurface.withValues(alpha: 0.4), size: 22)
+            ? Icon(prefixIcon, color: cs.onSurface.withOpacity(0.4), size: 22)
             : null,
         suffixIcon: suffixIcon != null
             ? IconButton(
-                icon: Icon(suffixIcon,
-                    color: cs.onSurface.withValues(alpha: 0.4), size: 22),
+                icon: Icon(
+                  suffixIcon,
+                  color: cs.onSurface.withOpacity(0.4),
+                  size: 22,
+                ),
                 onPressed: onSuffixTap,
               )
             : null,
@@ -436,6 +465,9 @@ class PhobesTextFormField extends StatelessWidget {
   final bool autofocus;
   final bool isLarge;
 
+  /// Pass [] to disable browser autofill on this field.
+  final Iterable<String>? autofillHints;
+
   const PhobesTextFormField({
     super.key,
     this.controller,
@@ -451,6 +483,7 @@ class PhobesTextFormField extends StatelessWidget {
     this.validator,
     this.autofocus = false,
     this.isLarge = false,
+    this.autofillHints,
   });
 
   @override
@@ -465,6 +498,7 @@ class PhobesTextFormField extends StatelessWidget {
       onChanged: onChanged,
       validator: validator,
       autofocus: autofocus,
+      autofillHints: autofillHints,
       style: GoogleFonts.outfit(
         color: cs.onSurface,
         fontSize: isLarge ? 24 : 15,
@@ -475,18 +509,20 @@ class PhobesTextFormField extends StatelessWidget {
         hintText: hintText,
         labelText: labelText,
         hintStyle: GoogleFonts.outfit(
-          color: cs.onSurface.withValues(alpha: 0.2),
+          color: cs.onSurface.withOpacity(0.2),
           fontSize: isLarge ? 24 : 15,
           fontWeight: isLarge ? FontWeight.bold : FontWeight.normal,
         ),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon,
-                color: cs.onSurface.withValues(alpha: 0.4), size: 22)
+            ? Icon(prefixIcon, color: cs.onSurface.withOpacity(0.4), size: 22)
             : null,
         suffixIcon: suffixIcon != null
             ? IconButton(
-                icon: Icon(suffixIcon,
-                    color: cs.onSurface.withValues(alpha: 0.4), size: 22),
+                icon: Icon(
+                  suffixIcon,
+                  color: cs.onSurface.withOpacity(0.4),
+                  size: 22,
+                ),
                 onPressed: onSuffixTap,
               )
             : null,
@@ -548,31 +584,32 @@ class _PhobesChipState extends State<PhobesChip> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
           padding: EdgeInsets.symmetric(
-              horizontal: widget.isSelected ? 20 : 14, vertical: 10),
+            horizontal: widget.isSelected ? 20 : 14,
+            vertical: 10,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(30),
             color: widget.isSelected
-                ? chipColor.withValues(alpha: isDark ? 0.15 : 0.1)
+                ? chipColor.withOpacity(isDark ? 0.15 : 0.1)
                 : Colors.transparent,
             border: Border.all(
               color: widget.isSelected
-                  ? chipColor.withValues(alpha: 0.5)
+                  ? chipColor.withOpacity(0.5)
                   : Colors.transparent,
               width: 1.5,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: chipColor.withValues(alpha: 0.2),
+                      color: chipColor.withOpacity(0.2),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ]
                 : null,
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (widget.icon != null) ...[
                 AnimatedSwitcher(
@@ -587,7 +624,7 @@ class _PhobesChipState extends State<PhobesChip> {
                     size: widget.isSelected ? 18 : 16,
                     color: widget.isSelected
                         ? chipColor
-                        : cs.onSurface.withValues(alpha: 0.5),
+                        : cs.onSurface.withOpacity(0.5),
                   ),
                 ),
                 SizedBox(width: widget.isSelected ? 8 : 6),
@@ -601,8 +638,9 @@ class _PhobesChipState extends State<PhobesChip> {
                           ? Colors.white
                           : chipColor.withRed(
                               ((chipColor.r * 255.0).round() - 50)
-                                  .clamp(0, 255)))
-                      : cs.onSurface.withValues(alpha: 0.6),
+                                  .clamp(0, 255),
+                            ))
+                      : cs.onSurface.withOpacity(0.6),
                   fontSize: widget.isSelected ? 15 : 14,
                   fontWeight:
                       widget.isSelected ? FontWeight.bold : FontWeight.w500,
@@ -620,10 +658,10 @@ class _PhobesChipState extends State<PhobesChip> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: chipColor.withValues(alpha: 0.8),
+                        color: chipColor.withOpacity(0.8),
                         blurRadius: 4,
                         spreadRadius: 1,
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -669,7 +707,7 @@ class PhobesAvatar extends StatelessWidget {
           boxShadow: showGlow
               ? [
                   BoxShadow(
-                    color: (glowColor ?? cs.primary).withValues(alpha: 0.5),
+                    color: (glowColor ?? cs.primary).withOpacity(0.5),
                     blurRadius: 15,
                     spreadRadius: 2,
                   ),
@@ -678,10 +716,11 @@ class PhobesAvatar extends StatelessWidget {
         ),
         child: imageUrl != null
             ? ClipOval(
-                child: Image.network(
-                  imageUrl!,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl!,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildInitial(cs),
+                  errorWidget: (_, __, ___) => _buildInitial(cs),
+                  placeholder: (_, __) => _buildInitial(cs),
                 ),
               )
             : _buildInitial(cs),
@@ -801,7 +840,7 @@ class PhobesSectionHeader extends StatelessWidget {
               Text(
                 title.toUpperCase(),
                 style: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.5),
+                  color: cs.onSurface.withOpacity(0.5),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
@@ -812,7 +851,7 @@ class PhobesSectionHeader extends StatelessWidget {
                 Text(
                   subtitle!,
                   style: GoogleFonts.outfit(
-                    color: cs.onSurface.withValues(alpha: 0.3),
+                    color: cs.onSurface.withOpacity(0.3),
                     fontSize: 11,
                   ),
                 ),
@@ -861,7 +900,7 @@ class PhobesStatCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: color.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -869,7 +908,7 @@ class PhobesStatCard extends StatelessWidget {
               Text(
                 title,
                 style: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.5),
+                  color: cs.onSurface.withOpacity(0.5),
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -892,7 +931,7 @@ class PhobesStatCard extends StatelessWidget {
             Text(
               unit!,
               style: GoogleFonts.outfit(
-                color: cs.onSurface.withValues(alpha: 0.4),
+                color: cs.onSurface.withOpacity(0.4),
                 fontSize: 11,
               ),
             ),
@@ -905,18 +944,29 @@ class PhobesStatCard extends StatelessWidget {
 class PhobesEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
+  // subtitle and description are interchangeable aliases.
   final String? subtitle;
+  final String? description;
   final String? buttonText;
+  // onButtonPressed and onButtonTap are interchangeable aliases.
   final VoidCallback? onButtonPressed;
+  final VoidCallback? onButtonTap;
+  final IconData? buttonIcon;
 
   const PhobesEmptyState({
     super.key,
     required this.icon,
     required this.title,
     this.subtitle,
+    this.description,
     this.buttonText,
     this.onButtonPressed,
+    this.onButtonTap,
+    this.buttonIcon,
   });
+
+  String? get _body => subtitle ?? description;
+  VoidCallback? get _action => onButtonPressed ?? onButtonTap;
 
   @override
   Widget build(BuildContext context) {
@@ -925,47 +975,55 @@ class PhobesEmptyState extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.05),
-                shape: BoxShape.circle,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: cs.primary.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 52, color: cs.primary.withOpacity(0.6)),
               ),
-              child: Icon(icon,
-                  size: 48, color: cs.onSurface.withValues(alpha: 0.25)),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              title,
-              style: GoogleFonts.outfit(
-                color: cs.onSurface.withValues(alpha: 0.7),
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            if (subtitle != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 24),
               Text(
-                subtitle!,
+                title,
                 style: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.4),
-                  fontSize: 14,
+                  color: cs.onSurface,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.3,
                 ),
                 textAlign: TextAlign.center,
               ),
+              if (_body != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _body!,
+                  style: GoogleFonts.outfit(
+                    color: cs.onSurface.withOpacity(0.45),
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (buttonText != null && _action != null) ...[
+                const SizedBox(height: 28),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: PhobesButton(
+                    text: buttonText!,
+                    icon: buttonIcon,
+                    onPressed: _action,
+                  ),
+                ),
+              ],
             ],
-            if (buttonText != null && onButtonPressed != null) ...[
-              const SizedBox(height: 24),
-              PhobesButton(
-                text: buttonText!,
-                onPressed: onButtonPressed,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -985,17 +1043,19 @@ class PhobesSkeleton extends StatefulWidget {
   });
 
   static Widget card({double height = 80}) {
-    return Builder(builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: PhobesTheme.spacingM),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            PhobesSkeleton(width: double.infinity, height: height),
-          ],
-        ),
-      );
-    });
+    return Builder(
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: PhobesTheme.spacingM),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PhobesSkeleton(width: double.infinity, height: height),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   static Widget listTile() {
@@ -1004,9 +1064,10 @@ class PhobesSkeleton extends StatefulWidget {
       child: Row(
         children: [
           PhobesSkeleton(
-              width: 48,
-              height: 48,
-              borderRadius: BorderRadius.all(Radius.circular(24))),
+            width: 48,
+            height: 48,
+            borderRadius: BorderRadius.all(Radius.circular(24)),
+          ),
           SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1061,7 +1122,7 @@ class _PhobesSkeletonState extends State<PhobesSkeleton>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: cs.onSurface.withValues(alpha: _animation.value * 0.15),
+            color: cs.onSurface.withOpacity(_animation.value * 0.15),
             borderRadius: widget.borderRadius ??
                 BorderRadius.circular(PhobesTheme.borderRadiusS),
           ),
@@ -1135,7 +1196,7 @@ class PhobesSwipeableCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: PhobesTheme.spacingM),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(PhobesTheme.borderRadiusL),
       ),
       alignment: alignment,
@@ -1193,7 +1254,7 @@ class PhobesBottomSheet extends StatelessWidget {
         color: cs.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         border: Border.all(
-          color: cs.outline.withValues(alpha: isDark ? 0.1 : 0.05),
+          color: cs.outline.withOpacity(isDark ? 0.1 : 0.05),
           width: 0.5,
         ),
       ),
@@ -1207,7 +1268,7 @@ class PhobesBottomSheet extends StatelessWidget {
               height: 4,
               margin: const EdgeInsets.only(bottom: 24),
               decoration: BoxDecoration(
-                color: cs.onSurface.withValues(alpha: 0.1),
+                color: cs.onSurface.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1262,10 +1323,13 @@ class PhobesBottomSheet extends StatelessWidget {
     required BuildContext context,
     required String title,
     String? message,
-    String confirmText = 'Onayla',
-    String cancelText = 'İptal',
+    String? confirmText,
+    String? cancelText,
     Color? confirmColor,
   }) {
+    final l10n = AppLocalizations.of(context)!;
+    final resolvedConfirm = confirmText ?? l10n.confirm;
+    final resolvedCancel = cancelText ?? l10n.cancel;
     return show<bool>(
       context: context,
       builder: (ctx) => PhobesBottomSheet(
@@ -1277,10 +1341,8 @@ class PhobesBottomSheet extends StatelessWidget {
                 message,
                 style: GoogleFonts.outfit(
                   fontSize: 15,
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6),
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1290,7 +1352,7 @@ class PhobesBottomSheet extends StatelessWidget {
               children: [
                 Expanded(
                   child: PhobesButton(
-                    text: cancelText,
+                    text: resolvedCancel,
                     isOutlined: true,
                     onPressed: () => Navigator.pop(ctx, false),
                   ),
@@ -1298,12 +1360,14 @@ class PhobesBottomSheet extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: PhobesButton(
-                    text: confirmText,
+                    text: resolvedConfirm,
                     gradient: confirmColor != null
-                        ? LinearGradient(colors: [
-                            confirmColor,
-                            confirmColor.withValues(alpha: 0.8),
-                          ])
+                        ? LinearGradient(
+                            colors: [
+                              confirmColor,
+                              confirmColor.withOpacity(0.8),
+                            ],
+                          )
                         : null,
                     onPressed: () => Navigator.pop(ctx, true),
                   ),
@@ -1336,7 +1400,7 @@ class PhobesBottomSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: (color ?? cs.primary).withValues(alpha: 0.1),
+                  color: (color ?? cs.primary).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, size: 20, color: color ?? cs.primary),
@@ -1351,8 +1415,11 @@ class PhobesBottomSheet extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Icon(Icons.chevron_right_rounded,
-                  size: 20, color: cs.onSurface.withValues(alpha: 0.3)),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: cs.onSurface.withOpacity(0.3),
+              ),
             ],
           ),
         ),
@@ -1362,6 +1429,9 @@ class PhobesBottomSheet extends StatelessWidget {
 }
 
 class PhobesSnackbar {
+  static OverlayEntry? _entry;
+  static Timer? _timer;
+
   static void show(
     BuildContext context, {
     required String message,
@@ -1370,48 +1440,145 @@ class PhobesSnackbar {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    final cs = Theme.of(context).colorScheme;
+    final rootNav = rootNavigatorKey.currentState;
+    final overlay = rootNav?.overlay ??
+        Navigator.maybeOf(context, rootNavigator: true)?.overlay ??
+        Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) return;
 
-    final (Color bgColor, IconData icon) = switch (type) {
+    _timer?.cancel();
+    _entry?.remove();
+
+    final themeContext = rootNav?.context ??
+        Navigator.maybeOf(context, rootNavigator: true)?.context ??
+        context;
+    final cs = Theme.of(themeContext).colorScheme;
+    final isDark = Theme.of(themeContext).brightness == Brightness.dark;
+    final top = MediaQuery.viewPaddingOf(themeContext).top + 12;
+    final screenW = MediaQuery.sizeOf(themeContext).width;
+    final toastW = (screenW * 0.42).clamp(280.0, 400.0);
+
+    final (Color accent, IconData icon) = switch (type) {
       PhobesSnackbarType.success => (
           PhobesTheme.kSuccessColor,
-          Icons.check_circle_rounded
+          Icons.check_circle_rounded,
         ),
       PhobesSnackbarType.error => (
           PhobesTheme.kErrorColor,
-          Icons.error_rounded
+          Icons.error_rounded,
         ),
       PhobesSnackbarType.warning => (
           PhobesTheme.kWarningColor,
-          Icons.warning_rounded
+          Icons.warning_rounded,
         ),
       PhobesSnackbarType.info => (PhobesTheme.kInfoColor, Icons.info_rounded),
     };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: duration,
-        content: Row(
-          children: [
-            Icon(icon, color: bgColor, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: GoogleFonts.outfit(fontSize: 14),
+    _entry = OverlayEntry(
+      builder: (ctx) => IgnorePointer(
+        child: Align(
+          alignment: Alignment.topRight,
+          child: Padding(
+            padding: EdgeInsets.only(top: top, right: 16),
+            child: IgnorePointer(
+              ignoring: false,
+              child: Material(
+                color: Colors.transparent,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, child) => Transform.translate(
+                    offset: Offset((1 - value) * 24, 0),
+                    child: Opacity(opacity: value, child: child),
+                  ),
+                  child: GestureDetector(
+                    onTap: _dismiss,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E1E1E) : cs.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: accent.withOpacity(0.35)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black
+                                .withOpacity(isDark ? 0.45 : 0.12),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        child: SizedBox(
+                          width: toastW,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(icon, color: accent, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  message,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: cs.onSurface,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ),
+                              if (actionLabel != null) ...[
+                                const SizedBox(width: 8),
+                                TextButton(
+                                  onPressed: () {
+                                    onAction?.call();
+                                    _dismiss();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    actionLabel,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
-          ],
+          ),
         ),
-        action: actionLabel != null
-            ? SnackBarAction(
-                label: actionLabel,
-                textColor: cs.primary,
-                onPressed: onAction ?? () {},
-              )
-            : null,
       ),
     );
+
+    overlay.insert(_entry!);
+    _timer = Timer(duration, _dismiss);
+  }
+
+  static void _dismiss() {
+    _timer?.cancel();
+    _timer = null;
+    _entry?.remove();
+    _entry = null;
   }
 }
 
@@ -1448,7 +1615,7 @@ class PhobesPremiumAppBar extends StatelessWidget
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: cs.primary.withValues(alpha: 0.05),
+            color: cs.primary.withOpacity(0.05),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1458,19 +1625,23 @@ class PhobesPremiumAppBar extends StatelessWidget
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         child: Container(
           padding: EdgeInsets.fromLTRB(
-              20, topPadding + 12, 20, bottom == null ? 20 : 10),
+            20,
+            topPadding + 12,
+            20,
+            bottom == null ? 20 : 10,
+          ),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                cs.primary.withValues(alpha: 0.15),
+                cs.primary.withOpacity(0.15),
                 cs.surface,
               ],
             ),
             border: Border(
               bottom: BorderSide(
-                color: cs.primary.withValues(alpha: 0.1),
+                color: cs.primary.withOpacity(0.1),
                 width: 1.5,
               ),
             ),
@@ -1484,7 +1655,7 @@ class PhobesPremiumAppBar extends StatelessWidget
                   if (showBackButton) ...[
                     PhobesIconButton(
                       icon: Icons.arrow_back_ios_new_rounded,
-                      backgroundColor: cs.surface.withValues(alpha: 0.5),
+                      backgroundColor: cs.surface.withOpacity(0.5),
                       onTap: onBackPressed ?? () => Navigator.pop(context),
                     ),
                     const SizedBox(width: 16),
@@ -1504,7 +1675,7 @@ class PhobesPremiumAppBar extends StatelessWidget
                   if (trailing != null) ...[
                     const SizedBox(width: 16),
                     trailing!,
-                  ]
+                  ],
                 ],
               ),
               if (bottom != null) ...[

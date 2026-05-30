@@ -7,6 +7,7 @@ class Team {
   final List<String> memberIds;
   final List<String> adminIds;
   final String joinCode;
+  final int color;
   final DateTime? createdAt;
 
   Team({
@@ -16,6 +17,7 @@ class Team {
     required this.memberIds,
     required this.adminIds,
     required this.joinCode,
+    this.color = 0xFF6366F1,
     this.createdAt,
   });
 
@@ -26,6 +28,7 @@ class Team {
       'memberIds': memberIds,
       'adminIds': adminIds,
       'joinCode': joinCode,
+      'color': color,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
@@ -51,6 +54,7 @@ class Team {
       name: data['name'] as String? ?? 'İsimsiz Takım',
       ownerId: data['ownerId'] as String? ?? '',
       joinCode: data['joinCode'] as String? ?? '',
+      color: data['color'] as int? ?? 0xFF6366F1,
       memberIds: (data['memberIds'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??

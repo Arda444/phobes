@@ -1,15 +1,23 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../services/firebase_service.dart';
+import '../../services/appointment_service.dart';
 import '../../models/appointment_model.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/phobes_widgets.dart';
+import '../../core/module_info_catalog.dart';
+import '../../widgets/phobes_form_wrapper.dart';
+import '../../core/phobes_detail_panel.dart';
+import '../../widgets/phobes_module_header.dart';
+import '../../core/phobes_theme.dart';
+import 'views/timeline_view.dart';
+import 'views/weekly_grid_view.dart';
 import 'appointment_detail_screen.dart';
 import 'appointment_add_edit_screen.dart';
 import 'appointment_group_screen.dart';
 import 'client_booking_screen.dart';
+
+enum ApptViewMode { timeline, weekly, list }
 
 class AppointmentScreen extends StatefulWidget {
   final VoidCallback? onClose;
@@ -21,8 +29,12 @@ class AppointmentScreen extends StatefulWidget {
 
 class _AppointmentScreenState extends State<AppointmentScreen>
     with SingleTickerProviderStateMixin {
+  final AppointmentService _service = AppointmentService();
   late TabController _tabController;
   Widget? _internalView;
+
+  ApptViewMode _viewMode = ApptViewMode.timeline;
+  DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
@@ -31,419 +43,1090 @@ class _AppointmentScreenState extends State<AppointmentScreen>
   }
 
   @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _showInternalView(Widget view) => setState(() => _internalView = view);
+
+  void _closeInternalView() => setState(() => _internalView = null);
+
+  void _navigateDay(int delta) {
+    setState(() {
+      _selectedDate =
+          DateUtils.dateOnly(_selectedDate).add(Duration(days: delta));
+    });
+  }
+
+  void _goToToday() {
+    setState(() => _selectedDate = DateUtils.dateOnly(DateTime.now()));
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAmoled = PhobesTheme.amoledMode.value;
 
     return Scaffold(
-      backgroundColor: cs.surface,
+      backgroundColor: isAmoled && isDark ? Colors.black : cs.surface,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1000),
-            child: Stack(
-              children: [
-                Column(
-                  children: [
-                    _buildHeader(context, l10n),
-                    const SizedBox(height: 16),
-                    _buildCustomTabBar(l10n),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _ProviderDashboardTab(
-                            onAppointmentTap: (appt) => _showInternalView(
-                                AppointmentDetailScreen(
-                                    appointment: appt,
-                                    onClose: _closeInternalView)),
-                            onEditTap: (appt) => _showInternalView(
-                                AppointmentAddEditScreen(
-                                    appointment: appt,
-                                    onClose: _closeInternalView)),
-                          ),
-                          _ClientHistoryTab(
-                            onAppointmentTap: (appt) => _showInternalView(
-                                AppointmentDetailScreen(
-                                    appointment: appt,
-                                    onClose: _closeInternalView)),
-                            onBookTap: () => _showInternalView(
-                                ClientBookingScreen(
-                                    onClose: _closeInternalView)),
-                          ),
-                        ],
+        child: Stack(
+          children: [
+            NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                PhobesModuleHeader(
+                  title: l10n.appointmentCenter,
+                    icon: Icons.event_available_rounded,
+                    onClose: () {
+                      if (widget.onClose != null) {
+                        widget.onClose!();
+                      } else {
+                        Navigator.pop(context);
+                      }
+                    },
+                    info: ModuleInfoCatalog.forAppointments(l10n),
+                    onAdd: () => PhobesFormWrapper.show(
+                      context,
+                      title: l10n.apptNewTitle,
+                      form: AppointmentAddEditScreen(
+                        onClose: () => Navigator.pop(context),
                       ),
                     ),
-                  ],
-                ),
-                if (_internalView != null)
-                  Positioned.fill(
-                    child: Container(
-                      color: cs.surface,
-                      child: _internalView,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showInternalView(Widget view) {
-    setState(() => _internalView = view);
-  }
-
-  void _closeInternalView() {
-    setState(() => _internalView = null);
-  }
-
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 48, 10),
-      child: Row(
-        children: [
-          PhobesIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onTap: () {
-              if (widget.onClose != null) {
-                widget.onClose!();
-              } else {
-                Navigator.pop(context);
-              }
-            },
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l10n.appointmentCenter,
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSurface,
-                  ),
+                    addTooltip: l10n.apptNewTitle,
+                    extraActions: [
+                      Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: cs.surfaceVariant,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _viewModeButton(
+                              Icons.view_day_rounded,
+                              ApptViewMode.timeline,
+                              cs,
+                              l10n.apptTimeline,
+                            ),
+                            _viewModeButton(
+                              Icons.calendar_view_week_rounded,
+                              ApptViewMode.weekly,
+                              cs,
+                              l10n.apptWeeklyGrid,
+                            ),
+                            _viewModeButton(
+                              Icons.list_rounded,
+                              ApptViewMode.list,
+                              cs,
+                              l10n.apptListView,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      PhobesModuleHeaderIconButton(
+                        icon: Icons.settings_suggest_outlined,
+                        onTap: () => _showInternalView(
+                          AppointmentGroupScreen(onClose: _closeInternalView),
+                        ),
+                      ),
+                    ],
+                    tabController: _tabController,
+                    tabs: [
+                      PhobesModuleTab(l10n.managementTab,
+                          Icons.admin_panel_settings_rounded),
+                      PhobesModuleTab(
+                          l10n.myAppointmentsTab, Icons.person_rounded),
+                    ],
                 ),
               ],
-            ),
-          ),
-          Row(
-            children: [
-              PhobesIconButton(
-                icon: Icons.settings_suggest_outlined,
-                onTap: () => _showInternalView(
-                    AppointmentGroupScreen(onClose: _closeInternalView)),
-              ),
-              const SizedBox(width: 8),
-              PhobesIconButton(
-                icon: Icons.add_rounded,
-                color: Colors.black,
-                backgroundColor: Colors.tealAccent,
-                onTap: () => _showInternalView(
-                    ClientBookingScreen(onClose: _closeInternalView)),
-              ),
-            ],
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomTabBar(AppLocalizations l10n) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      height: 50,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: cs.outline.withValues(alpha: 0.1)),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicatorSize: TabBarIndicatorSize.tab,
-        indicator: BoxDecoration(
-          color: cs.primary.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: cs.primary.withValues(alpha: 0.5)),
-        ),
-        labelColor: cs.primary,
-        unselectedLabelColor: cs.onSurface.withValues(alpha: 0.5),
-        dividerColor: Colors.transparent,
-        labelStyle:
-            GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 13),
-        tabs: [
-          Tab(text: l10n.managementTab),
-          Tab(text: l10n.myAppointmentsTab),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProviderDashboardTab extends StatefulWidget {
-  final Function(Appointment) onAppointmentTap;
-  final Function(Appointment) onEditTap;
-  const _ProviderDashboardTab(
-      {required this.onAppointmentTap, required this.onEditTap});
-
-  @override
-  State<_ProviderDashboardTab> createState() => _ProviderDashboardTabState();
-}
-
-class _ProviderDashboardTabState extends State<_ProviderDashboardTab> {
-  String _searchQuery = "";
-  String _filterStatus = "all";
-
-  @override
-  Widget build(BuildContext context) {
-    final service = FirebaseService();
-    final l10n = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-
-    return StreamBuilder<List<Appointment>>(
-      stream: service.getAppointmentsStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final allAppointments = snapshot.data ?? [];
-
-        final int pendingCount =
-            allAppointments.where((a) => a.status == 'pending').length;
-        final int confirmedCount =
-            allAppointments.where((a) => a.status == 'confirmed').length;
-        final int todayCount = allAppointments
-            .where((a) => DateUtils.isSameDay(a.date, DateTime.now()))
-            .length;
-
-        List<Appointment> filteredList = allAppointments.where((appt) {
-          final matchesSearch = appt.clientName
-                  .toLowerCase()
-                  .contains(_searchQuery.toLowerCase()) ||
-              (appt.phoneNumber?.contains(_searchQuery) ?? false);
-
-          bool matchesFilter = true;
-          if (_filterStatus == 'today') {
-            matchesFilter = DateUtils.isSameDay(appt.date, DateTime.now());
-          } else if (_filterStatus != 'all') {
-            matchesFilter = appt.status == _filterStatus;
-          }
-
-          return matchesSearch && matchesFilter;
-        }).toList();
-
-        return Column(
-          children: [
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
+              body: TabBarView(
+                controller: _tabController,
                 children: [
-                  _StatCard(
-                      label: l10n.filterAll,
-                      count: allAppointments.length,
-                      color: Colors.purple,
-                      icon: Icons.list,
-                      isActive: _filterStatus == 'all',
-                      onTap: () => setState(() => _filterStatus = 'all')),
-                  const SizedBox(width: 12),
-                  _StatCard(
-                      label: l10n.statusPending,
-                      count: pendingCount,
-                      color: Colors.orange,
-                      icon: Icons.hourglass_top,
-                      isActive: _filterStatus == 'pending',
-                      onTap: () => setState(() => _filterStatus = 'pending')),
-                  const SizedBox(width: 12),
-                  _StatCard(
-                      label: l10n.today,
-                      count: todayCount,
-                      color: Colors.blue,
-                      icon: Icons.calendar_today,
-                      isActive: _filterStatus == 'today',
-                      onTap: () => setState(() => _filterStatus = 'today')),
-                  const SizedBox(width: 12),
-                  _StatCard(
-                      label: l10n.statusConfirmed,
-                      count: confirmedCount,
-                      color: Colors.green,
-                      icon: Icons.check_circle,
-                      isActive: _filterStatus == 'confirmed',
-                      onTap: () => setState(() => _filterStatus = 'confirmed')),
+                  _ProviderTab(
+                    service: _service,
+                    viewMode: _viewMode,
+                    selectedDate: _selectedDate,
+                    locale: l10n.localeName,
+                    onAppointmentTap: (appt) => PhobesDetailPanel.open(
+                      context,
+                      AppointmentDetailScreen(appointment: appt),
+                    ),
+                    onEditTap: (appt) => _showInternalView(
+                      AppointmentAddEditScreen(
+                        appointment: appt,
+                        onClose: _closeInternalView,
+                      ),
+                    ),
+                    onEmptySlotTap: (dt) => _showInternalView(
+                      AppointmentAddEditScreen(
+                        initialDate: dt,
+                        onClose: _closeInternalView,
+                      ),
+                    ),
+                    onDayTap: (day) {
+                      setState(() => _selectedDate = DateUtils.dateOnly(day));
+                    },
+                    onNavigateDay: _navigateDay,
+                    onGoToday: _goToToday,
+                    l10n: l10n,
+                  ),
+                  _ClientTab(
+                    service: _service,
+                    viewMode: _viewMode,
+                    selectedDate: _selectedDate,
+                    locale: l10n.localeName,
+                    onAppointmentTap: (appt) => PhobesDetailPanel.open(
+                      context,
+                      AppointmentDetailScreen(appointment: appt),
+                    ),
+                    onBookTap: () => _showInternalView(
+                      ClientBookingScreen(
+                        onClose: _closeInternalView,
+                      ),
+                    ),
+                    onEmptySlotTap: (dt) => _showInternalView(
+                      AppointmentAddEditScreen(
+                        initialDate: dt,
+                        onClose: _closeInternalView,
+                      ),
+                    ),
+                    onDayTap: (day) {
+                      setState(() => _selectedDate = DateUtils.dateOnly(day));
+                    },
+                    onNavigateDay: _navigateDay,
+                    onGoToday: _goToToday,
+                    l10n: l10n,
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextField(
-                style: TextStyle(color: cs.onSurface),
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: l10n.searchPlaceholder,
-                  hintStyle:
-                      TextStyle(color: cs.onSurface.withValues(alpha: 0.4)),
-                  prefixIcon: Icon(Icons.search,
-                      color: cs.onSurface.withValues(alpha: 0.4)),
-                  filled: true,
-                  fillColor: cs.surfaceContainerHigh,
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            if (_internalView != null)
+              Positioned.fill(
+                child: Container(
+                  color: isAmoled && isDark ? Colors.black : cs.surface,
+                  child: _internalView,
                 ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: filteredList.isEmpty
-                  ? _EmptyState(isSearch: _searchQuery.isNotEmpty, l10n: l10n)
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
-                      itemCount: filteredList.length,
-                      itemBuilder: (context, index) => _AppointmentCard(
-                        appointment: filteredList[index],
-                        isProviderMode: true,
-                        l10n: l10n,
-                        onTap: () =>
-                            widget.onAppointmentTap(filteredList[index]),
-                        onEditTap: () => widget.onEditTap(filteredList[index]),
-                      ),
-                    ),
-            ),
           ],
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _viewModeButton(
+    IconData icon,
+    ApptViewMode mode,
+    ColorScheme cs,
+    String tooltip,
+  ) {
+    final isActive = _viewMode == mode;
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: () => setState(() => _viewMode = mode),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: isActive ? cs.primary.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: isActive ? cs.primary : cs.onSurface.withOpacity(0.4),
+          ),
+        ),
+      ),
     );
   }
 }
 
-class _ClientHistoryTab extends StatelessWidget {
-  final Function(Appointment) onAppointmentTap;
-  final VoidCallback onBookTap;
-  const _ClientHistoryTab(
-      {required this.onAppointmentTap, required this.onBookTap});
+List<Appointment> _appointmentsOnDay(
+  List<Appointment> appointments,
+  DateTime day,
+) {
+  final dayKey = DateUtils.dateOnly(day);
+  return appointments
+      .where((a) => DateUtils.dateOnly(a.date.toLocal()) == dayKey)
+      .toList()
+    ..sort((a, b) => a.date.compareTo(b.date));
+}
+
+Widget _buildTimelineDayView({
+  required List<Appointment> appointments,
+  required DateTime selectedDate,
+  required ColorScheme cs,
+  required AppLocalizations l10n,
+  required void Function(Appointment) onAppointmentTap,
+  required void Function(DateTime) onEmptySlotTap,
+}) {
+  final dayAppts = _appointmentsOnDay(appointments, selectedDate);
+
+  if (dayAppts.isEmpty) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.event_available_rounded,
+            size: 36,
+            color: cs.onSurface.withOpacity(0.12),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.msgNoAppointments,
+            style: GoogleFonts.outfit(
+              color: cs.onSurface.withOpacity(0.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final w = constraints.maxWidth;
+      final cols = w >= 1500
+          ? 4
+          : w >= 1100
+              ? 3
+              : w >= 700
+                  ? 2
+                  : 1;
+      if (cols == 1) {
+        return ListView.builder(
+          primary: false,
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+          itemCount: dayAppts.length,
+          itemBuilder: (context, index) {
+            final appt = dayAppts[index];
+            return _ListAppointmentCard(
+              appointment: appt,
+              l10n: l10n,
+              onTap: () => onAppointmentTap(appt),
+            );
+          },
+        );
+      }
+      return GridView.builder(
+        primary: false,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: cols,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          mainAxisExtent: 112,
+        ),
+        itemCount: dayAppts.length,
+        itemBuilder: (context, index) {
+          final appt = dayAppts[index];
+          return _ListAppointmentCard(
+            appointment: appt,
+            l10n: l10n,
+            onTap: () => onAppointmentTap(appt),
+          );
+        },
+      );
+    },
+  );
+}
+
+// ─── Paylaşılan istatistik satırı ─────────────────────────────────────────────
+
+class _AppointmentStatsRow extends StatelessWidget {
+  final List<Appointment> appointments;
+
+  const _AppointmentStatsRow({required this.appointments});
 
   @override
   Widget build(BuildContext context) {
-    final FirebaseService service = FirebaseService();
+    final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final pending =
+        appointments.where((a) => a.status == 'pending').length;
+    final confirmed =
+        appointments.where((a) => a.status == 'confirmed').length;
+    final cancelled =
+        appointments.where((a) => a.status == 'cancelled').length;
 
-    return StreamBuilder<List<Appointment>>(
-      stream: service.getMyAppointmentsAsClientStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final appointments = snapshot.data ?? [];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: Row(
+        children: [
+          _statCard(
+              l10n.filterAll, appointments.length.toString(), Colors.blue, cs),
+          const SizedBox(width: 8),
+          _statCard(l10n.statusPending, pending.toString(), Colors.orange, cs),
+          const SizedBox(width: 8),
+          _statCard(
+              l10n.statusConfirmed, confirmed.toString(), Colors.green, cs),
+          const SizedBox(width: 8),
+          _statCard(
+              l10n.statusCancelled, cancelled.toString(), Colors.red, cs),
+        ],
+      ),
+    );
+  }
 
-        if (appointments.isEmpty) {
+  Widget _statCard(String label, String value, Color color, ColorScheme cs) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.15)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                color: color.withOpacity(0.8),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Provider (Yönetim) Tab ───────────────────────────────────────────────────
+
+class _ProviderTab extends StatefulWidget {
+  final AppointmentService service;
+  final ApptViewMode viewMode;
+  final DateTime selectedDate;
+  final String locale;
+  final Function(Appointment) onAppointmentTap;
+  final Function(Appointment) onEditTap;
+  final Function(DateTime) onEmptySlotTap;
+  final Function(DateTime) onDayTap;
+  final Function(int) onNavigateDay;
+  final VoidCallback onGoToday;
+  final AppLocalizations l10n;
+
+  const _ProviderTab({
+    required this.service,
+    required this.viewMode,
+    required this.selectedDate,
+    required this.locale,
+    required this.onAppointmentTap,
+    required this.onEditTap,
+    required this.onEmptySlotTap,
+    required this.onDayTap,
+    required this.onNavigateDay,
+    required this.onGoToday,
+    required this.l10n,
+  });
+
+  @override
+  State<_ProviderTab> createState() => _ProviderTabState();
+}
+
+class _ProviderTabState extends State<_ProviderTab> {
+  String _searchQuery = '';
+  final String _statusFilter = 'all';
+  late Stream<List<Appointment>> _appointmentsStream;
+
+  List<Appointment> _cached = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _appointmentsStream = _createStream();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProviderTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.viewMode != widget.viewMode) {
+      _appointmentsStream = _createStream();
+    }
+  }
+
+  Stream<List<Appointment>> _createStream() {
+    if (widget.viewMode == ApptViewMode.weekly) {
+      final monday = widget.selectedDate
+          .subtract(Duration(days: widget.selectedDate.weekday - 1));
+      final sunday =
+          monday.add(const Duration(days: 6, hours: 23, minutes: 59));
+      return widget.service.getAppointmentsForDateRange(monday, sunday);
+    }
+    return widget.service.getAppointmentsStream();
+  }
+
+  List<Appointment> _managementAppointments(List<Appointment> raw) =>
+      raw
+          .where((a) => a.groupId != null && a.groupId!.isNotEmpty)
+          .toList();
+
+  Widget _buildHeader(
+    AppLocalizations l10n,
+    ColorScheme cs,
+    List<Appointment> managementAppts,
+  ) {
+    return Column(
+      children: [
+        _AppointmentStatsRow(appointments: managementAppts),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+          child: PhobesTextField(
+            hintText: l10n.apptSearchHint,
+            prefixIcon: Icons.search_rounded,
+            onChanged: (v) => setState(() => _searchQuery = v),
+          ),
+        ),
+        if (widget.viewMode == ApptViewMode.timeline) _buildDateNavigator(cs),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Builder(
+      builder: (nestedContext) => StreamBuilder<List<Appointment>>(
+        stream: _appointmentsStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _cached = snapshot.data!;
+          }
+          final raw = snapshot.data ?? _cached;
+          final managementAppts = _managementAppointments(raw);
+          final header = _buildHeader(widget.l10n, cs, managementAppts);
+
+          return ModuleNestedScroll.scrollView(
+            context: nestedContext,
+            slivers: [
+              SliverToBoxAdapter(child: header),
+              SliverFillRemaining(
+                hasScrollBody: widget.viewMode == ApptViewMode.timeline,
+                child: _buildView(
+                  managementAppts,
+                  cs,
+                  timelineAppointments: raw,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDateNavigator(ColorScheme cs) {
+    final l10n = widget.l10n;
+    final isToday = TimelineView.isSameCalendarDay(
+      widget.selectedDate,
+      DateTime.now(),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => widget.onNavigateDay(-1),
+            child: Icon(
+              Icons.chevron_left_rounded,
+              color: cs.onSurface.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: widget.onGoToday,
+              child: Column(
+                children: [
+                  Text(
+                    DateFormat('d MMMM EEEE', widget.locale)
+                        .format(widget.selectedDate),
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (!isToday)
+                    Text(
+                      l10n.apptToday,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        color: cs.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => widget.onNavigateDay(1),
+            child: Icon(
+              Icons.chevron_right_rounded,
+              color: cs.onSurface.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildView(
+    List<Appointment> appointments,
+    ColorScheme cs, {
+    List<Appointment>? timelineAppointments,
+  }) {
+    final l10n = widget.l10n;
+    // Apply status + search filters
+    var filtered = _statusFilter == 'all'
+        ? appointments
+        : _statusFilter == 'today'
+            ? appointments.where((a) => a.isToday).toList()
+            : appointments.where((a) => a.status == _statusFilter).toList();
+
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      filtered = filtered
+          .where(
+            (a) =>
+                a.title.toLowerCase().contains(q) ||
+                a.clientName.toLowerCase().contains(q) ||
+                (a.notes?.toLowerCase().contains(q) ?? false),
+          )
+          .toList();
+    }
+
+    switch (widget.viewMode) {
+      case ApptViewMode.timeline:
+        return _buildTimelineDayView(
+          appointments: timelineAppointments ?? filtered,
+          selectedDate: widget.selectedDate,
+          cs: cs,
+          l10n: l10n,
+          onAppointmentTap: widget.onAppointmentTap,
+          onEmptySlotTap: widget.onEmptySlotTap,
+        );
+
+      case ApptViewMode.weekly:
+        return WeeklyGridView(
+          focusedDate: widget.selectedDate,
+          appointments: filtered,
+          onAppointmentTap: widget.onAppointmentTap,
+          onEmptySlotTap: widget.onEmptySlotTap,
+          onDayTap: widget.onDayTap,
+          locale: widget.locale,
+        );
+
+      case ApptViewMode.list:
+        final sorted = List<Appointment>.from(filtered)
+          ..sort((a, b) => a.date.compareTo(b.date));
+
+        if (sorted.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.event_note_rounded,
-                    size: 60, color: Colors.white10),
-                const SizedBox(height: 16),
-                Text(l10n.msgNoAppointments,
-                    style: const TextStyle(color: Colors.grey)),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: onBookTap,
-                  child: Text(l10n.bookAppointment,
-                      style: const TextStyle(color: Colors.tealAccent)),
-                )
+                Icon(
+                  Icons.inbox_rounded,
+                  size: 56,
+                  color: cs.onSurface.withOpacity(0.1),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.msgNoAppointments,
+                  style: GoogleFonts.outfit(
+                    color: cs.onSurface.withOpacity(0.3),
+                  ),
+                ),
               ],
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 80),
-          itemCount: appointments.length,
-          itemBuilder: (context, index) => _AppointmentCard(
-            appointment: appointments[index],
-            isProviderMode: false,
-            l10n: l10n,
-            onTap: () => onAppointmentTap(appointments[index]),
-            onEditTap: () {},
-          ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final cols = w >= 1500
+                ? 4
+                : w >= 1100
+                    ? 3
+                    : w >= 700
+                        ? 2
+                        : 1;
+            if (cols == 1) {
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
+                itemCount: sorted.length,
+                itemBuilder: (context, index) {
+                  final appt = sorted[index];
+                  return _ListAppointmentCard(
+                    appointment: appt,
+                    l10n: l10n,
+                    onTap: () => widget.onAppointmentTap(appt),
+                  );
+                },
+              );
+            }
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                mainAxisExtent: 112,
+              ),
+              itemCount: sorted.length,
+              itemBuilder: (context, index) {
+                final appt = sorted[index];
+                return _ListAppointmentCard(
+                  appointment: appt,
+                  l10n: l10n,
+                  onTap: () => widget.onAppointmentTap(appt),
+                );
+              },
+            );
+          },
         );
-      },
+    }
+  }
+}
+
+// ─── Client (Randevularım) Tab ────────────────────────────────────────────────
+
+class _ClientTab extends StatefulWidget {
+  final AppointmentService service;
+  final ApptViewMode viewMode;
+  final DateTime selectedDate;
+  final String locale;
+  final AppLocalizations l10n;
+  final Function(Appointment) onAppointmentTap;
+  final VoidCallback onBookTap;
+  final Function(DateTime) onEmptySlotTap;
+  final Function(DateTime) onDayTap;
+  final Function(int) onNavigateDay;
+  final VoidCallback onGoToday;
+
+  const _ClientTab({
+    required this.service,
+    required this.viewMode,
+    required this.selectedDate,
+    required this.locale,
+    required this.l10n,
+    required this.onAppointmentTap,
+    required this.onBookTap,
+    required this.onEmptySlotTap,
+    required this.onDayTap,
+    required this.onNavigateDay,
+    required this.onGoToday,
+  });
+
+  @override
+  State<_ClientTab> createState() => _ClientTabState();
+}
+
+class _ClientTabState extends State<_ClientTab> {
+  late final Stream<List<Appointment>> _appointmentsStream;
+  String _searchQuery = '';
+  List<Appointment> _cached = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _appointmentsStream = widget.service.getMyAppointmentsAsClientStream();
+  }
+
+  Widget _buildHeader(ColorScheme cs, List<Appointment> appointments) {
+    return Column(
+      children: [
+        _AppointmentStatsRow(appointments: appointments),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+          child: PhobesTextField(
+            hintText: widget.l10n.apptSearchHint,
+            prefixIcon: Icons.search_rounded,
+            onChanged: (v) => setState(() => _searchQuery = v),
+          ),
+        ),
+        if (widget.viewMode == ApptViewMode.timeline) _buildDateNavigator(cs),
+      ],
+    );
+  }
+
+  Widget _buildDateNavigator(ColorScheme cs) {
+    final l10n = widget.l10n;
+    final isToday = TimelineView.isSameCalendarDay(
+      widget.selectedDate,
+      DateTime.now(),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => widget.onNavigateDay(-1),
+            child: Icon(
+              Icons.chevron_left_rounded,
+              color: cs.onSurface.withOpacity(0.5),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: widget.onGoToday,
+              child: Column(
+                children: [
+                  Text(
+                    DateFormat('d MMMM EEEE', widget.locale)
+                        .format(widget.selectedDate),
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: cs.onSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (!isToday)
+                    Text(
+                      l10n.apptToday,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        color: cs.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => widget.onNavigateDay(1),
+            child: Icon(
+              Icons.chevron_right_rounded,
+              color: cs.onSurface.withOpacity(0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClientView(List<Appointment> appointments, ColorScheme cs) {
+    final l10n = widget.l10n;
+    var filtered = appointments;
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      filtered = filtered
+          .where(
+            (a) =>
+                a.title.toLowerCase().contains(q) ||
+                a.clientName.toLowerCase().contains(q) ||
+                (a.notes?.toLowerCase().contains(q) ?? false),
+          )
+          .toList();
+    }
+
+    switch (widget.viewMode) {
+      case ApptViewMode.timeline:
+        return _buildTimelineDayView(
+          appointments: filtered,
+          selectedDate: widget.selectedDate,
+          cs: cs,
+          l10n: l10n,
+          onAppointmentTap: widget.onAppointmentTap,
+          onEmptySlotTap: widget.onEmptySlotTap,
+        );
+
+      case ApptViewMode.weekly:
+        return WeeklyGridView(
+          focusedDate: widget.selectedDate,
+          appointments: filtered,
+          onAppointmentTap: widget.onAppointmentTap,
+          onEmptySlotTap: widget.onEmptySlotTap,
+          onDayTap: widget.onDayTap,
+          locale: widget.locale,
+        );
+
+      case ApptViewMode.list:
+        final sorted = List<Appointment>.from(filtered)
+          ..sort((a, b) => a.date.compareTo(b.date));
+
+        if (sorted.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.inbox_rounded,
+                  size: 36,
+                  color: cs.onSurface.withOpacity(0.12),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.msgNoAppointments,
+                  style: GoogleFonts.outfit(
+                    color: cs.onSurface.withOpacity(0.3),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth;
+            final cols = w >= 1500
+                ? 4
+                : w >= 1100
+                    ? 3
+                    : w >= 700
+                        ? 2
+                        : 1;
+            if (cols == 1) {
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
+                itemCount: sorted.length,
+                itemBuilder: (context, index) {
+                  final appt = sorted[index];
+                  return _ListAppointmentCard(
+                    appointment: appt,
+                    l10n: l10n,
+                    onTap: () => widget.onAppointmentTap(appt),
+                  );
+                },
+              );
+            }
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 80),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: cols,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                mainAxisExtent: 112,
+              ),
+              itemCount: sorted.length,
+              itemBuilder: (context, index) {
+                final appt = sorted[index];
+                return _ListAppointmentCard(
+                  appointment: appt,
+                  l10n: l10n,
+                  onTap: () => widget.onAppointmentTap(appt),
+                );
+              },
+            );
+          },
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Builder(
+      builder: (nestedContext) => StreamBuilder<List<Appointment>>(
+        stream: _appointmentsStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _cached = snapshot.data!;
+          }
+          final appointments = snapshot.data ?? _cached;
+
+          if (appointments.isEmpty && !snapshot.hasData) {
+            return ModuleNestedScroll.centered(
+              context: nestedContext,
+              child: PhobesEmptyState(
+                icon: Icons.event_note_rounded,
+                title: widget.l10n.msgNoAppointments,
+                buttonText: widget.l10n.bookAppointment,
+                buttonIcon: Icons.add_rounded,
+                onButtonTap: widget.onBookTap,
+              ),
+            );
+          }
+
+          if (appointments.isEmpty) {
+            return ModuleNestedScroll.scrollView(
+              context: nestedContext,
+              slivers: [
+                SliverToBoxAdapter(child: _buildHeader(cs, appointments)),
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: PhobesEmptyState(
+                      icon: Icons.event_note_rounded,
+                      title: widget.l10n.msgNoAppointments,
+                      buttonText: widget.l10n.bookAppointment,
+                      buttonIcon: Icons.add_rounded,
+                      onButtonTap: widget.onBookTap,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return ModuleNestedScroll.scrollView(
+            context: nestedContext,
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader(cs, appointments)),
+              SliverFillRemaining(
+                hasScrollBody: widget.viewMode == ApptViewMode.timeline,
+                child: _buildClientView(appointments, cs),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String label;
-  final int count;
-  final Color color;
-  final IconData icon;
-  final bool isActive;
+// ─── Reusable Widgets ─────────────────────────────────────────────────────────
+
+class _ListAppointmentCard extends StatelessWidget {
+  final Appointment appointment;
+  final AppLocalizations l10n;
   final VoidCallback onTap;
 
-  const _StatCard({
-    required this.label,
-    required this.count,
-    required this.color,
-    required this.icon,
-    required this.isActive,
+  const _ListAppointmentCard({
+    required this.appointment,
+    required this.l10n,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final color = Color(appointment.color);
+    final dateStr =
+        DateFormat('d MMM', l10n.localeName).format(appointment.date);
+    final timeStr = DateFormat('HH:mm').format(appointment.date);
+    final isCancelled = appointment.status == 'cancelled';
+
     return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: PhobesGlassCard(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: PhobesCard(
         onTap: onTap,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        borderRadius: 16,
+        padding: const EdgeInsets.all(14),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
+            // Sol renk şeridi + tarih
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 56,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: color.withOpacity(0.12)),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Column(
+                children: [
+                  Text(
+                    dateStr.split(' ').first,
+                    style: GoogleFonts.outfit(
+                      color: color,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    dateStr.split(' ').length > 1
+                        ? dateStr.split(' ').last
+                        : '',
+                    style: GoogleFonts.outfit(
+                      color: color.withOpacity(0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    timeStr,
+                    style: GoogleFonts.outfit(
+                      color: cs.onSurface.withOpacity(0.4),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  count.toString(),
-                  style: GoogleFonts.outfit(
-                    color: cs.onSurface,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            const SizedBox(width: 14),
+            // İçerik
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appointment.title,
+                    style: GoogleFonts.outfit(
+                      color: isCancelled
+                          ? cs.onSurface.withOpacity(0.35)
+                          : cs.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      decoration:
+                          isCancelled ? TextDecoration.lineThrough : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  label,
-                  style: GoogleFonts.outfit(
-                    color: isActive
-                        ? cs.onSurface
-                        : cs.onSurface.withValues(alpha: 0.5),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.person_outline_rounded,
+                        size: 13,
+                        color: cs.onSurface.withOpacity(0.35),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          appointment.clientName,
+                          style: GoogleFonts.outfit(
+                            color: cs.onSurface.withOpacity(0.45),
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            )
+                ],
+              ),
+            ),
+            // Durum pill
+            _StatusPill(status: appointment.status, l10n: l10n),
           ],
         ),
       ),
@@ -451,287 +1134,48 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _EmptyState extends StatelessWidget {
-  final bool isSearch;
+class _StatusPill extends StatelessWidget {
+  final String status;
   final AppLocalizations l10n;
-  const _EmptyState({this.isSearch = false, required this.l10n});
+
+  const _StatusPill({required this.status, required this.l10n});
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(isSearch ? Icons.search_off : Icons.inbox,
-              size: 50, color: Colors.white10),
-          const SizedBox(height: 10),
-          Text(isSearch ? "Sonuç bulunamadı" : l10n.msgNoAppointments,
-              style: const TextStyle(color: Colors.white24)),
-        ],
+    Color color;
+    String text;
+    switch (status) {
+      case 'confirmed':
+        color = const Color(0xFF10B981);
+        text = l10n.statusConfirmed;
+        break;
+      case 'cancelled':
+        color = const Color(0xFFEF4444);
+        text = l10n.statusCancelled;
+        break;
+      case 'completed':
+        color = const Color(0xFF6B7280);
+        text = l10n.statusCompleted;
+        break;
+      default:
+        color = const Color(0xFFF59E0B);
+        text = l10n.statusPending;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
-    );
-  }
-}
-
-class _AppointmentCard extends StatelessWidget {
-  final Appointment appointment;
-  final bool isProviderMode;
-  final AppLocalizations l10n;
-  final VoidCallback onTap;
-  final VoidCallback onEditTap;
-
-  const _AppointmentCard({
-    required this.appointment,
-    required this.isProviderMode,
-    required this.l10n,
-    required this.onTap,
-    required this.onEditTap,
-  });
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'confirmed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      case 'completed':
-        return Colors.grey;
-      default:
-        return Colors.orange;
-    }
-  }
-
-  String _getStatusText(BuildContext context, String status) {
-    final l10n = AppLocalizations.of(context)!;
-    switch (status) {
-      case 'confirmed':
-        return l10n.statusConfirmed.toUpperCase();
-      case 'cancelled':
-        return l10n.statusCancelled.toUpperCase();
-      case 'completed':
-        return l10n.statusCompleted.toUpperCase();
-      default:
-        return l10n.statusPending.toUpperCase();
-    }
-  }
-
-  Future<void> _makeCall(String number) async {
-    final Uri launchUri = Uri(scheme: 'tel', path: number);
-    await launchUrl(launchUri);
-  }
-
-  void _updateStatus(BuildContext context, String newStatus) {
-    FirebaseService()
-        .updateAppointment(appointment.copyWith(status: newStatus));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-          "${l10n.msgStatusUpdated}: ${_getStatusText(context, newStatus)}"),
-      backgroundColor: _getStatusColor(newStatus),
-      duration: const Duration(seconds: 1),
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final statusColor = _getStatusColor(appointment.status);
-    final statusText = _getStatusText(context, appointment.status);
-    final dateStr =
-        DateFormat('d MMM', l10n.localeName).format(appointment.date);
-    final timeStr = DateFormat('HH:mm').format(appointment.date);
-    final cs = Theme.of(context).colorScheme;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: PhobesCard(
-        onTap: onTap,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: cs.onSurface.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        dateStr.toUpperCase(),
-                        style: GoogleFonts.outfit(
-                          color: cs.onSurface.withValues(alpha: 0.5),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        timeStr,
-                        style: GoogleFonts.outfit(
-                          color: cs.onSurface,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appointment.title,
-                        style: GoogleFonts.outfit(
-                          color: cs.onSurface,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            isProviderMode
-                                ? Icons.person_outline_rounded
-                                : Icons.storefront_rounded,
-                            size: 14,
-                            color: cs.onSurface.withValues(alpha: 0.4),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              isProviderMode
-                                  ? appointment.clientName
-                                  : l10n.labelProvider,
-                              style: GoogleFonts.outfit(
-                                color: cs.onSurface.withValues(alpha: 0.5),
-                                fontSize: 13,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    appointment.status == 'pending'
-                        ? Icons.hourglass_top_rounded
-                        : (appointment.status == 'confirmed'
-                            ? Icons.check_rounded
-                            : Icons.circle),
-                    size: 16,
-                    color: statusColor,
-                  ),
-                )
-              ],
-            ),
-            if (isProviderMode) ...[
-              const SizedBox(height: 12),
-              Divider(color: cs.outline.withValues(alpha: 0.1), height: 1),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  if (appointment.phoneNumber != null)
-                    PhobesIconButton(
-                      icon: Icons.phone_rounded,
-                      color: Colors.green,
-                      backgroundColor: Colors.green.withValues(alpha: 0.1),
-                      onTap: () => _makeCall(appointment.phoneNumber!),
-                    )
-                  else
-                    const SizedBox(),
-                  Row(
-                    children: [
-                      PhobesIconButton(
-                        icon: Icons.edit_rounded,
-                        color: Colors.blue,
-                        backgroundColor: Colors.blue.withValues(alpha: 0.1),
-                        onTap: onEditTap,
-                      ),
-                      const SizedBox(width: 8),
-                      if (appointment.status == 'pending') ...[
-                        PhobesIconButton(
-                          icon: Icons.close_rounded,
-                          color: Colors.redAccent,
-                          backgroundColor:
-                              Colors.redAccent.withValues(alpha: 0.1),
-                          onTap: () => _updateStatus(context, 'cancelled'),
-                        ),
-                        const SizedBox(width: 8),
-                        PhobesIconButton(
-                          icon: Icons.check_circle_rounded,
-                          color: Colors.green,
-                          backgroundColor: Colors.green.withValues(alpha: 0.1),
-                          onTap: () => _updateStatus(context, 'confirmed'),
-                        ),
-                      ] else
-                        PopupMenuButton<String>(
-                          icon: Icon(Icons.more_vert_rounded,
-                              color: cs.onSurface.withValues(alpha: 0.4)),
-                          color: cs.surfaceContainerHigh,
-                          onSelected: (value) => _updateStatus(context, value),
-                          itemBuilder: (ctx) => [
-                            PopupMenuItem(
-                              value: 'completed',
-                              child: Text(
-                                l10n.statusCompleted,
-                                style: GoogleFonts.outfit(color: cs.onSurface),
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'cancelled',
-                              child: Text(
-                                l10n.statusCancelled,
-                                style: GoogleFonts.outfit(color: cs.onSurface),
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'pending',
-                              child: Text(
-                                l10n.statusPending,
-                                style: GoogleFonts.outfit(color: cs.onSurface),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  )
-                ],
-              )
-            ] else
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    statusText,
-                    style: GoogleFonts.outfit(
-                      color: statusColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              )
-          ],
+      child: Text(
+        text,
+        style: GoogleFonts.outfit(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 0.3,
         ),
       ),
     );

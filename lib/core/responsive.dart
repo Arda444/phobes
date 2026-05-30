@@ -1,13 +1,10 @@
-﻿import 'dart:io' show Platform;
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-
-
 
 enum PhobesPlatform { mobile, tablet, desktop, web }
 
 enum PhobesFormFactor { compact, medium, expanded }
-
 
 class PhobesBreakpoints {
   PhobesBreakpoints._();
@@ -19,10 +16,7 @@ class PhobesBreakpoints {
   static const double expanded = 1200;
 
   static const double large = 1600;
-
-  static const double extraLarge = 1600;
 }
-
 
 class PhobesResponsive {
   PhobesResponsive._();
@@ -114,7 +108,6 @@ class PhobesResponsive {
       MediaQuery.sizeOf(context).width < PhobesBreakpoints.compact;
 }
 
-
 class PhobesResponsiveBuilder extends StatelessWidget {
   final Widget Function(BuildContext context) compact;
   final Widget Function(BuildContext context)? medium;
@@ -141,7 +134,6 @@ class PhobesResponsiveBuilder extends StatelessWidget {
     }
   }
 }
-
 
 class PhobesContentContainer extends StatelessWidget {
   final Widget child;
@@ -170,7 +162,6 @@ class PhobesContentContainer extends StatelessWidget {
     );
   }
 }
-
 
 T responsiveValue<T>(
   BuildContext context, {

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 import '../../models/medication_model.dart';
 import '../../services/firebase_service.dart';
 import '../../core/page_transitions.dart';
 import '../../widgets/phobes_widgets.dart';
+import '../../l10n/app_localizations.dart';
 import 'medication_add_edit_screen.dart';
 
 class MedicationDetailScreen extends StatefulWidget {
@@ -33,11 +35,12 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
   }
 
   Future<void> _deleteMedication() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await PhobesBottomSheet.confirm(
       context: context,
-      title: "İlacı Sil",
-      message: "Bu ilaç kalıcı olarak silinecek. Emin misiniz?",
-      confirmText: "Sil",
+      title: l10n.medDeleteTitle,
+      message: l10n.medDeleteConfirm,
+      confirmText: AppLocalizations.of(context)!.delete,
       confirmColor: Colors.red,
     );
 
@@ -55,7 +58,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
 
       PhobesSnackbar.show(
         context,
-        message: "İlaç silindi",
+        message: l10n.medDeleted,
         type: PhobesSnackbarType.success,
       );
     }
@@ -63,6 +66,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -76,23 +80,23 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionLabel("Kullanım Şekli"),
+                  _buildSectionLabel(l10n.medUsageSection),
                   const SizedBox(height: 12),
                   _buildDetailCard(
                     icon: Icons.science_rounded,
-                    title: "Dozaj",
+                    title: l10n.medDosage,
                     value: _medication.dosage,
                     cs: cs,
                   ),
                   const SizedBox(height: 16),
                   _buildDetailCard(
                     icon: Icons.repeat_rounded,
-                    title: "Sıklık",
+                    title: l10n.medFrequency,
                     value: _getFrequencyText(_medication.frequency),
                     cs: cs,
                   ),
                   const SizedBox(height: 16),
-                  _buildSectionLabel("Alım Saatleri"),
+                  _buildSectionLabel(l10n.medDoseTimesSection),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
@@ -100,21 +104,21 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                     children: _medication.times.map((time) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                            horizontal: 16, vertical: 12,),
                         decoration: BoxDecoration(
                           color:
-                              Color(_medication.color).withValues(alpha: 0.1),
+                              Color(_medication.color).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color:
-                                Color(_medication.color).withValues(alpha: 0.3),
+                                Color(_medication.color).withOpacity(0.3),
                           ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.access_time_rounded,
-                                size: 16, color: Color(_medication.color)),
+                                size: 16, color: Color(_medication.color),),
                             const SizedBox(width: 8),
                             Text(
                               time,
@@ -131,13 +135,13 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                   ),
                   const SizedBox(height: 24),
                   if (_medication.isActive) ...[
-                    _buildSectionLabel("Bugünün Dozları"),
+                    _buildSectionLabel(l10n.medTodayDoses),
                     const SizedBox(height: 12),
                     _buildTodayDoses(cs),
                     const SizedBox(height: 24),
                   ],
                   if (_medication.notes.isNotEmpty) ...[
-                    _buildSectionLabel("Notlar"),
+                    _buildSectionLabel(l10n.medNotes),
                     const SizedBox(height: 12),
                     PhobesCard(
                       padding: const EdgeInsets.all(16),
@@ -145,7 +149,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                       child: Text(
                         _medication.notes,
                         style: GoogleFonts.outfit(
-                          color: cs.onSurface.withValues(alpha: 0.7),
+                          color: cs.onSurface.withOpacity(0.7),
                           height: 1.5,
                           fontSize: 15,
                         ),
@@ -154,15 +158,15 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                     const SizedBox(height: 24),
                   ],
                   if (_medication.stockTracking) ...[
-                    _buildSectionLabel("Stok Durumu"),
+                    _buildSectionLabel(l10n.medStockStatus),
                     const SizedBox(height: 12),
                     _buildStockCard(cs),
                     const SizedBox(height: 24),
                   ],
-                  if (_medication.barcode != null || 
-                      _medication.genericName != null || 
+                  if (_medication.barcode != null ||
+                      _medication.genericName != null ||
                       (_medication.atcCode != null && _medication.atcCode!.isNotEmpty)) ...[
-                    _buildSectionLabel("Ürün Bilgileri"),
+                    _buildSectionLabel(l10n.medProductInfo),
                     const SizedBox(height: 12),
                     PhobesCard(
                       padding: const EdgeInsets.all(16),
@@ -170,18 +174,18 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                       child: Column(
                         children: [
                           if (_medication.genericName != null && _medication.genericName!.isNotEmpty)
-                             _buildInfoRow("Etken Madde", _medication.genericName!, cs),
+                             _buildInfoRow(l10n.medActiveIngredient, _medication.genericName!, cs),
                           if (_medication.atcCode != null && _medication.atcCode!.isNotEmpty)
-                             _buildInfoRow("ATC Kodu", _medication.atcCode!, cs),
+                             _buildInfoRow(l10n.medAtcCode, _medication.atcCode!, cs),
                           if (_medication.barcode != null && _medication.barcode!.isNotEmpty)
-                             _buildInfoRow("Barkod", _medication.barcode!, cs),
+                             _buildInfoRow(l10n.medBarcode, _medication.barcode!, cs),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
                   ],
                   if (_medication.categories.isNotEmpty) ...[
-                    _buildSectionLabel("İlaç Sınıflandırması"),
+                    _buildSectionLabel(l10n.medClassification),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
@@ -190,7 +194,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: cs.secondaryContainer.withValues(alpha: 0.5),
+                            color: cs.secondaryContainer.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: cs.secondaryContainer),
                           ),
@@ -218,7 +222,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                           }
                         },
                         icon: const Icon(Icons.description_rounded),
-                        label: const Text("Prospektüsü Görüntüle (PDF)"),
+                        label: Text(l10n.medViewProspectus),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: cs.primary,
                           foregroundColor: cs.onPrimary,
@@ -242,6 +246,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final medColor = Color(_medication.color);
     final topPadding = MediaQuery.of(context).padding.top;
@@ -254,15 +259,14 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            medColor.withValues(alpha: 0.15),
+            medColor.withOpacity(0.15),
             cs.surface,
           ],
         ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         border: Border(
           bottom: BorderSide(
-            color: medColor.withValues(alpha: 0.1),
-            width: 1,
+            color: medColor.withOpacity(0.1),
           ),
         ),
       ),
@@ -274,7 +278,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
             children: [
               PhobesIconButton(
                 icon: Icons.arrow_back_rounded,
-                backgroundColor: cs.surface.withValues(alpha: 0.5),
+                backgroundColor: cs.surface.withOpacity(0.5),
                 onTap: () {
                   if (widget.onClose != null) {
                     widget.onClose!();
@@ -287,12 +291,12 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                 children: [
                   PhobesIconButton(
                     icon: Icons.edit_rounded,
-                    backgroundColor: cs.surface.withValues(alpha: 0.5),
+                    backgroundColor: cs.surface.withOpacity(0.5),
                     onTap: () async {
                       final navigator = Navigator.of(context);
                       await navigator.push(PhobesPageRoute.slideUp(
-                          MedicationAddEditScreen(medication: _medication)));
-                      // Refresh data after editing
+                          MedicationAddEditScreen(medication: _medication),),);
+
                       if (mounted) {
                         final updated = await _firebaseService.getMedicationById(_medication.id!);
                         if (updated != null && mounted) {
@@ -305,11 +309,11 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                   PhobesIconButton(
                     icon: Icons.delete_outline_rounded,
                     color: Colors.redAccent,
-                    backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+                    backgroundColor: Colors.redAccent.withOpacity(0.1),
                     onTap: _deleteMedication,
                   ),
                 ],
-              )
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -319,23 +323,23 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: medColor.withValues(alpha: 0.12),
+                  color: medColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: medColor.withValues(alpha: 0.3)),
+                  border: Border.all(color: medColor.withOpacity(0.3)),
                 ),
                 child: Center(
                   child: _medication.imageUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Image.network(
-                            _medication.imageUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: _medication.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (c, e, s) => Text(_medication.icon,
-                                style: const TextStyle(fontSize: 32)),
+                            errorWidget: (c, e, s) => Text(_medication.icon,
+                                style: const TextStyle(fontSize: 32),),
                           ),
                         )
                       : Text(_medication.icon,
-                          style: const TextStyle(fontSize: 32)),
+                          style: const TextStyle(fontSize: 32),),
                 ),
               ),
               const SizedBox(width: 16),
@@ -347,13 +351,13 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                       Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                            horizontal: 10, vertical: 4,),
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.2),
+                          color: Colors.grey.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          "PASİF",
+                          l10n.medInactiveBadge,
                           style: GoogleFonts.outfit(
                             color: Colors.grey,
                             fontSize: 10,
@@ -385,7 +389,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
     return Text(
       text.toUpperCase(),
       style: GoogleFonts.outfit(
-        color: cs.onSurface.withValues(alpha: 0.4),
+        color: cs.onSurface.withOpacity(0.4),
         fontWeight: FontWeight.bold,
         fontSize: 12,
         letterSpacing: 1.2,
@@ -407,7 +411,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Color(_medication.color).withValues(alpha: 0.1),
+              color: Color(_medication.color).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: Color(_medication.color)),
@@ -420,7 +424,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                 Text(
                   title,
                   style: GoogleFonts.outfit(
-                    color: cs.onSurface.withValues(alpha: 0.4),
+                    color: cs.onSurface.withOpacity(0.4),
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -437,13 +441,14 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                 ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
   Widget _buildStockCard(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final isLow = _medication.stock <= _medication.stockThreshold;
     final color = isLow ? Colors.amber.shade700 : Colors.green.shade600;
 
@@ -456,9 +461,9 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Kalan Stok",
+                l10n.medRemainingStock,
                 style: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.6),
+                  color: cs.onSurface.withOpacity(0.6),
                   fontSize: 14,
                 ),
               ),
@@ -466,9 +471,9 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                  border: Border.all(color: color.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
@@ -486,7 +491,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                     ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -495,7 +500,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
             child: LinearProgressIndicator(
               value: (_medication.stock / (_medication.stockThreshold * 3))
                   .clamp(0.0, 1.0),
-              backgroundColor: cs.onSurface.withValues(alpha: 0.1),
+              backgroundColor: cs.onSurface.withOpacity(0.1),
               valueColor: AlwaysStoppedAnimation<Color>(color),
               minHeight: 8,
             ),
@@ -514,7 +519,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
           Text(
             label,
             style: GoogleFonts.outfit(
-              color: cs.onSurface.withValues(alpha: 0.5),
+              color: cs.onSurface.withOpacity(0.5),
               fontSize: 14,
             ),
           ),
@@ -539,6 +544,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
   }
 
   Widget _buildTodayDoses(ColorScheme cs) {
+    final l10n = AppLocalizations.of(context)!;
     final medColor = Color(_medication.color);
     final todayTaken = _medication.times.where((t) => _isDoseTaken(t)).length;
     final todayTotal = _medication.times.length;
@@ -552,10 +558,10 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '$todayTaken / $todayTotal alındı',
+                l10n.doseTakenCount(todayTaken, todayTotal),
                 style: GoogleFonts.outfit(
                   fontSize: 13,
-                  color: cs.onSurface.withValues(alpha: 0.5),
+                  color: cs.onSurface.withOpacity(0.5),
                 ),
               ),
               if (todayTotal > 0)
@@ -566,7 +572,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                     fontWeight: FontWeight.bold,
                     color: todayTaken == todayTotal
                         ? Colors.green
-                        : (todayTaken > 0 ? Colors.orange : cs.onSurface.withValues(alpha: 0.3)),
+                        : (todayTaken > 0 ? Colors.orange : cs.onSurface.withOpacity(0.3)),
                   ),
                 ),
             ],
@@ -581,10 +587,10 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                   if (_medication.id == null) return;
                   if (taken) {
                     _firebaseService.unmarkMedicationTaken(
-                        _medication.id!, _todayKey, time);
+                        _medication.id!, _todayKey, time,);
                   } else {
                     _firebaseService.markMedicationTaken(
-                        _medication.id!, _todayKey, time);
+                        _medication.id!, _todayKey, time,);
                   }
                   setState(() {
                     final history = Map<String, List<String>>.from(_medication.takenHistory);
@@ -602,19 +608,19 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: taken
-                        ? medColor.withValues(alpha: 0.08)
-                        : cs.onSurface.withValues(alpha: 0.03),
+                        ? medColor.withOpacity(0.08)
+                        : cs.onSurface.withOpacity(0.03),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: taken
-                          ? medColor.withValues(alpha: 0.2)
-                          : cs.onSurface.withValues(alpha: 0.06),
+                          ? medColor.withOpacity(0.2)
+                          : cs.onSurface.withOpacity(0.06),
                     ),
                   ),
                   child: Row(
                     children: [
                       Icon(Icons.access_time_rounded,
-                          size: 18, color: taken ? medColor : cs.onSurface.withValues(alpha: 0.4)),
+                          size: 18, color: taken ? medColor : cs.onSurface.withOpacity(0.4),),
                       const SizedBox(width: 10),
                       Text(
                         time,
@@ -635,7 +641,7 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
                           borderRadius: BorderRadius.circular(8),
                           border: taken
                               ? null
-                              : Border.all(color: cs.onSurface.withValues(alpha: 0.15)),
+                              : Border.all(color: cs.onSurface.withOpacity(0.15)),
                         ),
                         child: taken
                             ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
@@ -655,11 +661,11 @@ class _MedicationDetailScreenState extends State<MedicationDetailScreen> {
   String _getFrequencyText(String frequency) {
     switch (frequency) {
       case 'daily':
-        return 'Günlük';
+        return AppLocalizations.of(context)!.medFreqDaily;
       case 'weekly':
-        return 'Haftalık';
+        return AppLocalizations.of(context)!.medFreqWeekly;
       case 'asNeeded':
-        return 'Gerektiğinde';
+        return AppLocalizations.of(context)!.medFreqAsNeeded;
       default:
         return frequency;
     }

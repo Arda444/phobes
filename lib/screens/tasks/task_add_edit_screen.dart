@@ -6,7 +6,9 @@ import '../../models/task_model.dart';
 import '../../services/firebase_service.dart';
 import '../../services/calendar_sync_service.dart';
 import '../../services/notification_service.dart';
+import '../../core/navigation_keys.dart';
 import '../../widgets/phobes_widgets.dart';
+import '../../widgets/phobes_form_wrapper.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:phobes/utils/time_utils.dart';
 
@@ -14,6 +16,7 @@ class TaskAddEditScreen extends StatefulWidget {
   final DateTime selectedDate;
   final Task? task;
   final String? groupId;
+  final String? teamId;
   final VoidCallback? onClose;
 
   const TaskAddEditScreen({
@@ -21,6 +24,7 @@ class TaskAddEditScreen extends StatefulWidget {
     required this.selectedDate,
     this.task,
     this.groupId,
+    this.teamId,
     this.onClose,
   });
 
@@ -44,6 +48,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
   late bool _allDay;
   late int _color;
   late String _repeatRule;
+  DateTime? _repeatEndDate;
   late int _priority;
   late int _reminderMinutes;
 
@@ -58,8 +63,31 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
     0xFFEA4335,
     0xFFF06292,
     0xFF8E24AA,
-    0xFF009688
+    0xFF009688,
   ];
+
+  void _dismissForm([Object? result]) {
+    if (PhobesFormScope.maybeOf(context) != null) {
+      PhobesFormScope.closeForm(context, result);
+    } else {
+      Navigator.of(context).pop(result);
+    }
+  }
+
+  void _finishSave(String message) {
+    if (!mounted) return;
+    _dismissForm(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final root = rootNavigatorKey.currentContext;
+      if (root != null) {
+        PhobesSnackbar.show(
+          root,
+          message: message,
+          type: PhobesSnackbarType.success,
+        );
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -86,25 +114,56 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
   }
 
   Future<void> _loadTeamMembers() async {
-    final gid = widget.groupId ?? widget.task?.groupId;
-    if (gid == null) return;
+    final tid =
+        widget.teamId ?? widget.task?.teamId ?? widget.groupId;
+    if (tid == null) return;
 
     try {
       final teamDoc =
-          await FirebaseFirestore.instance.collection('teams').doc(gid).get();
+          await FirebaseFirestore.instance.collection('teams').doc(tid).get();
+      if (!teamDoc.exists) {
+        final gid = widget.groupId ?? widget.task?.groupId;
+        if (gid == null || gid == tid) return;
+        final teamsSnap = await FirebaseFirestore.instance
+            .collection('teams')
+            .where('memberIds', arrayContains: _firebaseService.currentUserId)
+            .get();
+        for (final t in teamsSnap.docs) {
+          final proj = await t.reference.collection('projects').doc(gid).get();
+          if (proj.exists) {
+            return _loadMembersForTeam(t.id);
+          }
+        }
+        return;
+      }
+      await _loadMembersForTeam(tid);
+    } catch (e) {
+      debugPrint('Üye listesi hatası: $e');
+    }
+  }
+
+  Future<void> _loadMembersForTeam(String teamId) async {
+    try {
+      final teamDoc =
+          await FirebaseFirestore.instance.collection('teams').doc(teamId).get();
       if (!teamDoc.exists) return;
 
       final List<dynamic> memberIds = teamDoc.data()?['memberIds'] ?? [];
-      final members = await _firebaseService
-          .getUsersByIds(memberIds.map((e) => e.toString()).toList());
+      final members = await _firebaseService.getUsersByIds(
+        memberIds.map((e) => e.toString()).toList(),
+        teamId: teamId,
+      );
 
       if (mounted) {
         setState(() => _teamMembers = members);
       }
     } catch (e) {
-      debugPrint("Üye listesi hatası: $e");
+      debugPrint('Üye listesi hatası: $e');
     }
   }
+
+  String? get _effectiveTeamId =>
+      widget.teamId ?? widget.task?.teamId;
 
   @override
   void dispose() {
@@ -145,9 +204,9 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                     Padding(
                       padding: const EdgeInsets.all(32),
                       child: Center(
-                        child: Text("Üye bulunamadı",
+                        child: Text(l10n.taskMemberNotFound,
                             style: GoogleFonts.outfit(
-                                color: cs.onSurface.withValues(alpha: 0.4))),
+                                color: cs.onSurface.withValues(alpha: 0.4),),),
                       ),
                     )
                   else
@@ -189,7 +248,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                       text: l10n.save,
                       onPressed: () => Navigator.pop(ctx),
                     ),
-                  )
+                  ),
                 ],
               ),
             );
@@ -209,10 +268,10 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
         .toList();
 
     final String tempEffectiveUserId = widget.task?.userId ??
-          (widget.task?.userId == 'device'
-              ? 'device'
-              : _firebaseService.currentUserId ?? '');
-              
+        (widget.task?.userId == 'device'
+            ? 'device'
+            : _firebaseService.currentUserId ?? '');
+
     if (tempEffectiveUserId != 'device') {
       try {
         final tasks = await _firebaseService.getAllUserTasksStream().first;
@@ -222,15 +281,21 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
         if (overlap != null) {
           final freeSlots = TimeUtils.getFreeSlots(_start, otherTasks);
           final freeText = freeSlots.join('\n');
-          
+
           if (!mounted) return;
           final proceed = await _showOverlapWarning(overlap.title, freeText);
           if (proceed != true) return;
         }
       } catch (e) {
-        debugPrint("Overlap check error: $e");
+        debugPrint('Overlap check error: $e');
       }
     }
+
+    final groupId = widget.task?.groupId ?? widget.groupId;
+    final resolvedTeamId = await _firebaseService.resolveTeamIdForTaskScope(
+      teamId: widget.task?.teamId ?? widget.teamId ?? _effectiveTeamId,
+      groupId: groupId,
+    );
 
     final Task taskToSave = Task(
       id: widget.task?.id,
@@ -238,7 +303,8 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
           (widget.task?.userId == 'device'
               ? 'device'
               : _firebaseService.currentUserId ?? ''),
-      groupId: widget.task?.groupId ?? widget.groupId,
+      groupId: groupId,
+      teamId: resolvedTeamId,
       title: _titleCtrl.text,
       description: _descCtrl.text,
       location: _locCtrl.text,
@@ -264,7 +330,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
 
       if (taskToSave.userId == 'device') {
         await _calendarSyncService.updateDeviceEvent(taskToSave);
-        taskId = taskToSave.id ?? "device_task";
+        taskId = taskToSave.id ?? 'device_task';
       } else {
         String? effectiveUserId = taskToSave.userId;
         if (effectiveUserId.isEmpty) {
@@ -273,17 +339,23 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
 
         if (effectiveUserId == null || effectiveUserId.isEmpty) {
           throw Exception(
-              "Kullanıcı kimliği belirlenemedi. Lütfen tekrar giriş yapın.");
+              'Kullanıcı kimliği belirlenemedi. Lütfen tekrar giriş yapın.',);
         }
 
         if (taskToSave.id == null) {
-          final taskData = taskToSave.toMap();
-          taskData['userId'] = effectiveUserId;
-
-          DocumentReference docRef = await FirebaseFirestore.instance
-              .collection('tasks')
-              .add(taskData);
-          taskId = docRef.id;
+          if (_repeatRule != 'none' && _repeatEndDate != null) {
+            // ── Recurring series ─────────────────────────────────────────
+            final seriesId = '${effectiveUserId}_${DateTime.now().millisecondsSinceEpoch}';
+            final instances = _buildRecurringInstances(taskToSave, seriesId, effectiveUserId);
+            await _firebaseService.addRecurringTaskInstances(instances);
+            taskId = seriesId;
+          } else {
+            final createdId = await _firebaseService.addTask(taskToSave);
+            if (createdId == null) {
+              throw Exception('Görev oluşturulamadı.');
+            }
+            taskId = createdId;
+          }
         } else {
           await _firebaseService.updateTask(taskToSave);
           taskId = taskToSave.id!;
@@ -299,55 +371,105 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
         if (triggerTime.isAfter(DateTime.now())) {
           await notifService.scheduleAndSaveNotification(
             id: taskId,
-            title: "Hatırlatıcı: ${_titleCtrl.text}",
+            title: 'Hatırlatıcı: ${_titleCtrl.text}',
             body: _reminderMinutes == 0
-                ? "Görevin zamanı geldi!"
-                : "$_reminderMinutes dakika kaldı.",
+                ? 'Görevin zamanı geldi!'
+                : '$_reminderMinutes dakika kaldı.',
             scheduledTime: triggerTime,
             type: 'task',
             targetId: taskId,
             targetType: 'task',
             icon: '📋',
             color: 0xFF8B5CF6,
-            channelId: 'tasks',
-            channelName: 'Görevler',
             prefKey: 'notif_task_deadline',
           );
         }
       }
 
       if (mounted) {
-        if (widget.onClose != null) {
-          widget.onClose!();
+        final l10n = AppLocalizations.of(context)!;
+        if (_repeatRule != 'none' && _repeatEndDate != null) {
+          final instances =
+              _buildRecurringInstances(taskToSave, taskId, taskToSave.userId);
+          _finishSave(l10n.recurringSeriesCreated(instances.length));
         } else {
-          Navigator.pop(context, true);
+          _finishSave(
+            widget.task == null
+                ? 'Görev başarıyla eklendi'
+                : 'Görev başarıyla düzenlendi',
+          );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red));
+        PhobesSnackbar.show(
+          context,
+          message: 'Görev eklenemedi. Tekrar deneyin.',
+          type: PhobesSnackbarType.error,
+        );
       }
     }
   }
 
+  /// Generates all Task instances for a recurring series between [base.startTime]
+  /// and [_repeatEndDate] (inclusive) using [_repeatRule].
+  List<Task> _buildRecurringInstances(Task base, String seriesId, String userId) {
+    final duration = base.endTime.difference(base.startTime);
+    final endDate = _repeatEndDate!;
+    final instances = <Task>[];
+    DateTime cursor = base.startTime;
+
+    while (!cursor.isAfter(endDate)) {
+      instances.add(base.copyWith(
+        startTime: cursor,
+        endTime: cursor.add(duration),
+        repeatRule: 'none',
+        recurrenceGroupId: seriesId,
+      ),);
+      switch (_repeatRule) {
+        case 'daily':
+          cursor = cursor.add(const Duration(days: 1));
+        case 'weekly':
+          cursor = cursor.add(const Duration(days: 7));
+        case 'monthly':
+          cursor = DateTime(
+              cursor.month < 12 ? cursor.year : cursor.year + 1,
+              cursor.month < 12 ? cursor.month + 1 : 1,
+              cursor.day, cursor.hour, cursor.minute,);
+        case 'yearly':
+          cursor = DateTime(cursor.year + 1, cursor.month, cursor.day,
+              cursor.hour, cursor.minute,);
+        default:
+          return instances; // unknown rule — stop
+      }
+    }
+    return instances;
+  }
+
   Future<bool?> _showOverlapWarning(String overlapTaskName, String freeSlots) {
+    final l10n = AppLocalizations.of(context)!;
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Theme.of(ctx).colorScheme.surface,
-        title: Text("Saat Çakışması", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        title: Text(l10n.taskOverlapTitle,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),),
         content: Text(
-          "Seçtiğiniz saatlerde '$overlapTaskName' görevi ile meşgulsünüz.\n\nBoş vakitleriniz:\n$freeSlots\n\nYine de kaydetmek istiyor musunuz?",
+          l10n.taskOverlapMessage(overlapTaskName, freeSlots),
           style: GoogleFonts.outfit(fontSize: 15),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text("İptal", style: TextStyle(color: Theme.of(ctx).colorScheme.onSurface.withValues(alpha: 0.7))),
+            child: Text(AppLocalizations.of(ctx)!.cancel,
+                style: TextStyle(
+                    color: Theme.of(ctx)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.7),),),
           ),
           PhobesButton(
-            text: "Yine de Kaydet",
+            text: l10n.taskSaveAnyway,
             onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
@@ -373,19 +495,13 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
             ? null
             : PhobesPremiumAppBar(
                 title: isEdit ? l10n.editTask : l10n.newTask,
-                onBackPressed: () {
-                  if (widget.onClose != null) {
-                    widget.onClose!();
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
+                onBackPressed: () => _dismissForm(),
                 trailing: TextButton(
                   onPressed: _saveTask,
                   style: TextButton.styleFrom(
                     foregroundColor: cs.primary,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                   ),
                   child: Text(
                     l10n.save,
@@ -404,11 +520,26 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                 children: [
+                  if (isWide) ...[
+                    Row(
+                      children: [
+                        Text(
+                          isEdit ? l10n.editTask : l10n.newTask,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 26,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   if (isDeviceTask)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: PhobesChip(
-                        label: "Google Takvim Etkinliği",
+                        label: l10n.taskGoogleCalendarEvent,
                         icon: Icons.sync_rounded,
                         isSelected: true,
                         onTap: () {},
@@ -418,7 +549,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: PhobesChip(
-                        label: "${l10n.taskContext}: ${l10n.team}",
+                        label: '${l10n.taskContext}: ${l10n.team}',
                         icon: Icons.group_work_rounded,
                         isSelected: true,
                         onTap: () {},
@@ -451,7 +582,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                           children: [
                             Expanded(
                                 child: _buildDateTimeTile(
-                                    l10n.start, _start, true)),
+                                    l10n.start, _start, true,),),
                             Container(
                               width: 1,
                               height: 30,
@@ -459,7 +590,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                             ),
                             Expanded(
                                 child:
-                                    _buildDateTimeTile(l10n.end, _end, false)),
+                                    _buildDateTimeTile(l10n.end, _end, false),),
                           ],
                         ),
                         const Divider(height: 32, thickness: 0.5),
@@ -512,7 +643,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                                         final member = _teamMembers.firstWhere(
                                             (m) => m['id'] == id,
                                             orElse: () =>
-                                                {'name': '?', 'surname': ''});
+                                                {'name': '?', 'surname': ''},);
                                         return PhobesChip(
                                           label:
                                               "${member['name']} ${member['surname'][0]}.",
@@ -523,7 +654,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                                     ),
                             ),
                             Icon(Icons.chevron_right_rounded,
-                                color: cs.onSurface.withValues(alpha: 0.4)),
+                                color: cs.onSurface.withValues(alpha: 0.4),),
                           ],
                         ),
                       ),
@@ -563,12 +694,34 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                         ),
                         PhobesTextFormField(
                           controller: _tagsCtrl,
-                          hintText: "Etiketler (virgül ile ayırın)",
+                          hintText: l10n.tagsHint,
                           prefixIcon: Icons.label_rounded,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 24),
+                  if (!isDeviceTask) ...[
+                    const SizedBox(height: 24),
+                    PhobesSectionHeader(
+                      title: l10n.repeat,
+                      icon: Icons.repeat_rounded,
+                    ),
+                    PhobesCard(
+                      padding: const EdgeInsets.all(16),
+                      margin: EdgeInsets.zero,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildRepeatRuleSelector(l10n, cs),
+                          if (_repeatRule != 'none') ...[
+                            const SizedBox(height: 16),
+                            _buildRepeatEndDateRow(l10n, cs),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   PhobesSectionHeader(
                     title: l10n.sectionSettings,
@@ -605,6 +758,18 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                     ),
                   ),
                   const SizedBox(height: 40),
+                  // Toplu Ekle butonu — yeni görev eklerken görünür
+                  if (!isEdit && !isDeviceTask)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: PhobesButton(
+                        text: l10n.bulkAddTasks,
+                        icon: Icons.playlist_add_rounded,
+                        isOutlined: true,
+                        width: double.infinity,
+                        onPressed: () => _showBulkAddSheet(context, l10n),
+                      ),
+                    ),
                   if (isWide)
                     PhobesButton(
                       text: l10n.save,
@@ -618,11 +783,12 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
           ),
         ),
       );
-    });
+    },);
   }
 
   Widget _buildDateTimeTile(String label, DateTime date, bool isStart) {
     final cs = Theme.of(context).colorScheme;
+    final locale = AppLocalizations.of(context)!.localeName;
     return InkWell(
       onTap: () => _pickDateTime(isStart),
       borderRadius: BorderRadius.circular(12),
@@ -641,7 +807,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
             ),
             const SizedBox(height: 6),
             Text(
-              DateFormat('d MMM • HH:mm', 'tr').format(date),
+              DateFormat('d MMM • HH:mm', locale).format(date),
               style: GoogleFonts.outfit(
                 color: cs.onSurface,
                 fontWeight: FontWeight.w600,
@@ -660,7 +826,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
       initialValue: _reminderMinutes,
       dropdownColor: cs.surfaceContainerHigh,
       icon: Icon(Icons.keyboard_arrow_down_rounded,
-          color: cs.onSurface.withValues(alpha: 0.4)),
+          color: cs.onSurface.withValues(alpha: 0.4),),
       decoration: InputDecoration(
         labelText: l10n.reminder,
         labelStyle: GoogleFonts.outfit(
@@ -690,7 +856,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
   }
 
   DropdownMenuItem<int> _buildReminderItem(
-      int value, String text, ColorScheme cs) {
+      int value, String text, ColorScheme cs,) {
     return DropdownMenuItem(
       value: value,
       child: Text(
@@ -749,6 +915,249 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
     );
   }
 
+  Widget _buildRepeatRuleSelector(AppLocalizations l10n, ColorScheme cs) {
+    final options = [
+      ('none', l10n.repeatNone, Icons.block_rounded),
+      ('daily', l10n.repeatDaily, Icons.today_rounded),
+      ('weekly', l10n.repeatWeekly, Icons.view_week_rounded),
+      ('monthly', l10n.repeatMonthly, Icons.calendar_month_rounded),
+    ];
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: options.map((opt) {
+        final isSelected = _repeatRule == opt.$1;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _repeatRule = opt.$1;
+            if (opt.$1 == 'none') _repeatEndDate = null;
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? cs.primary.withOpacity(0.15)
+                  : cs.onSurface.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? cs.primary.withOpacity(0.5)
+                    : Colors.transparent,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(opt.$3,
+                    size: 15,
+                    color: isSelected
+                        ? cs.primary
+                        : cs.onSurface.withOpacity(0.5),),
+                const SizedBox(width: 6),
+                Text(opt.$2,
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isSelected
+                          ? cs.primary
+                          : cs.onSurface.withOpacity(0.7),
+                    ),),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildRepeatEndDateRow(AppLocalizations l10n, ColorScheme cs) {
+    final locale = l10n.localeName;
+    final endLabel = _repeatEndDate != null
+        ? DateFormat('d MMM yyyy', locale).format(_repeatEndDate!)
+        : l10n.taskRepeatEndSelect;
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _repeatEndDate ??
+              _start.add(const Duration(days: 30)),
+          firstDate: _start.add(const Duration(days: 1)),
+          lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+        );
+        if (picked != null) setState(() => _repeatEndDate = picked);
+      },
+      child: Row(
+        children: [
+          Icon(Icons.event_rounded,
+              size: 18, color: cs.primary.withOpacity(0.7),),
+          const SizedBox(width: 10),
+          Text('${l10n.taskRepeatEndLabel}  ',
+              style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: cs.onSurface.withOpacity(0.5),),),
+          Text(endLabel,
+              style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: _repeatEndDate != null
+                      ? cs.onSurface
+                      : cs.primary,),),
+          const Spacer(),
+          if (_repeatEndDate != null)
+            GestureDetector(
+              onTap: () => setState(() => _repeatEndDate = null),
+              child: Icon(Icons.close_rounded,
+                  size: 16, color: cs.onSurface.withOpacity(0.4),),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Shows a bottom sheet for adding multiple tasks at once.
+  /// Each non-empty line becomes a separate task with the same
+  /// date/time/priority/color settings.
+  void _showBulkAddSheet(BuildContext context, AppLocalizations l10n) {
+    final cs = Theme.of(context).colorScheme;
+    final textCtrl = TextEditingController();
+
+    PhobesBottomSheet.show(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => PhobesBottomSheet(
+          title: l10n.bulkAddTasks,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Info banner
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: cs.primary.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 16, color: cs.primary,),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(l10n.bulkAddInfo,
+                            style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                color: cs.primary.withOpacity(0.8),),),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Multi-line text area
+                TextField(
+                  controller: textCtrl,
+                  maxLines: 8,
+                  autofocus: true,
+                  style: GoogleFonts.outfit(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: l10n.bulkAddHint,
+                    hintStyle: GoogleFonts.outfit(
+                        color: cs.onSurface.withOpacity(0.4),),
+                    filled: true,
+                    fillColor: cs.onSurface.withOpacity(0.04),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                          color: cs.outline.withOpacity(0.2),),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide(
+                          color: cs.outline.withOpacity(0.15),),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide:
+                          BorderSide(color: cs.primary, width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.all(14),
+                  ),
+                  onChanged: (_) => setSheet(() {}),
+                ),
+                const SizedBox(height: 12),
+                // Preview count
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: textCtrl,
+                  builder: (_, val, __) {
+                    final count = val.text
+                        .split('\n')
+                        .where((l) => l.trim().isNotEmpty)
+                        .length;
+                    if (count == 0) return const SizedBox.shrink();
+                    return Text(
+                      l10n.bulkAddCount(count),
+                      style: GoogleFonts.outfit(
+                          fontSize: 13,
+                          color: cs.primary,
+                          fontWeight: FontWeight.w600,),
+                    );
+                  },
+                ),
+                const SizedBox(height: 20),
+                PhobesButton(
+                  text: l10n.save,
+                  width: double.infinity,
+                  onPressed: () async {
+                    final titles = textCtrl.text
+                        .split('\n')
+                        .map((t) => t.trim())
+                        .where((t) => t.isNotEmpty)
+                        .toList();
+                    if (titles.isEmpty) return;
+
+                    final uid = _firebaseService.currentUserId;
+                    if (uid == null || uid.isEmpty) return;
+
+                    final duration = _end.difference(_start);
+                    final tasks = titles
+                        .map(
+                          (titleText) => Task(
+                            userId: uid,
+                            title: titleText,
+                            description: _descCtrl.text,
+                            startTime: _start,
+                            endTime: _start.add(duration),
+                            isAllDay: _allDay,
+                            color: _color,
+                            priority: _priority,
+                            reminderMinutes: _reminderMinutes,
+                            groupId: widget.groupId,
+                            teamId: widget.teamId,
+                          ),
+                        )
+                        .toList();
+                    for (final t in tasks) {
+                      await _firebaseService.addTask(t);
+                    }
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    if (context.mounted) {
+                      _finishSave(
+                        l10n.recurringSeriesCreated(titles.length),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).whenComplete(() => textCtrl.dispose());
+  }
+
   Widget _buildColorSelector() {
     return SizedBox(
       height: 44,
@@ -779,7 +1188,7 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                           color: color.withValues(alpha: 0.4),
                           blurRadius: 8,
                           spreadRadius: 2,
-                        )
+                        ),
                       ]
                     : null,
               ),

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
@@ -6,6 +6,9 @@ import '../../services/nova_service.dart';
 import '../../services/firebase_service.dart';
 import '../../services/notification_service.dart';
 import '../../core/phobes_theme.dart';
+import 'package:phobes/l10n/app_localizations.dart';
+import '../../core/module_info_catalog.dart';
+import '../../widgets/phobes_module_header.dart';
 
 class FocusScreen extends StatefulWidget {
   const FocusScreen({super.key});
@@ -61,16 +64,36 @@ class _FocusScreenState extends State<FocusScreen>
     setState(() => _isRunning = false);
   }
 
-  Future<void> _finishTimer() async {
+  Future<void> _finishTimer({bool awardXp = true}) async {
     _timer?.cancel();
     setState(() => _isRunning = false);
 
-    NotificationService().showInstantNotification(
-        "Odak Süresi Bitti!", "Harika iş çıkardın! Mola zamanı. ☕");
+    final l10n = AppLocalizations.of(context)!;
+    final completedNaturally = _remainingSeconds <= 0;
+    if (completedNaturally) {
+      NotificationService().showInstantNotification(
+        l10n.focusSessionEnded,
+        l10n.focusSessionDesc,
+      );
+    }
 
-    await _firebaseService.addXP(100);
+    if (awardXp && completedNaturally) {
+      await _firebaseService.addXP(
+        100,
+        reason: 'focus_complete',
+        localizedLevelUpTitle: l10n.levelUpTitle,
+        localizedLevelUpBody: l10n.levelUpBody(0),
+      );
+    }
 
-    final advice = await _novaService.getTaskMotivation("Mola");
+    if (!completedNaturally) {
+      if (mounted) {
+        setState(() => _remainingSeconds = _totalSeconds);
+      }
+      return;
+    }
+
+    final advice = await _novaService.getTaskMotivation(l10n.focusBreakLabel);
 
     if (mounted) {
       final cs = Theme.of(context).colorScheme;
@@ -78,7 +101,7 @@ class _FocusScreenState extends State<FocusScreen>
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: cs.surfaceContainerHigh,
+          backgroundColor: cs.surfaceVariant,
           surfaceTintColor: Colors.transparent,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -91,12 +114,12 @@ class _FocusScreenState extends State<FocusScreen>
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.celebration,
-                    color: Colors.white, size: 20),
+                    color: Colors.white, size: 20,),
               ),
               const SizedBox(width: 12),
-              Text("Tebrikler!",
+              Text(l10n.congratulations,
                   style: GoogleFonts.outfit(
-                      color: cs.onSurface, fontWeight: FontWeight.bold)),
+                      color: cs.onSurface, fontWeight: FontWeight.bold,),),
             ],
           ),
           content: Column(
@@ -107,8 +130,8 @@ class _FocusScreenState extends State<FocusScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      cs.primary.withValues(alpha: 0.2),
-                      Colors.transparent
+                      cs.primary.withOpacity(0.2),
+                      Colors.transparent,
                     ],
                   ),
                   borderRadius: BorderRadius.circular(16),
@@ -120,15 +143,15 @@ class _FocusScreenState extends State<FocusScreen>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("+100 XP",
+                        Text(l10n.focusXpBonus,
                             style: GoogleFonts.outfit(
                                 color: Colors.amber,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 20)),
-                        Text("25 dakika odaklandın",
+                                fontSize: 20,),),
+                        Text(l10n.focusMinutesDesc(25),
                             style: GoogleFonts.outfit(
-                                color: cs.onSurface.withValues(alpha: 0.5),
-                                fontSize: 12)),
+                                color: cs.onSurface.withOpacity(0.5),
+                                fontSize: 12,),),
                       ],
                     ),
                   ],
@@ -138,21 +161,21 @@ class _FocusScreenState extends State<FocusScreen>
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.teal.withValues(alpha: 0.15),
+                  color: Colors.teal.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
+                  border: Border.all(color: Colors.teal.withOpacity(0.3)),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.auto_awesome,
-                        color: Colors.tealAccent, size: 18),
+                        color: Colors.tealAccent, size: 18,),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         advice ??
-                            "Şimdi 5 dakika gözlerini dinlendir ve su iç.",
+                            l10n.focusDefaultAdvice,
                         style: GoogleFonts.outfit(
-                            color: Colors.tealAccent, fontSize: 13),
+                            color: Colors.tealAccent, fontSize: 13,),
                       ),
                     ),
                   ],
@@ -165,7 +188,7 @@ class _FocusScreenState extends State<FocusScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: cs.primary,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(12),),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 elevation: 0,
@@ -174,10 +197,10 @@ class _FocusScreenState extends State<FocusScreen>
                 Navigator.pop(ctx);
                 setState(() => _remainingSeconds = _totalSeconds);
               },
-              child: Text("Harika!",
+              child: Text(l10n.btnSuccess,
                   style: GoogleFonts.outfit(
-                      color: cs.onPrimary, fontWeight: FontWeight.bold)),
-            )
+                      color: cs.onPrimary, fontWeight: FontWeight.bold,),),
+            ),
           ],
         ),
       );
@@ -185,37 +208,39 @@ class _FocusScreenState extends State<FocusScreen>
   }
 
   String _formatTime(int seconds) {
-    int m = seconds ~/ 60;
-    int s = seconds % 60;
+    final int m = seconds ~/ 60;
+    final int s = seconds % 60;
     return "${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}";
   }
 
   @override
   Widget build(BuildContext context) {
-    double percent = 1.0 - (_remainingSeconds / _totalSeconds);
+    final double percent = 1.0 - (_remainingSeconds / _totalSeconds);
     final cs = Theme.of(context).colorScheme;
     final progressColor = _isRunning ? Colors.redAccent : cs.primary;
+    final l10n = AppLocalizations.of(context)!;
+
+    final isWide = MediaQuery.sizeOf(context).width >= 900;
 
     return Scaffold(
       backgroundColor: cs.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 48, 24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("Odak Modu",
-                      style: GoogleFonts.outfit(
-                          color: cs.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 24)),
-                ],
-              ),
-            ),
-            Expanded(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PhobesModuleHeaderBar(
+            title: l10n.focusMode,
+            icon: Icons.center_focus_strong_rounded,
+            info: ModuleInfoCatalog.forFocus(l10n),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
               child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: isWide ? 600 : double.infinity,
+                  ),
+                  child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -232,7 +257,7 @@ class _FocusScreenState extends State<FocusScreen>
                                   ? [
                                       BoxShadow(
                                         color: progressColor.withValues(
-                                            alpha: 0.3),
+                                            alpha: 0.3,),
                                         blurRadius: 40,
                                         spreadRadius: 10,
                                       ),
@@ -255,10 +280,10 @@ class _FocusScreenState extends State<FocusScreen>
                                     ),
                                   ),
                                   Text(
-                                    _isRunning ? "Odaklanıyor..." : "Hazır",
+                                    _isRunning ? l10n.focusing : l10n.ready,
                                     style: GoogleFonts.outfit(
                                       color:
-                                          cs.onSurface.withValues(alpha: 0.4),
+                                          cs.onSurface.withOpacity(0.4),
                                       fontSize: 14,
                                     ),
                                   ),
@@ -266,7 +291,7 @@ class _FocusScreenState extends State<FocusScreen>
                               ),
                               progressColor: progressColor,
                               backgroundColor:
-                                  cs.onSurface.withValues(alpha: 0.08),
+                                  cs.onSurface.withOpacity(0.08),
                               circularStrokeCap: CircularStrokeCap.round,
                               animation: true,
                               animateFromLastPercent: true,
@@ -288,14 +313,14 @@ class _FocusScreenState extends State<FocusScreen>
                             width: 56,
                             height: 56,
                             decoration: BoxDecoration(
-                              color: cs.surfaceContainerHigh,
+                              color: cs.surfaceVariant,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                  color: cs.outline.withValues(alpha: 0.1)),
+                                  color: cs.outline.withOpacity(0.1),),
                             ),
                             child: Icon(Icons.refresh_rounded,
-                                color: cs.onSurface.withValues(alpha: 0.6),
-                                size: 24),
+                                color: cs.onSurface.withOpacity(0.6),
+                                size: 24,),
                           ),
                         ),
                         const SizedBox(width: 24),
@@ -308,8 +333,8 @@ class _FocusScreenState extends State<FocusScreen>
                               gradient: _isRunning
                                   ? const LinearGradient(colors: [
                                       Colors.orange,
-                                      Colors.deepOrange
-                                    ])
+                                      Colors.deepOrange,
+                                    ],)
                                   : PhobesTheme.successGradient,
                               shape: BoxShape.circle,
                               boxShadow: [
@@ -317,7 +342,7 @@ class _FocusScreenState extends State<FocusScreen>
                                   color: (_isRunning
                                           ? Colors.orange
                                           : PhobesTheme.successColor)
-                                      .withValues(alpha: 0.4),
+                                      .withOpacity(0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -337,19 +362,21 @@ class _FocusScreenState extends State<FocusScreen>
                           duration: const Duration(milliseconds: 200),
                           opacity: _isRunning ? 1.0 : 0.3,
                           child: GestureDetector(
-                            onTap: _isRunning ? _finishTimer : null,
+                            onTap: _isRunning
+                                ? () => _finishTimer(awardXp: false)
+                                : null,
                             child: Container(
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: cs.surfaceContainerHigh,
+                                color: cs.surfaceVariant,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                    color: cs.outline.withValues(alpha: 0.1)),
+                                    color: cs.outline.withOpacity(0.1),),
                               ),
                               child: Icon(Icons.skip_next_rounded,
-                                  color: cs.onSurface.withValues(alpha: 0.6),
-                                  size: 24),
+                                  color: cs.onSurface.withOpacity(0.6),
+                                  size: 24,),
                             ),
                           ),
                         ),
@@ -358,34 +385,36 @@ class _FocusScreenState extends State<FocusScreen>
                     const SizedBox(height: 40),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                          horizontal: 20, vertical: 10,),
                       decoration: BoxDecoration(
-                        color: cs.surfaceContainerHigh,
+                        color: cs.surfaceVariant,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: cs.outline.withValues(alpha: 0.1)),
+                            color: cs.outline.withOpacity(0.1),),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.stars,
-                              color: Colors.amber, size: 16),
+                              color: Colors.amber, size: 16,),
                           const SizedBox(width: 8),
                           Text(
-                            "Tamamlayınca 100 XP kazan",
+                            l10n.focusXpReward(100),
                             style: GoogleFonts.outfit(
-                                color: cs.onSurface.withValues(alpha: 0.5),
-                                fontSize: 13),
+                                color: cs.onSurface.withOpacity(0.5),
+                                fontSize: 13,),
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
+                  ),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

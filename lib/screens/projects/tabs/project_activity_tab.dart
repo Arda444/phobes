@@ -1,35 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import '../../../../l10n/app_localizations.dart';
+import '../../../../models/activity_log_model.dart';
 import '../../../../models/project_model.dart';
+import '../../../../services/firebase_service.dart';
+import '../../../../widgets/phobes_widgets.dart';
 
 class ProjectActivityTab extends StatelessWidget {
   final Project project;
+  final String teamId;
 
-  const ProjectActivityTab({super.key, required this.project});
+  const ProjectActivityTab({
+    super.key,
+    required this.project,
+    required this.teamId,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final activities = [
-      {
-        'title': 'Görev tamamlandı: Arka plan API entegrasyonu',
-        'time': '2 saat önce',
-        'icon': Icons.check_circle_rounded,
-        'color': Colors.green
-      },
-      {
-        'title': 'Yeni not eklendi: Toplantı Notları',
-        'time': 'Dün',
-        'icon': Icons.note_add_rounded,
-        'color': Colors.blue
-      },
-      {
-        'title': 'Proje oluşturuldu',
-        'time': '1 hafta önce',
-        'icon': Icons.rocket_launch_rounded,
-        'color': cs.primary
-      },
-    ];
+    final l10n = AppLocalizations.of(context)!;
+    final locale = l10n.localeName;
+    final service = FirebaseService();
+    final projectName = project.name.toLowerCase();
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -37,7 +31,7 @@ class ProjectActivityTab extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Proje Geçmişi',
+            l10n.projectActivityTitle,
             style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -46,66 +40,81 @@ class ProjectActivityTab extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 80),
-              itemCount: activities.length,
-              itemBuilder: (context, index) {
-                final activity = activities[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
+            child: StreamBuilder<List<ActivityLog>>(
+              stream: service.getTeamActivityLogs(teamId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: PhobesLoadingIndicator(color: cs.primary),
+                  );
+                }
+                final logs = (snapshot.data ?? []).where((log) {
+                  final details = log.details.toLowerCase();
+                  return details.contains(projectName) ||
+                      log.action.contains('project');
+                }).toList();
+
+                if (logs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      l10n.projectActivityEmpty,
+                      style: GoogleFonts.outfit(
+                        color: cs.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.only(bottom: 80),
+                  itemCount: logs.length,
+                  itemBuilder: (context, index) {
+                    final log = logs[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: (activity['color'] as Color)
-                                  .withValues(alpha: 0.1),
+                              color: cs.primary.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
-                              activity['icon'] as IconData,
+                              Icons.history_rounded,
                               size: 16,
-                              color: activity['color'] as Color,
+                              color: cs.primary,
                             ),
                           ),
-                          if (index < activities.length - 1)
-                            Container(
-                              width: 2,
-                              height: 30,
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              color: cs.outline.withValues(alpha: 0.1),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  log.details,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: cs.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${log.userName} · ${DateFormat('d MMM HH:mm', locale).format(log.timestamp)}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 12,
+                                    color: cs.onSurface.withOpacity(0.5),
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
                         ],
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              activity['title'] as String,
-                              style: GoogleFonts.outfit(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: cs.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              activity['time'] as String,
-                              style: GoogleFonts.outfit(
-                                fontSize: 12,
-                                color: cs.onSurface.withValues(alpha: 0.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),

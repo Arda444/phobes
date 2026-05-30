@@ -21,7 +21,6 @@ class Medication {
   final int stockThreshold;
   final bool stockTracking;
 
-  // Official data fields
   final String? imageUrl;
   final String? prospectusUrl;
   final String? barcode;
@@ -135,7 +134,7 @@ class Medication {
   }
 
   factory Medication.fromMap(Map<String, dynamic> map, String docId) {
-    Map<String, List<String>> history = {};
+    final Map<String, List<String>> history = {};
     if (map['takenHistory'] != null) {
       final raw = map['takenHistory'] as Map<String, dynamic>;
       raw.forEach((k, v) {

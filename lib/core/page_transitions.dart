@@ -1,30 +1,39 @@
 import 'package:flutter/material.dart';
 
+import 'module_ui_tokens.dart';
+
 class PhobesPageRoute {
   PhobesPageRoute._();
 
   static Future<T?> pushResponsive<T>(
-    BuildContext context, 
+    BuildContext context,
     Widget page, {
     bool isCentered = false,
+    double? panelWidth,
   }) {
-    if (MediaQuery.of(context).size.width >= 900) {
+    if (ModuleUiTokens.isWideForm(context)) {
+      final width =
+          ModuleUiTokens.resolvePanelWidth(context, override: panelWidth);
       return showGeneralDialog<T>(
         context: context,
         barrierDismissible: true,
         barrierLabel:
             MaterialLocalizations.of(context).modalBarrierDismissLabel,
-        barrierColor: isCentered 
-            ? Colors.black.withValues(alpha: 0.2) 
-            : Colors.black.withValues(alpha: 0.3),
-        transitionDuration: const Duration(milliseconds: 300),
+        barrierColor: isCentered
+            ? Colors.black.withOpacity(0.2)
+            : Colors.black.withOpacity(0.38),
+        transitionDuration: const Duration(milliseconds: 280),
         pageBuilder: (context, animation, secondaryAnimation) {
           final h = MediaQuery.of(context).size.height;
+          final cs = Theme.of(context).colorScheme;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Align(
             alignment: isCentered ? Alignment.center : Alignment.centerRight,
             child: Material(
-              elevation: 16,
-              borderRadius: isCentered 
+              color: isDark ? const Color(0xFF121212) : cs.surface,
+              elevation: 24,
+              shadowColor: Colors.black.withOpacity(0.3),
+              borderRadius: isCentered
                   ? BorderRadius.circular(24)
                   : const BorderRadius.only(
                       topLeft: Radius.circular(24),
@@ -32,7 +41,7 @@ class PhobesPageRoute {
                     ),
               clipBehavior: Clip.antiAlias,
               child: SizedBox(
-                width: isCentered ? 850 : 500, // Wider for centered view
+                width: isCentered ? 850 : width,
                 height: isCentered ? h * 0.9 : double.infinity,
                 child: page,
               ),
@@ -42,7 +51,7 @@ class PhobesPageRoute {
         transitionBuilder: (context, animation, secondaryAnimation, child) {
           final curved =
               CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-          
+
           if (isCentered) {
             return FadeTransition(
               opacity: curved,
@@ -63,7 +72,13 @@ class PhobesPageRoute {
         },
       );
     } else {
-      return Navigator.push<T>(context, slideUp(page));
+      return Navigator.push<T>(
+        context,
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => page,
+        ),
+      );
     }
   }
 

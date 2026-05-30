@@ -43,8 +43,7 @@ class GlassContainer extends StatelessWidget {
               gradient: gradient ?? PhobesTheme.glassGradient(isDark),
               border: withBorder
                   ? Border.all(
-                      color: cs.outline.withValues(alpha: isDark ? 0.2 : 0.4),
-                      width: 1,
+                      color: cs.outline.withOpacity(isDark ? 0.2 : 0.4),
                     )
                   : null,
             ),

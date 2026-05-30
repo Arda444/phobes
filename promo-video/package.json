@@ -1,0 +1,27 @@
+{
+  "name": "phobes-promo-video",
+  "version": "1.0.0",
+  "description": "Vertical (9:16) promo video for Phobes, programmatically built with Remotion. Shows each module as an animated card, with mobile + web mockups.",
+  "private": true,
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "studio": "remotion studio src/index.ts",
+    "build": "remotion render src/index.ts PhobesPromo out/phobes-promo.mp4 --codec=h264 --crf=18 --pixel-format=yuv420p",
+    "build:gif": "remotion render src/index.ts PhobesPromo out/phobes-promo.gif --codec=gif",
+    "build:webm": "remotion render src/index.ts PhobesPromo out/phobes-promo.webm --codec=vp9",
+    "still": "remotion still src/index.ts PhobesPromo out/poster.png --frame=30"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.300",
+    "@remotion/google-fonts": "^4.0.300",
+    "@remotion/shapes": "^4.0.300",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.300"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,395 +1,509 @@
-﻿import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../models/appointment_group_model.dart';
 import '../../models/appointment_model.dart';
-import '../../services/firebase_service.dart';
+import '../../models/appointment_group_model.dart';
+import '../../services/appointment_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../widgets/phobes_widgets.dart';
-import '../../core/phobes_theme.dart';
-import '../../core/page_transitions.dart';
 import 'appointment_add_edit_screen.dart';
 
 class AppointmentDetailScreen extends StatelessWidget {
   final Appointment appointment;
   final VoidCallback? onClose;
-  const AppointmentDetailScreen(
-      {super.key, required this.appointment, this.onClose});
+  final VoidCallback? onEdit;
 
-  Future<AppointmentGroup?> _loadGroup() async {
-    if (appointment.groupId == null) return null;
-    return await FirebaseService().getGroupById(appointment.groupId!);
-  }
-
-  void _launch(String url) async {
-    if (url.isEmpty) return;
-    final uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
-  }
-
-  void _cancelAppointment(BuildContext context, AppointmentGroup group) {
-    final l10n = AppLocalizations.of(context)!;
-    final now = DateTime.now();
-    final difference = appointment.date.difference(now).inHours;
-    final cs = Theme.of(context).colorScheme;
-
-    if (difference < group.minCancellationHours) {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: cs.surfaceContainerHigh,
-          title: Text(l10n.cancellationPolicy,
-              style: GoogleFonts.outfit(
-                  color: cs.error, fontWeight: FontWeight.bold)),
-          content: Text(
-            l10n.policyWarning(group.minCancellationHours),
-            style: GoogleFonts.outfit(color: cs.onSurfaceVariant),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text("Tamam",
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold)))
-          ],
-        ),
-      );
-    } else {
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: cs.surfaceContainerHigh,
-          title: Text(l10n.statusCancelled,
-              style: GoogleFonts.outfit(
-                  color: cs.onSurface, fontWeight: FontWeight.bold)),
-          content: Text(l10n.deleteNoteWarning,
-              style: GoogleFonts.outfit(color: cs.onSurfaceVariant)),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(l10n.cancel,
-                    style: GoogleFonts.outfit(color: cs.onSurfaceVariant))),
-            PhobesButton(
-              text: l10n.btnReject,
-              onPressed: () async {
-                await FirebaseService().updateAppointment(
-                    appointment.copyWith(status: 'cancelled'));
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) {
-                  if (onClose != null) {
-                    onClose!();
-                  } else {
-                    Navigator.pop(context);
-                  }
-                }
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.msgStatusUpdated)));
-                }
-              },
-            ),
-          ],
-        ),
-      );
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'confirmed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      case 'completed':
-        return Colors.grey;
-      default:
-        return Colors.orange;
-    }
-  }
-
-  String _getStatusText(BuildContext context, String status) {
-    final l10n = AppLocalizations.of(context)!;
-    switch (status) {
-      case 'confirmed':
-        return l10n.statusConfirmed.toUpperCase();
-      case 'cancelled':
-        return l10n.statusCancelled.toUpperCase();
-      case 'completed':
-        return l10n.statusCompleted.toUpperCase();
-      default:
-        return l10n.statusPending.toUpperCase();
-    }
-  }
+  const AppointmentDetailScreen({
+    super.key,
+    required this.appointment,
+    this.onClose,
+    this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isAmoled = PhobesTheme.amoledMode.value;
-    final statusColor = _getStatusColor(appointment.status);
+
+    final color = Color(appointment.color);
+    final dateStr = DateFormat('d MMMM yyyy, EEEE', l10n.localeName)
+        .format(appointment.date);
+    final timeStr = DateFormat('HH:mm').format(appointment.date);
+    final endStr = DateFormat('HH:mm').format(appointment.endTime);
+    final isCancelled = appointment.status == 'cancelled';
 
     return Scaffold(
-      backgroundColor: isAmoled && isDark ? Colors.black : cs.surface,
-      body: Column(
-        children: [
-          _buildHeader(context, l10n, statusColor, cs),
-          Expanded(
-            child: FutureBuilder<AppointmentGroup?>(
-              future: _loadGroup(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: PhobesLoadingIndicator());
-                }
-                final group = snapshot.data;
-                final isCancelled = appointment.status == 'cancelled';
-
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 700),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (group != null) ...[
-                          PhobesGlassCard(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(l10n.labelProvider,
-                                    style: GoogleFonts.outfit(
-                                        color:
-                                            cs.onSurface.withValues(alpha: 0.5),
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 8),
-                                Text(group.businessName,
-                                    style: GoogleFonts.outfit(
-                                        color: cs.onSurface,
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold)),
-                                Text(group.title,
-                                    style: GoogleFonts.outfit(
-                                        color: cs.primary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600)),
-                                if (group.description.isNotEmpty) ...[
-                                  const SizedBox(height: 16),
-                                  Text(group.description,
-                                      style: GoogleFonts.outfit(
-                                          color: cs.onSurface
-                                              .withValues(alpha: 0.7),
-                                          height: 1.5)),
-                                ],
-                                const SizedBox(height: 32),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: [
-                                    if (group.businessPhone != null)
-                                      _iconBtn(
-                                          Icons.phone_rounded,
-                                          l10n.btnCall,
-                                          () => _launch(
-                                              "tel:${group.businessPhone}"),
-                                          cs),
-                                    if (group.mapUrl != null)
-                                      _iconBtn(Icons.map_rounded, l10n.btnMap,
-                                          () => _launch(group.mapUrl!), cs),
-                                    if (group.businessWebsite != null)
-                                      _iconBtn(
-                                          Icons.language_rounded,
-                                          l10n.btnWeb,
-                                          () => _launch(group.businessWebsite!),
-                                          cs),
-                                  ],
-                                )
-                              ],
-                            ),
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 800;
+            return Column(
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
+                  child: Row(
+                    children: [
+                      PhobesIconButton(
+                        icon: Icons.arrow_back_ios_new_rounded,
+                        onTap: () {
+                          if (onClose != null) {
+                            onClose!();
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l10n.viewDetails,
+                          style: GoogleFonts.outfit(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 24),
-                          if (!isCancelled)
-                            PhobesCard(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.info_outline_rounded,
-                                          color: cs.error, size: 20),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          l10n.policyWarning(
-                                              group.minCancellationHours),
-                                          style: GoogleFonts.outfit(
-                                              color: cs.onSurface
-                                                  .withValues(alpha: 0.6),
-                                              fontSize: 13),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 20),
-                                  PhobesButton(
-                                    width: double.infinity,
-                                    text: l10n.btnReject,
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        cs.error,
-                                        cs.error.withValues(alpha: 0.8)
-                                      ],
-                                    ),
-                                    onPressed: () =>
-                                        _cancelAppointment(context, group),
-                                  )
-                                ],
-                              ),
-                            ),
-                        ] else ...[
-                          const Center(child: PhobesLoadingIndicator())
-                        ]
-                      ],
+                        ),
+                      ),
+                      _buildStatusPill(appointment.status, cs, l10n),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: isWide
+                      ? _buildWideLayout(
+                          context,
+                          cs,
+                          l10n,
+                          color,
+                          isCancelled,
+                          dateStr,
+                          timeStr,
+                          endStr,
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInfoCard(cs, color, isCancelled),
+                              const SizedBox(height: 16),
+                              _buildDetailRows(
+                                  context, cs, l10n, dateStr, timeStr, endStr),
+                              const SizedBox(height: 24),
+                              _buildActionButtons(context, cs, l10n),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(ColorScheme cs, Color color, bool isCancelled) {
+    return PhobesGlassCard(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 6,
+            height: 48,
+            decoration: BoxDecoration(
+              color: isCancelled ? cs.onSurface.withOpacity(0.15) : color,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appointment.title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isCancelled
+                        ? cs.onSurface.withOpacity(0.35)
+                        : cs.onSurface,
+                    decoration: isCancelled ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                if (appointment.price > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '${appointment.price.toStringAsFixed(0)} ${appointment.currency}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: color,
                     ),
                   ),
-                );
-              },
+                ],
+              ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n,
-      Color statusColor, ColorScheme cs) {
-    final dateStr =
-        DateFormat('d MMMM yyyy', l10n.localeName).format(appointment.date);
-    final timeStr =
-        DateFormat('HH:mm', l10n.localeName).format(appointment.date);
-    final statusText = _getStatusText(context, appointment.status);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 32),
-      decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [statusColor.withValues(alpha: 0.2), cs.surface],
+  Widget _buildDetailRows(
+    BuildContext context,
+    ColorScheme cs,
+    AppLocalizations l10n,
+    String dateStr,
+    String timeStr,
+    String endStr,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _DetailRow(
+          icon: Icons.calendar_today_rounded,
+          iconColor: const Color(0xFF3B82F6),
+          label: l10n.labelDate,
+          value: dateStr,
+        ),
+        _DetailRow(
+          icon: Icons.access_time_rounded,
+          iconColor: const Color(0xFF8B5CF6),
+          label: l10n.duration,
+          value:
+              '$timeStr – $endStr  (${appointment.durationMinutes} ${l10n.apptMinutes(appointment.durationMinutes).split(' ').last})',
+        ),
+        _DetailRow(
+          icon: Icons.person_rounded,
+          iconColor: const Color(0xFF10B981),
+          label: l10n.labelClient,
+          value: appointment.clientName,
+        ),
+        if (appointment.phoneNumber != null &&
+            appointment.phoneNumber!.isNotEmpty)
+          _DetailRow(
+            icon: Icons.phone_rounded,
+            iconColor: const Color(0xFF06B6D4),
+            label: l10n.phone,
+            value: appointment.phoneNumber!,
+            onTap: () => _launchUrl('tel:${appointment.phoneNumber}'),
           ),
-          borderRadius:
-              const BorderRadius.vertical(bottom: Radius.circular(32)),
-          border: Border(
-              bottom: BorderSide(
-                  color: statusColor.withValues(alpha: 0.2), width: 1))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              PhobesIconButton(
-                icon: Icons.arrow_back_ios_new_rounded,
+        if (appointment.email != null && appointment.email!.isNotEmpty)
+          _DetailRow(
+            icon: Icons.email_outlined,
+            iconColor: const Color(0xFFF59E0B),
+            label: l10n.apptClientEmail,
+            value: appointment.email!,
+            onTap: () => _launchUrl('mailto:${appointment.email}'),
+          ),
+        if (appointment.notes != null && appointment.notes!.isNotEmpty)
+          _DetailRow(
+            icon: Icons.note_alt_rounded,
+            iconColor: const Color(0xFFF472B6),
+            label: l10n.labelNote,
+            value: appointment.notes!,
+          ),
+        if (appointment.cancelReason != null &&
+            appointment.cancelReason!.isNotEmpty)
+          _DetailRow(
+            icon: Icons.cancel_rounded,
+            iconColor: cs.error,
+            label: l10n.apptCancelReason,
+            value: appointment.cancelReason!,
+          ),
+        if (appointment.groupId != null)
+          FutureBuilder<AppointmentGroup?>(
+            future: AppointmentService().getServiceById(appointment.groupId!),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data == null) {
+                return const SizedBox.shrink();
+              }
+              final group = snapshot.data!;
+              return _DetailRow(
+                icon: Icons.key_rounded,
+                iconColor: cs.primary,
+                label: l10n.appointmentCode,
+                value: group.groupCode,
                 onTap: () {
-                  if (onClose != null) {
-                    onClose!();
-                  } else {
-                    Navigator.pop(context);
-                  }
+                  Clipboard.setData(ClipboardData(text: group.groupCode));
+                  PhobesSnackbar.show(
+                    context,
+                    message: l10n.msgCodeCopied,
+                    type: PhobesSnackbarType.success,
+                  );
                 },
-              ),
-              PhobesIconButton(
-                icon: Icons.edit_rounded,
-                backgroundColor: cs.surface.withValues(alpha: 0.5),
-                onTap: () async {
-                  final navigator = Navigator.of(context);
-                  await navigator.push(PhobesPageRoute.slideUp(
-                      AppointmentAddEditScreen(appointment: appointment)));
-                  if (context.mounted) {
-                    if (onClose != null) {
-                      onClose!();
-                    } else {
-                      Navigator.pop(context);
-                    }
-                  }
-                },
-              ),
-            ],
+              );
+            },
           ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: statusColor.withValues(alpha: 0.3))),
-            child: Text(
-              statusText,
-              style: GoogleFonts.outfit(
-                  color: statusColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2),
-            ),
-          ),
-          const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons(
+    BuildContext context,
+    ColorScheme cs,
+    AppLocalizations l10n,
+  ) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final isProvider = uid != null && appointment.userId == uid;
+    final isClient =
+        uid != null && appointment.clientId != null && appointment.clientId == uid;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (appointment.status == 'pending' && isProvider) ...[
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                timeStr,
-                style: GoogleFonts.outfit(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSurface,
-                    height: 1),
+              Expanded(
+                child: PhobesButton(
+                  text: l10n.btnApprove,
+                  icon: Icons.check_rounded,
+                  onPressed: () => _updateStatus(context, 'confirmed'),
+                ),
               ),
               const SizedBox(width: 12),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  dateStr,
-                  style: GoogleFonts.outfit(
-                      fontSize: 18,
-                      color: cs.onSurface.withValues(alpha: 0.6),
-                      fontWeight: FontWeight.w500),
+              Expanded(
+                child: PhobesButton(
+                  text: l10n.btnReject,
+                  icon: Icons.close_rounded,
+                  backgroundColor: cs.error,
+                  onPressed: () => _updateStatus(context, 'cancelled'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            appointment.title,
-            style: GoogleFonts.outfit(
-                fontSize: 15, color: cs.onSurface.withValues(alpha: 0.4)),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          const SizedBox(height: 12),
         ],
+        if (appointment.status == 'confirmed' && isProvider) ...[
+          PhobesButton(
+            text: l10n.statusCompleted,
+            icon: Icons.check_circle_rounded,
+            onPressed: () => _updateStatus(context, 'completed'),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (appointment.status != 'cancelled' &&
+            appointment.status != 'completed' &&
+            (isProvider || isClient)) ...[
+          PhobesButton(
+            text: l10n.apptReschedule,
+            icon: Icons.edit_calendar_rounded,
+            isOutlined: true,
+            onPressed: onEdit ??
+                () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AppointmentAddEditScreen(
+                          appointment: appointment,
+                          onClose: onClose,
+                        ),
+                      ),
+                    ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (appointment.phoneNumber != null &&
+            appointment.phoneNumber!.isNotEmpty)
+          Row(
+            children: [
+              Expanded(
+                child: PhobesButton(
+                  text: l10n.apptWhatsapp,
+                  icon: Icons.message_rounded,
+                  backgroundColor: const Color(0xFF25D366),
+                  onPressed: () => _launchUrl(
+                    'https://wa.me/${appointment.phoneNumber?.replaceAll(RegExp(r'[^0-9]'), '')}',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PhobesButton(
+                  text: l10n.btnCall,
+                  icon: Icons.phone_rounded,
+                  backgroundColor: const Color(0xFF06B6D4),
+                  onPressed: () => _launchUrl('tel:${appointment.phoneNumber}'),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildWideLayout(
+    BuildContext context,
+    ColorScheme cs,
+    AppLocalizations l10n,
+    Color color,
+    bool isCancelled,
+    String dateStr,
+    String timeStr,
+    String endStr,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 10, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildInfoCard(cs, color, isCancelled),
+                const SizedBox(height: 16),
+                _buildDetailRows(context, cs, l10n, dateStr, timeStr, endStr),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          width: 1,
+          color: cs.outline.withOpacity(0.1),
+          margin: const EdgeInsets.symmetric(vertical: 16),
+        ),
+        Expanded(
+          flex: 2,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(10, 12, 20, 32),
+            child: _buildActionButtons(context, cs, l10n),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _updateStatus(BuildContext context, String status) async {
+    final l10n = AppLocalizations.of(context)!;
+    await AppointmentService().updateStatus(appointment.id!, status);
+    if (context.mounted) {
+      PhobesSnackbar.show(
+        context,
+        message: l10n.msgStatusUpdated,
+        type: PhobesSnackbarType.success,
+      );
+      if (onClose != null) onClose!();
+    }
+  }
+
+  Widget _buildStatusPill(
+    String status,
+    ColorScheme cs,
+    AppLocalizations l10n,
+  ) {
+    Color c;
+    String t;
+    switch (status) {
+      case 'confirmed':
+        c = const Color(0xFF10B981);
+        t = l10n.statusConfirmed;
+        break;
+      case 'cancelled':
+        c = const Color(0xFFEF4444);
+        t = l10n.statusCancelled;
+        break;
+      case 'completed':
+        c = const Color(0xFF6B7280);
+        t = l10n.statusCompleted;
+        break;
+      default:
+        c = const Color(0xFFF59E0B);
+        t = l10n.statusPending;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.withOpacity(0.3)),
+      ),
+      child: Text(
+        t,
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: c,
+        ),
       ),
     );
   }
 
-  Widget _iconBtn(
-      IconData icon, String label, VoidCallback onTap, ColorScheme cs) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Column(
-        children: [
-          PhobesIconButton(
-            icon: icon,
-            onTap: onTap,
-          ),
-          const SizedBox(height: 8),
-          Text(label,
-              style: GoogleFonts.outfit(
-                  color: cs.onSurface.withValues(alpha: 0.5),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500))
-        ],
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  const _DetailRow({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 18),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      color: cs.onSurface.withOpacity(0.4),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: GoogleFonts.outfit(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: onTap != null ? cs.primary : cs.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
