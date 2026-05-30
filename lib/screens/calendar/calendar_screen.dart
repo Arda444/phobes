@@ -1903,7 +1903,9 @@ class _FilterSheetState extends State<_FilterSheet> {
             ? Text(subtitle, style: GoogleFonts.outfit(fontSize: 11))
             : null,
         value: value,
-        activeThumbColor: cs.primary,
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? cs.primary : null,
+        ),
         onChanged: onChanged,
       ),
     );

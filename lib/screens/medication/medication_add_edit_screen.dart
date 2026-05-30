@@ -1061,7 +1061,10 @@ class _MedicationAddEditScreenState extends State<MedicationAddEditScreen> {
           Switch.adaptive(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: color,
+            trackColor: WidgetStateProperty.resolveWith(
+              (states) =>
+                  states.contains(WidgetState.selected) ? color : null,
+            ),
           ),
         ],
       ),

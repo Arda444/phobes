@@ -181,9 +181,16 @@ class _TeamKanbanTabState extends State<TeamKanbanTab> {
                   scale: 0.8,
                   child: Switch(
                     value: _showMyTasksOnly,
-                    activeTrackColor: Colors.purpleAccent,
-                    inactiveThumbColor: Colors.grey,
-                    activeThumbColor: Colors.white,
+                    trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Colors.purpleAccent
+                          : null,
+                    ),
+                    thumbColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Colors.white
+                          : Colors.grey,
+                    ),
                     onChanged: (val) =>
                         setState(() => _showMyTasksOnly = val),
                   ),
@@ -220,9 +227,16 @@ class _TeamKanbanTabState extends State<TeamKanbanTab> {
                   scale: 0.8,
                   child: Switch(
                     value: _showMyTasksOnly,
-                    activeTrackColor: Colors.purpleAccent,
-                    inactiveThumbColor: Colors.grey,
-                    activeThumbColor: Colors.white,
+                    trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Colors.purpleAccent
+                          : null,
+                    ),
+                    thumbColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Colors.white
+                          : Colors.grey,
+                    ),
                     onChanged: (val) =>
                         setState(() => _showMyTasksOnly = val),
                   ),

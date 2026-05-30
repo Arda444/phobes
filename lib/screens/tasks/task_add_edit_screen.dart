@@ -606,7 +606,11 @@ class _TaskAddEditScreenState extends State<TaskAddEditScreen> {
                             ),
                           ),
                           value: _allDay,
-                          activeThumbColor: cs.primary,
+                          thumbColor: WidgetStateProperty.resolveWith(
+                            (states) => states.contains(WidgetState.selected)
+                                ? cs.primary
+                                : null,
+                          ),
                           onChanged: (v) => setState(() => _allDay = v),
                         ),
                       ],

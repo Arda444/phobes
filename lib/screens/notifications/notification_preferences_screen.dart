@@ -430,8 +430,15 @@ class _NotificationPreferencesScreenState
                 Switch.adaptive(
                   value: value,
                   onChanged: item.onChanged,
-                  activeTrackColor: cs.primary,
-                  activeThumbColor: Colors.white,
+                  trackColor: WidgetStateProperty.resolveWith(
+                    (states) =>
+                        states.contains(WidgetState.selected) ? cs.primary : null,
+                  ),
+                  thumbColor: WidgetStateProperty.resolveWith(
+                    (states) => states.contains(WidgetState.selected)
+                        ? Colors.white
+                        : null,
+                  ),
                 ),
               ],
             ),
@@ -513,8 +520,16 @@ class _NotificationPreferencesScreenState
                         _togglePref(item.key, v);
                       }
                     },
-                    activeTrackColor: cs.primary,
-                    activeThumbColor: Colors.white,
+                    trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? cs.primary
+                          : null,
+                    ),
+                    thumbColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Colors.white
+                          : null,
+                    ),
                   ),
                 ],
               ),
@@ -560,8 +575,16 @@ class _NotificationPreferencesScreenState
                   Switch.adaptive(
                     value: isOn,
                     onChanged: (v) => _togglePref(item.key, v),
-                    activeTrackColor: cs.primary,
-                    activeThumbColor: Colors.white,
+                    trackColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? cs.primary
+                          : null,
+                    ),
+                    thumbColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.selected)
+                          ? Colors.white
+                          : null,
+                    ),
                   ),
                 ],
               ),

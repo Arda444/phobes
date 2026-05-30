@@ -787,7 +787,10 @@ class AccountSettingsUi {
               Switch.adaptive(
                 value: value,
                 onChanged: onChanged,
-                activeThumbColor: color,
+                thumbColor: WidgetStateProperty.resolveWith(
+                  (states) =>
+                      states.contains(WidgetState.selected) ? color : null,
+                ),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ],
@@ -1388,7 +1391,11 @@ class AccountSettingsUi {
                     child: Switch(
                       value: enabled,
                       onChanged: (_) => onTap(),
-                      activeThumbColor: module.color,
+                      thumbColor: WidgetStateProperty.resolveWith(
+                        (states) => states.contains(WidgetState.selected)
+                            ? module.color
+                            : null,
+                      ),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                   ),
