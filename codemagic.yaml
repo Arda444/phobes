@@ -42,9 +42,11 @@ workflows:
       - build/ios/ipa/*.ipa
     publishing:
       email:
-        recipients: [ardakocaoglu44@gmail.com]
-        on_success: true
-        on_failure: true
+        recipients:
+          - ardakocaoglu44@gmail.com
+        notify:
+          success: true
+          failure: true
 
   # ── Android (signed APK + AAB for Play Store) ─────────────────────────────
   # Required Codemagic environment variables (Settings → Environment variables):
@@ -84,9 +86,11 @@ workflows:
       - build/app/outputs/bundle/release/app-release.aab
     publishing:
       email:
-        recipients: [ardakocaoglu44@gmail.com]
-        on_success: true
-        on_failure: true
+        recipients:
+          - ardakocaoglu44@gmail.com
+        notify:
+          success: true
+          failure: true
 
   # ── Web (Firebase Hosting deploy) ─────────────────────────────────────────
   # Required Codemagic environment variables:
@@ -124,6 +128,8 @@ workflows:
       - build/web/**
     publishing:
       email:
-        recipients: [ardakocaoglu44@gmail.com]
-        on_success: true
-        on_failure: true
+        recipients:
+          - ardakocaoglu44@gmail.com
+        notify:
+          success: true
+          failure: true
