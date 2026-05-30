@@ -10,7 +10,13 @@ class WidgetService {
 
   static Future<void> init() async {
     if (kIsWeb) return;
-    await HomeWidget.setAppGroupId('group.phobes');
+    try {
+      await HomeWidget.setAppGroupId('group.phobes');
+    } on PlatformException catch (e) {
+      debugPrint('[WidgetService] App group unavailable (safe to ignore on sideload): $e');
+    } catch (e) {
+      debugPrint('[WidgetService] init failed: $e');
+    }
   }
 
   static Future<void> updateBudgetWidget({

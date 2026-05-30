@@ -171,8 +171,10 @@ class AppBootstrapper {
 
   static void _activateAppCheck() {
     // Also enable "Enforce" for Firestore, Functions, and Storage in Firebase Console.
-    const webKey =
-        String.fromEnvironment('RECAPTCHA_SITE_KEY');
+    const webKey = String.fromEnvironment('RECAPTCHA_SITE_KEY');
+    // Sideloaded iOS builds (free Apple ID) cannot use DeviceCheck/Play Integrity.
+    const sideloadBuild = bool.fromEnvironment('SIDELOAD_BUILD');
+    const useDebugAttestation = kDebugMode || sideloadBuild;
     if (kIsWeb) {
       if (webKey.isEmpty && !kDebugMode) {
         debugPrint(
@@ -191,11 +193,12 @@ class AppBootstrapper {
     } else {
       FirebaseAppCheck.instance
           .activate(
-            androidProvider: kDebugMode
+            androidProvider: useDebugAttestation
                 ? AndroidProvider.debug
                 : AndroidProvider.playIntegrity,
-            appleProvider:
-                kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
+            appleProvider: useDebugAttestation
+                ? AppleProvider.debug
+                : AppleProvider.deviceCheck,
           )
           .catchError((e) => debugPrint('[Bootstrap] AppCheck mobile: $e'));
     }
