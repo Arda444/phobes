@@ -28,8 +28,9 @@ workflows:
     max_build_duration: 90
     instance_type: mac_mini_m1
     environment:
-      flutter: stable
-      xcode: latest
+      # Pin below Flutter 3.44 — flutter_quill 9.x breaks on TextInputClient.onFocusReceived.
+      flutter: 3.29.3
+      xcode: 16.4
       cocoapods: default
     scripts:
       - name: Disable Swift Package Manager
