@@ -71,6 +71,8 @@ dependency_overrides:
 
 flutter:
   generate: true
+  config:
+    enable-swift-package-manager: false
 
   uses-material-design: true
 

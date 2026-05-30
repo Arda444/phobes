@@ -32,6 +32,8 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Disable Swift Package Manager
+        script: flutter config --no-enable-swift-package-manager
       - name: Flutter packages
         script: flutter pub get
       - name: CocoaPods
